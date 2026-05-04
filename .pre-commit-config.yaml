@@ -1,0 +1,36 @@
+# Hooks pre-commit pour garantir qualité du code avant chaque commit.
+# Installation : `pip install pre-commit && pre-commit install`
+# Run manuel : `pre-commit run --all-files`
+
+repos:
+  # Hooks de base (whitespace, fin de fichiers, etc.)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-json
+      - id: detect-private-key
+
+  # Ruff pour le backend Python
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        files: ^backend/
+        args: [--fix]
+      - id: ruff-format
+        files: ^backend/
+
+  # Vérification basique des messages de commit (Conventional Commits)
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [feat, fix, refactor, docs, test, chore, perf, build, ci, revert]

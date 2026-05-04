@@ -1,0 +1,160 @@
+[project]
+name = "pos-mobile-backend"
+version = "0.1.0"
+description = "Backend API for POS Mobile - point of sale for Ivorian PMEs"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [
+    { name = "Abdoulaye Coulibaly", email = "abdoullahcoulibaly2@gmail.com" },
+]
+
+dependencies = [
+    "fastapi[standard]>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.9",
+    "aiosmtplib>=3.0.0",
+    "jinja2>=3.1.4",
+    "fastapi-limiter>=0.1.6",
+    "redis>=5.0.0",
+    "httpx>=0.27.0",
+    "structlog>=24.1.0",
+    "pwdlib[argon2]>=0.3.0",
+    "pyjwt>=2.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6.0",
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "pytest-env>=1.1.0",
+    "httpx>=0.27.0",
+    "factory-boy>=3.3.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+
+# ----------------------------------------------------------------------
+# Ruff configuration (formatter + linter)
+# ----------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["app", "tests"]
+exclude = [
+    ".venv",
+    "alembic/versions",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+]
+
+[tool.ruff.lint]
+# Active un set de règles strictes mais raisonnables
+# Voir https://docs.astral.sh/ruff/rules/ pour la liste complète
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (tri des imports)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (modernisation syntaxe)
+    "B",      # flake8-bugbear (anti-patterns)
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "PT",     # flake8-pytest-style
+    "RUF",    # règles ruff-specific
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit (sécurité)
+    "ARG",    # flake8-unused-arguments
+    "PL",     # pylint (sous-ensemble)
+]
+ignore = [
+    "E501",   # line too long (géré par le formatter)
+    "S101",   # asserts autorisés dans les tests
+    "B008",   # appels de fonction dans les defaults (FastAPI Depends)
+    "PLR0913", # trop d'arguments (FastAPI endpoints)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S", "ARG", "PLR2004"]
+"alembic/**/*.py" = ["E402", "F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+combine-as-imports = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+
+# ----------------------------------------------------------------------
+# Pytest configuration
+# ----------------------------------------------------------------------
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--cov=app",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+env = [
+    "ENVIRONMENT=test",
+]
+
+
+# ----------------------------------------------------------------------
+# Mypy configuration
+# ----------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+
+# ----------------------------------------------------------------------
+# Coverage configuration
+# ----------------------------------------------------------------------
+[tool.coverage.run]
+source = ["app"]
+omit = ["app/*/migrations/*", "tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

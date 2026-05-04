@@ -1,0 +1,134 @@
+# =============================================================================
+# Workflow de déploiement en production
+# =============================================================================
+#
+# STATUT : DÉSACTIVÉ pour le moment (toutes les sections sont en commentaire).
+#
+# Ce workflow est conçu pour déployer le backend sur un VPS via SSH une fois
+# que tu auras :
+#   1. Provisionné un VPS (Hetzner CPX11 recommandé, voir docs/adr/0006-*.md)
+#   2. Suivi le runbook de setup initial (docs/runbook.md)
+#   3. Configuré les secrets GitHub (voir section "Secrets requis" ci-dessous)
+#
+# Pour ACTIVER ce workflow le jour où tu seras prêt :
+#   1. Décommenter tout le bloc "on:" et "jobs:" ci-dessous (retirer les # devant)
+#   2. Configurer les secrets GitHub dans Settings > Secrets and variables > Actions :
+#      - VPS_HOST          : IP ou DNS du VPS
+#      - VPS_USER          : utilisateur SSH (ex: pos)
+#      - VPS_SSH_KEY       : clé privée SSH (format ed25519 ou rsa)
+#      - VPS_DEPLOY_PATH   : chemin du repo sur le VPS (ex: /home/pos/pos-mobile-ci)
+#   3. Tester avec un déploiement manuel (workflow_dispatch) avant d'activer
+#      le déclenchement automatique sur push de tag
+#
+# =============================================================================
+
+name: Deploy to production
+
+# DÉSACTIVÉ : tout le contenu fonctionnel est en commentaire ci-dessous.
+# Pour réactiver, retirer le bloc "on" minimal et décommenter les vraies sections.
+on:
+  workflow_dispatch:
+    inputs:
+      placeholder:
+        description: "Workflow non actif. Voir le commentaire en tête du fichier."
+        required: false
+        default: "disabled"
+
+jobs:
+  noop:
+    name: Workflow disabled
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Ce workflow est désactivé. Voir le commentaire dans le fichier"
+          echo "pour la procédure d'activation."
+          exit 0
+
+# =============================================================================
+# CONTENU FONCTIONNEL (à décommenter le moment venu)
+# =============================================================================
+#
+# on:
+#   # Déploiement déclenché manuellement depuis l'UI GitHub Actions
+#   workflow_dispatch:
+#     inputs:
+#       confirm:
+#         description: "Tape 'deploy' pour confirmer le déploiement en production"
+#         required: true
+#         type: string
+#
+#   # Optionnel : déploiement automatique sur push de tag v*.*.*
+#   # push:
+#   #   tags:
+#   #     - 'v*.*.*'
+#
+# concurrency:
+#   group: deploy-production
+#   cancel-in-progress: false  # ne PAS annuler un déploiement en cours
+#
+# jobs:
+#   verify-input:
+#     name: Verify confirmation
+#     runs-on: ubuntu-latest
+#     if: github.event_name == 'workflow_dispatch'
+#     steps:
+#       - name: Check confirmation string
+#         run: |
+#           if [ "${{ inputs.confirm }}" != "deploy" ]; then
+#             echo "Confirmation invalide. Tape 'deploy' pour valider."
+#             exit 1
+#           fi
+#
+#   deploy:
+#     name: Deploy backend to VPS
+#     runs-on: ubuntu-latest
+#     needs: [verify-input]
+#     environment: production  # nécessite l'approbation si configuré
+#     steps:
+#       - uses: actions/checkout@v4
+#
+#       - name: Set up SSH agent
+#         uses: webfactory/ssh-agent@v0.9.0
+#         with:
+#           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+#
+#       - name: Add VPS to known hosts
+#         run: |
+#           mkdir -p ~/.ssh
+#           ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+#
+#       - name: Backup database before deploy
+#         run: |
+#           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+#             "cd ${{ secrets.VPS_DEPLOY_PATH }} && ./scripts/backup-now.sh"
+#
+#       - name: Pull latest code on VPS
+#         run: |
+#           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+#             "cd ${{ secrets.VPS_DEPLOY_PATH }} && git fetch origin && git reset --hard origin/main"
+#
+#       - name: Rebuild and restart api container
+#         run: |
+#           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+#             "cd ${{ secrets.VPS_DEPLOY_PATH }} && docker compose build api && docker compose up -d api"
+#
+#       - name: Run migrations
+#         run: |
+#           ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+#             "cd ${{ secrets.VPS_DEPLOY_PATH }} && docker compose exec -T api alembic upgrade head"
+#
+#       - name: Verify health check
+#         run: |
+#           sleep 10  # laisse à l'API le temps de démarrer
+#           STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.pos-mobile-ci.com/health)
+#           if [ "$STATUS" != "200" ]; then
+#             echo "Health check failed with status $STATUS"
+#             exit 1
+#           fi
+#           echo "Deployment successful"
+#
+#       - name: Notify on failure
+#         if: failure()
+#         run: |
+#           echo "Le déploiement a échoué. Vérifier les logs et envisager un rollback."
+#           # TODO : envoyer une notification Slack/email/SMS

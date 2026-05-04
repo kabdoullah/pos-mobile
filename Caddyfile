@@ -1,0 +1,37 @@
+# Caddyfile pour la production
+# Remplacer api.pos-mobile-ci.com par ton vrai domaine
+
+api.pos-mobile-ci.com {
+    # Caddy gère automatiquement TLS via Let's Encrypt
+    reverse_proxy api:8000
+
+    # Headers de sécurité
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Retire le header par défaut révélant la version Caddy
+        -Server
+    }
+
+    # Rate limiting basique côté Caddy (en plus du rate limiting applicatif)
+    # Désactivé par défaut, à activer si besoin
+    # rate_limit {
+    #     zone api {
+    #         key {remote_host}
+    #         events 100
+    #         window 1m
+    #     }
+    # }
+
+    # Logs structurés en JSON
+    log {
+        output file /data/access.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format json
+    }
+}
