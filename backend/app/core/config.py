@@ -33,12 +33,13 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 30
 
     # Email
-    smtp_host: str = "smtp-relay.brevo.com"
-    smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: SecretStr = SecretStr("")
+    email_enabled: bool = True
+    brevo_api_key: SecretStr = SecretStr("")
     smtp_from_email: str = "noreply@example.com"
     smtp_from_name: str = "POS Mobile CI"
+
+    # Frontend
+    app_frontend_url: str = "http://localhost:3000"
 
     # Rate limiting
     redis_url: str = ""
