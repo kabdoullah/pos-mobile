@@ -20,4 +20,4 @@ async def test_root_endpoint(client: AsyncClient) -> None:
     response = await client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["name"] == "POS Mobile CI API"
+    assert data["name"] == "POS Mobile API"

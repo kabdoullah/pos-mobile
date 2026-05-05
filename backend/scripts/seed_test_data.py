@@ -21,20 +21,27 @@ from pathlib import Path
 # Ajout de app/ au path pour les imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.core.config import settings  # noqa: E402
-from app.core.db import AsyncSessionLocal  # noqa: E402
-from app.core.security import hash_password  # noqa: E402
-from app.modules.auth.models import User  # noqa: E402
-from app.modules.catalog.models import Product  # noqa: E402
-from app.modules.stores.models import Store  # noqa: E402
+from sqlalchemy import select
+
+from app.core.config import settings
+from app.core.db import AsyncSessionLocal
+from app.core.security import hash_password
+from app.modules.auth.models import User
+from app.modules.catalog.models import Product
+from app.modules.stores.models import Store
 
 TEST_EMAIL = "test@gmail.com"
-TEST_PASSWORD = "TestPassword123"
+TEST_PASSWORD = "TestPassword123"  # noqa: S105
 
 PRODUCTS_TO_CREATE = [
     {"name": "Pain de mie", "barcode": "3017620422003", "unit_price": "500.00", "stock": 50},
     {"name": "Eau minérale 1.5L", "barcode": "3068320055000", "unit_price": "300.00", "stock": 100},
-    {"name": "Café Nescafé sachet", "barcode": "7613032567736", "unit_price": "150.00", "stock": 200},
+    {
+        "name": "Café Nescafé sachet",
+        "barcode": "7613032567736",
+        "unit_price": "150.00",
+        "stock": 200,
+    },
     {"name": "Savon de Marseille", "barcode": "3245676543210", "unit_price": "750.00", "stock": 30},
     {"name": "Banane (kg)", "barcode": None, "unit_price": "400.00", "stock": None},
 ]
@@ -48,11 +55,7 @@ async def seed() -> None:
 
     async with AsyncSessionLocal() as session:
         # Vérifier que le user n'existe pas déjà
-        from sqlalchemy import select
-
-        existing = await session.execute(
-            select(User).where(User.email == TEST_EMAIL)
-        )
+        existing = await session.execute(select(User).where(User.email == TEST_EMAIL))
         if existing.scalar_one_or_none() is not None:
             print(f"❌ L'utilisateur {TEST_EMAIL} existe déjà. Abandon.")
             print("   Pour repartir de zéro : DELETE manuellement ou drop+migrate.")

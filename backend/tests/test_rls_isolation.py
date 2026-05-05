@@ -22,9 +22,7 @@ from app.modules.catalog.models import Product
 from app.modules.stores.models import Store
 
 
-async def _create_user_with_store(
-    db: AsyncSession, email: str
-) -> tuple[User, Store]:
+async def _create_user_with_store(db: AsyncSession, email: str) -> tuple[User, Store]:
     """Helper pour créer un user + sa boutique."""
     user = User(
         email=email,
@@ -46,15 +44,18 @@ async def _create_user_with_store(
 
 
 async def _set_store_context(db: AsyncSession, store_id) -> None:
-    """Active le RLS pour un store_id donné dans la session courante."""
-    await db.execute(
-        text("SET LOCAL app.current_store_id = :sid"),
-        {"sid": str(store_id)},
-    )
+    """Switch to non-superuser role + set store_id to enforce RLS.
+
+    pos is a PostgreSQL superuser and bypasses RLS entirely, so we must SET ROLE
+    pos_app (a regular role) before any assertion that must respect RLS policies.
+    """
+    await db.execute(text("SET LOCAL ROLE pos_app"))
+    await db.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
 
 
 async def _reset_store_context(db: AsyncSession) -> None:
-    """Désactive le contexte tenant (utile pour les opérations admin de setup)."""
+    """Revert to superuser pos (bypasses RLS). Use for setup/admin operations."""
+    await db.execute(text("RESET ROLE"))
     await db.execute(text("RESET app.current_store_id"))
 
 
@@ -67,12 +68,8 @@ async def test_user_a_cannot_read_products_of_user_b(db_session: AsyncSession) -
     _, store_a = await _create_user_with_store(db_session, "user-a@test.com")
     _, store_b = await _create_user_with_store(db_session, "user-b@test.com")
 
-    product_a = Product(
-        store_id=store_a.id, name="Pain de A", unit_price=Decimal("200.00")
-    )
-    product_b = Product(
-        store_id=store_b.id, name="Pain de B", unit_price=Decimal("300.00")
-    )
+    product_a = Product(store_id=store_a.id, name="Pain de A", unit_price=Decimal("200.00"))
+    product_b = Product(store_id=store_b.id, name="Pain de B", unit_price=Decimal("300.00"))
     db_session.add_all([product_a, product_b])
     await db_session.flush()
 
@@ -125,9 +122,7 @@ async def test_user_a_cannot_update_product_of_user_b(db_session: AsyncSession) 
     _, store_a = await _create_user_with_store(db_session, "user-a@test.com")
     _, store_b = await _create_user_with_store(db_session, "user-b@test.com")
 
-    product_b = Product(
-        store_id=store_b.id, name="Pain de B", unit_price=Decimal("300.00")
-    )
+    product_b = Product(store_id=store_b.id, name="Pain de B", unit_price=Decimal("300.00"))
     db_session.add(product_b)
     await db_session.flush()
 
@@ -160,13 +155,13 @@ async def test_no_store_context_returns_empty(db_session: AsyncSession) -> None:
     await _reset_store_context(db_session)
 
     _, store_a = await _create_user_with_store(db_session, "user-a@test.com")
-    db_session.add(
-        Product(store_id=store_a.id, name="Pain", unit_price=Decimal("200.00"))
-    )
+    db_session.add(Product(store_id=store_a.id, name="Pain", unit_price=Decimal("200.00")))
     await db_session.flush()
 
-    # Aucun SET LOCAL app.current_store_id : RLS doit filtrer toutes les lignes
+    # Switch to non-superuser role WITHOUT store_id. RLS evaluates
+    # store_id = NULL which is always false → 0 rows visible.
     await _reset_store_context(db_session)
+    await db_session.execute(text("SET LOCAL ROLE pos_app"))
 
     result = await db_session.execute(text("SELECT COUNT(*) FROM products"))
     count = result.scalar()

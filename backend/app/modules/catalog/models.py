@@ -49,9 +49,7 @@ class Product(Base):
         onupdate=func.now(),
         nullable=False,
     )
-    deleted_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<Product id={self.id} name={self.name!r} price={self.unit_price}>"

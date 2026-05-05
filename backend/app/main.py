@@ -1,9 +1,12 @@
 """Point d'entrée de l'application FastAPI."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
 
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
@@ -17,15 +20,15 @@ from app.modules.sync.router import router as sync_router
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):  # noqa: ARG001
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     """Hook de cycle de vie de l'application : startup et shutdown."""
     setup_logging()
     yield
 
 
 app = FastAPI(
-    title="POS Mobile CI API",
-    description="API for the POS Mobile CI mobile app",
+    title="POS Mobile API",
+    description="API for the POS Mobile mobile app",
     version="0.1.0",
     lifespan=lifespan,
     docs_url="/docs" if settings.environment != "production" else None,
@@ -48,10 +51,33 @@ register_exception_handlers(app)
 # Routes
 api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=f"{api_v1_prefix}/auth", tags=["auth"])
-app.include_router(stores_router, prefix=f"{api_v1_prefix}/store", tags=["store"])
+app.include_router(stores_router, prefix=f"{api_v1_prefix}/stores", tags=["stores"])
 app.include_router(catalog_router, prefix=f"{api_v1_prefix}/products", tags=["catalog"])
 app.include_router(sales_router, prefix=f"{api_v1_prefix}/sales", tags=["sales"])
 app.include_router(sync_router, prefix=f"{api_v1_prefix}/sync", tags=["sync"])
+
+
+def _custom_openapi() -> dict[str, Any]:
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    schema.setdefault("components", {})["securitySchemes"] = {
+        "BearerAuth": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+    }
+    for path_item in schema.get("paths", {}).values():
+        for operation in path_item.values():
+            if isinstance(operation, dict):
+                operation.setdefault("security", [{"BearerAuth": []}])
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi  # type: ignore[method-assign]
 
 
 @app.get("/health", tags=["system"])
@@ -64,7 +90,7 @@ async def health() -> dict[str, str]:
 async def root() -> dict[str, str]:
     """Endpoint racine."""
     return {
-        "name": "POS Mobile CI API",
+        "name": "POS Mobile API",
         "version": app.version,
         "docs": "/docs" if settings.environment != "production" else "disabled",
     }

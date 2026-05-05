@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
+from starlette.responses import Response  # noqa: TC002
 from starlette.types import ASGIApp
 
 from app.core.security import decode_token

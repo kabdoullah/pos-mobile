@@ -19,12 +19,10 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import ENUM as PgEnum
-from sqlalchemy.dialects.postgresql import UUID as SQLUUID
+from sqlalchemy.dialects.postgresql import ENUM as PgEnum, UUID as SQLUUID  # noqa: N811
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
-
 
 # Le type ENUM correspondant côté DB est créé dans la migration 0001_initial_schema.
 # create_type=False car le type existe déjà (créé manuellement dans la migration).

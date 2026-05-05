@@ -2,9 +2,10 @@
 
 from collections.abc import AsyncGenerator
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID  # noqa: TC003
 
 from fastapi import Depends, Request
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -59,12 +60,8 @@ async def get_tenant_db(
     """
     store_id: UUID | None = getattr(request.state, "store_id", None)
     if store_id is not None:
-        from sqlalchemy import text
-
-        await db.execute(
-            text("SET LOCAL app.current_store_id = :sid"),
-            {"sid": str(store_id)},
-        )
+        # SET LOCAL ne supporte pas les paramètres bindés en PostgreSQL — UUID est safe à inliner.
+        await db.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
     return db
 
 

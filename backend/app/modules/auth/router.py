@@ -42,9 +42,7 @@ async def login(payload: schemas.LoginRequest, db: DbSession) -> schemas.TokenRe
     response_model=schemas.TokenResponse,
     summary="Renouveler un JWT",
 )
-async def refresh(
-    payload: schemas.RefreshRequest, db: DbSession
-) -> schemas.TokenResponse:
+async def refresh(payload: schemas.RefreshRequest, db: DbSession) -> schemas.TokenResponse:
     """Renouvelle l'access token à partir d'un refresh token valide."""
     service = AuthService(db)
     return await service.refresh(payload.refresh_token)
