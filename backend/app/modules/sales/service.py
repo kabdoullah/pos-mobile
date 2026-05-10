@@ -33,16 +33,16 @@ class SaleService:
         self.repo = SaleRepository(db)
         self.product_repo = ProductRepository(db)
 
-    async def create_sale(self, store_id: UUID, payload: SaleCreate) -> Sale:
+    async def create_sale(self, store_id: UUID, payload: SaleCreate) -> tuple[Sale, bool]:
         """Crée une vente de manière idempotente.
 
-        Si l'id existe déjà, retourne la vente existante sans erreur (sync retry).
+        Retourne (sale, was_created). was_created=False si la vente existait déjà.
         Si un product_id n'existe plus côté serveur, forçe product_id=NULL
         mais conserve le snapshot (nom + prix) tel qu'envoyé par le client.
         """
         existing = await self.repo.get_by_id(payload.id)
         if existing is not None:
-            return existing
+            return existing, False
 
         items: list[SaleItem] = []
         for item_payload in payload.items:

@@ -63,7 +63,7 @@ class SaleRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def create_sale_atomic(self, sale: Sale, items: list[SaleItem]) -> Sale:
+    async def create_sale_atomic(self, sale: Sale, items: list[SaleItem]) -> tuple[Sale, bool]:
         """Insère la vente avec idempotence via ON CONFLICT DO NOTHING.
 
         Si l'id existe déjà (retry de sync), retourne la vente existante sans erreur.
@@ -90,7 +90,7 @@ class SaleRepository:
             existing = await self.get_by_id(sale.id)
             if existing is None:
                 raise RuntimeError(f"Sale {sale.id} not found after conflict on insert")
-            return existing
+            return existing, False
 
         for item in items:
             item.sale_id = sale.id
@@ -103,7 +103,7 @@ class SaleRepository:
         loaded = await self.get_by_id(sale.id)
         if loaded is None:
             raise RuntimeError(f"Sale {sale.id} not found after successful insert")
-        return loaded
+        return loaded, True
 
     async def list_sales(
         self,

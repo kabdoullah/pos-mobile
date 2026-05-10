@@ -106,3 +106,21 @@ class ProductRepository:
         """Marque le produit comme supprimé (soft delete)."""
         product.deleted_at = datetime.now(UTC)
         await self.db.flush()
+
+    async def get_by_id_including_deleted(self, product_id: UUID) -> Product | None:
+        """Retourne un produit par son id, deleted ou non."""
+        stmt = select(Product).where(Product.id == product_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_active_by_barcode_excluding(
+        self, barcode: str, exclude_id: UUID
+    ) -> Product | None:
+        """Retourne un produit actif avec ce barcode, en excluant un id donné."""
+        stmt = select(Product).where(
+            Product.barcode == barcode,
+            Product.deleted_at.is_(None),
+            Product.id != exclude_id,
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()

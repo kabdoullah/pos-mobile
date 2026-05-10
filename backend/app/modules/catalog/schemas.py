@@ -54,3 +54,4 @@ class ProductResponse(BaseModel):
     current_stock: int | None
     created_at: datetime
     updated_at: datetime
+    deleted_at: datetime | None = None

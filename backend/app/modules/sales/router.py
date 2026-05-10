@@ -26,7 +26,7 @@ async def create_sale(
     store_id: CurrentStoreId,
 ) -> SaleResponse:
     """Enregistre une vente. Idempotent : si l'id existe déjà, retourne la vente existante."""
-    sale = await SaleService(db).create_sale(store_id, payload)
+    sale, _ = await SaleService(db).create_sale(store_id, payload)
     return SaleResponse.model_validate(sale)
 
 
