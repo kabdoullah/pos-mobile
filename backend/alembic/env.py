@@ -3,20 +3,20 @@
 import asyncio
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
 from app.core.config import settings
 from app.core.db import Base
 
 # Import explicite des modèles pour que Alembic les détecte
 # Ajouter ici chaque nouveau module avec des modèles
-from app.modules.auth import models as auth_models  # noqa: F401
-from app.modules.catalog import models as catalog_models  # noqa: F401
-from app.modules.sales import models as sales_models  # noqa: F401
-from app.modules.stores import models as stores_models  # noqa: F401
+from app.modules.auth import models as auth_models
+from app.modules.catalog import models as catalog_models
+from app.modules.sales import models as sales_models
+from app.modules.stores import models as stores_models
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

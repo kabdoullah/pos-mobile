@@ -6,7 +6,7 @@ Accepté — 29 avril 2026
 
 ## Contexte
 
-Le projet POS Mobile CI démarre comme un MVP développé en mode solo par un seul développeur. Le système comporte plusieurs domaines fonctionnels distincts : authentification, catalogue produit, ventes, synchronisation, gestion de boutique.
+Le projet POS Mobile démarre comme un MVP développé en mode solo par un seul développeur. Le système comporte plusieurs domaines fonctionnels distincts : authentification, catalogue produit, ventes, synchronisation, gestion de boutique.
 
 La question : faut-il dès le départ découper le backend en plusieurs services indépendants (microservices), ou tout regrouper dans une seule application (monolithe) ?
 
@@ -14,7 +14,7 @@ Contraintes spécifiques :
 
 - Un seul développeur au MVP, peu de bande passante pour gérer de la complexité opérationnelle
 - Volume cible MVP : ~50 commerçants en bêta, ~100 commerçants en GA initiale
-- Budget infrastructure ultra-contraint (< 10 €/mois)
+- Budget infrastructure ultra-contraint (< 8 000 FCFA/mois)
 - Pas de devops dédié
 
 ## Décision

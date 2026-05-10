@@ -160,10 +160,11 @@ def upgrade() -> None:
 
     # RLS sur stores
     op.execute("ALTER TABLE stores ENABLE ROW LEVEL SECURITY;")
+    op.execute("ALTER TABLE stores FORCE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY rls_stores_self_access ON stores
-            USING (id = current_setting('app.current_store_id', true)::uuid)
-            WITH CHECK (id = current_setting('app.current_store_id', true)::uuid);
+            USING (id = NULLIF(current_setting('app.current_store_id', true), '')::uuid)
+            WITH CHECK (id = NULLIF(current_setting('app.current_store_id', true), '')::uuid);
     """)
 
     # ============================================================
@@ -220,10 +221,11 @@ def upgrade() -> None:
 
     # RLS sur products
     op.execute("ALTER TABLE products ENABLE ROW LEVEL SECURITY;")
+    op.execute("ALTER TABLE products FORCE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY rls_products_tenant_isolation ON products
-            USING (store_id = current_setting('app.current_store_id', true)::uuid)
-            WITH CHECK (store_id = current_setting('app.current_store_id', true)::uuid);
+            USING (store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid)
+            WITH CHECK (store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid);
     """)
 
     # ============================================================
@@ -346,10 +348,11 @@ def upgrade() -> None:
 
     # RLS sur sales
     op.execute("ALTER TABLE sales ENABLE ROW LEVEL SECURITY;")
+    op.execute("ALTER TABLE sales FORCE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY rls_sales_tenant_isolation ON sales
-            USING (store_id = current_setting('app.current_store_id', true)::uuid)
-            WITH CHECK (store_id = current_setting('app.current_store_id', true)::uuid);
+            USING (store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid)
+            WITH CHECK (store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid);
     """)
 
     # Maintenant que les triggers sont en place, on peut rendre receipt_number NOT NULL
@@ -402,10 +405,11 @@ def upgrade() -> None:
 
     # RLS sur sale_items
     op.execute("ALTER TABLE sale_items ENABLE ROW LEVEL SECURITY;")
+    op.execute("ALTER TABLE sale_items FORCE ROW LEVEL SECURITY;")
     op.execute("""
         CREATE POLICY rls_sale_items_tenant_isolation ON sale_items
-            USING (store_id = current_setting('app.current_store_id', true)::uuid)
-            WITH CHECK (store_id = current_setting('app.current_store_id', true)::uuid);
+            USING (store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid)
+            WITH CHECK (store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid);
     """)
 
 

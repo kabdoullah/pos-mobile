@@ -6,7 +6,7 @@ Accepté — 29 avril 2026
 
 ## Contexte
 
-L'application POS Mobile CI doit fonctionner intégralement en mode hors-ligne (le réseau mobile en Côte d'Ivoire est instable). Le téléphone est la source de vérité opérationnelle. Quand la connexion revient, les données locales doivent être synchronisées avec le backend.
+L'application POS Mobile doit fonctionner intégralement en mode hors-ligne (le réseau mobile en Côte d'Ivoire est instable). Le téléphone est la source de vérité opérationnelle. Quand la connexion revient, les données locales doivent être synchronisées avec le backend.
 
 Deux types de données très différents transitent dans la sync :
 

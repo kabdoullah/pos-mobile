@@ -6,7 +6,7 @@ Accepté — 29 avril 2026
 
 ## Contexte
 
-Le système POS Mobile CI est multi-tenant : plusieurs commerçants utilisent la même infrastructure (même API, même base de données) mais leurs données doivent être strictement isolées les unes des autres.
+Le système POS Mobile est multi-tenant : plusieurs commerçants utilisent la même infrastructure (même API, même base de données) mais leurs données doivent être strictement isolées les unes des autres.
 
 Le risque le plus critique pour ce produit est une **fuite de données entre tenants** : un commerçant qui verrait les ventes ou les produits d'un autre. Conséquences potentielles : perte de confiance massive, atteinte à la concurrence commerciale, problèmes juridiques.
 

@@ -1,0 +1,12 @@
+{{ app_name }} — Vérification de votre adresse email
+
+Bonjour {{ user_name }},
+
+Merci de créer votre compte. Copiez et collez ce lien dans votre navigateur
+pour vérifier votre adresse email :
+
+{{ link }}
+
+Ce lien expire dans 24 heures.
+
+Si vous n'avez pas créé de compte, ignorez cet email.

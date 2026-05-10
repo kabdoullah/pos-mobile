@@ -12,18 +12,18 @@ MVP en développement, mode solo. Hypothèse à valider : adoption quotidienne p
 
 ## Stack
 
-| Couche | Technologie |
-|---|---|
+| Couche | Technologie                                    |
+|---|------------------------------------------------|
 | Backend | FastAPI 0.115+ / Python 3.12+ (gérée par `uv`) |
-| Base de données | PostgreSQL 16 avec Row-Level Security |
-| ORM / Migrations | SQLAlchemy 2.0 async / Alembic |
-| Mobile | Flutter 3.22+ (Android d'abord) |
-| Storage local | drift (SQLite typé) |
-| State management | Riverpod |
-| Code formatter / linter | ruff (Python) / dart format (Dart) |
-| Email | Brevo SMTP (offre gratuite) |
-| Hébergement | VPS Hetzner + Docker Compose + Caddy |
-| Assistant IA | Claude Code (config dans `.claude/`) |
+| Base de données | PostgreSQL 17 avec Row-Level Security          |
+| ORM / Migrations | SQLAlchemy 2.0 async / Alembic                 |
+| Mobile | Flutter 3.22+ (Android d'abord)                |
+| Storage local | drift (SQLite typé)                            |
+| State management | Riverpod 3                                     |
+| Code formatter / linter | ruff (Python) / dart format (Dart)             |
+| Email | Brevo SMTP (offre gratuite)                    |
+| Hébergement | VPS Hetzner + Docker Compose + Caddy           |
+| Assistant IA | Claude Code (config dans `.claude/`)           |
 
 ## Démarrage rapide
 

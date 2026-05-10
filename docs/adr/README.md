@@ -22,7 +22,6 @@ Pourquoi écrire des ADRs :
 | [0003](0003-sync-hybride.md) | Synchronisation hybride événementiel + état | Accepté | 2026-04-29 |
 | [0004](0004-auth-email-pin.md) | Authentification email + mot de passe + PIN local | Accepté | 2026-04-29 |
 | [0005](0005-stack-flutter-fastapi.md) | Stack Flutter + FastAPI + PostgreSQL 100% open source | Accepté | 2026-04-29 |
-| [0006](0006-hebergement-hetzner.md) | Hébergement VPS Hetzner avec Docker Compose | Accepté | 2026-04-29 |
 
 ## Comment écrire un nouvel ADR
 
