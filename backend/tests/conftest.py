@@ -6,11 +6,10 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import pytest
+from fastapi import Request
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
-from fastapi import Request
 
 from app.core.config import settings
 from app.core.db import get_db, get_tenant_db

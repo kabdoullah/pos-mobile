@@ -20,7 +20,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import ENUM as PgEnum, UUID as SQLUUID  # noqa: N811
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 
@@ -94,6 +94,10 @@ class Sale(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+    items: Mapped[list["SaleItem"]] = relationship(
+        back_populates="sale", cascade="all, delete-orphan", lazy="raise"
+    )
+
     def __repr__(self) -> str:
         return f"<Sale id={self.id} receipt_number={self.receipt_number} total={self.total_amount}>"
 
@@ -138,6 +142,8 @@ class SaleItem(Base):
         ForeignKey("products.id", ondelete="SET NULL", name="fk_sale_items_product"),
         nullable=True,
     )
+
+    sale: Mapped["Sale"] = relationship(back_populates="items", lazy="raise")
 
     product_name_at_sale: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_price_at_sale: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

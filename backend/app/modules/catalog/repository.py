@@ -106,4 +106,3 @@ class ProductRepository:
         """Marque le produit comme supprimé (soft delete)."""
         product.deleted_at = datetime.now(UTC)
         await self.db.flush()
-
