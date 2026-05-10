@@ -10,8 +10,10 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from fastapi import Request
+
 from app.core.config import settings
-from app.core.db import get_db
+from app.core.db import get_db, get_tenant_db
 from app.main import app
 
 _TEST_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/pos_test"
@@ -115,12 +117,24 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 @pytest.fixture
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Client HTTP async pour tester les endpoints FastAPI."""
+    """Client HTTP async pour tester les endpoints FastAPI.
+
+    Override get_tenant_db pour activer RLS (SET LOCAL ROLE pos_app) :
+    le user pos est superuser et bypass RLS, pos_app ne l'est pas.
+    """
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         yield db_session
 
+    async def override_get_tenant_db(request: Request) -> AsyncSession:
+        store_id = getattr(request.state, "store_id", None)
+        if store_id is not None:
+            await db_session.execute(text("SET LOCAL ROLE pos_app"))
+            await db_session.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
+        return db_session
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_tenant_db] = override_get_tenant_db
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
