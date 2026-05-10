@@ -67,7 +67,7 @@ modules/<feature>/
 
 - Jamais de `SELECT *` avec construction de string : toujours SQLAlchemy ou paramètres bindés
 - Jamais de secret en dur : tout via `app.core.config.settings`
-- Le password est hashé via `app.core.security.hash_password` (bcrypt cost 12)
+- Le password est hashé via `app.core.security.hash_password` (Argon2 via `pwdlib.PasswordHash.recommended()`)
 - Pas de logs avec des données sensibles (password, JWT, PIN)
 
 ## Tests
