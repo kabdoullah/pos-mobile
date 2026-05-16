@@ -1,4 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Internet for API sync -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Camera for barcode scanner -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Bluetooth Classic (pre-API 31) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+
+    <!-- Bluetooth Android 12+ (API 31+) — neverForLocation avoids location consent dialog -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
     <application
         android:label="mobile"
         android:name="${applicationName}"

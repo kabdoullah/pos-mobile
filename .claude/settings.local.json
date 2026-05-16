@@ -5,7 +5,14 @@
       "Bash(make type-check *)",
       "Bash(uv run *)",
       "Bash(make format *)",
-      "Bash(make test *)"
+      "Bash(make test *)",
+      "Bash(make analyze *)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter pub *)",
+      "Bash(flutter build *)",
+      "Bash(make gen *)",
+      "Bash(flutter test *)",
+      "Bash(grep -E \"\\(error|^$|^Analyzing\\)\")"
     ]
   }
 }

@@ -28,7 +28,7 @@ Une feature peut importer le `domain` d'une autre feature, jamais sa `data`.
 
 ## State management : Riverpod
 
-- Tous les états globaux passent par Riverpod
+- Tous les états globaux passent par Riverpod 3+
 - Préférer les providers générés via `riverpod_generator` quand c'est possible
 - Les providers d'une feature sont dans `<feature>/presentation/providers/`
 - Pas de `StatefulWidget` avec state local quand un provider serait plus propre
@@ -54,6 +54,14 @@ Voir `docs/adr/0003-sync-hybride.md`. Règles :
 - PIN local hashé bcrypt avant stockage dans `flutter_secure_storage`
 - Le PIN n'est JAMAIS envoyé au backend
 - 5 tentatives max de PIN, puis blocage 5 min (voir `core/config.dart`)
+
+## Impression Bluetooth
+
+- Transport : package `print_bluetooth_thermal` (PAS flutter_blue_plus). Voir docs/adr/0007.
+- Génération des commandes : `esc_pos_utils_plus`
+- L'imprimante cible MVP est la Goojprt PT-210 (thermique 58mm ESC/POS, 32 caractères par ligne en monospace)
+- Toujours gérer les 3 cas d'échec : imprimante non appairée, connexion perdue, échec d'envoi → proposer à l'utilisateur Réessayer / Plus tard / Pas de reçu
+
 
 ## Génération de code (build_runner)
 

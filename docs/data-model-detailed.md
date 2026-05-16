@@ -2,7 +2,7 @@
 
 > Document de référence DDL. Dernière mise à jour : 29 avril 2026 — version 1.0.
 
-Ce document contient le DDL complet de la base PostgreSQL du backend POS Mobile CI, avec justification des choix de typage, des contraintes, et des politiques RLS.
+Ce document contient le DDL complet de la base PostgreSQL du backend POS Mobile, avec justification des choix de typage, des contraintes, et des politiques RLS.
 
 Pour la vue d'ensemble et les conventions, voir [data-model.md](data-model.md).
 Pour l'architecture multi-tenant, voir [adr/0002-multi-tenancy-rls.md](adr/0002-multi-tenancy-rls.md).
@@ -610,7 +610,6 @@ Hypothèses : 50 stores actifs, 100 ventes/jour/store, 3 lignes par vente, 200 p
 | Index | — | ~800 Mo |
 | **Total** | — | **~3 Go** |
 
-Largement supportable par un VPS Hetzner CPX11 (40 Go SSD). À surveiller au-delà de 5 ans ou si le nombre de stores explose.
 
 ## Références
 
