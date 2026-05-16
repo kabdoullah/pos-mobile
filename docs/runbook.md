@@ -404,7 +404,6 @@ Si un commerçant demande la suppression de ses données :
 
 ### Liens utiles
 
-- Panel Hetzner : https://console.hetzner.cloud
 - Dashboard Brevo : https://app.brevo.com
 - Backblaze B2 : https://secure.backblaze.com
 - Statut Hetzner : https://status.hetzner.com
