@@ -3,6 +3,11 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../features/auth/data/datasources/auth_remote_datasource.dart';
+import '../../features/auth/data/repositories/auth_repository_impl.dart';
+import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../storage/pin_storage.dart';
+import '../storage/secure_token_storage.dart';
 import 'dio_client.dart';
 import 'token_storage.dart';
 
@@ -36,5 +41,38 @@ Dio dio(Ref ref) {
   return buildDio(
     tokenStorage: storage,
     onAuthExpired: () => controller.add(null),
+  );
+}
+
+/// Provides the concrete SecureTokenStorage implementation.
+@Riverpod(keepAlive: true)
+SecureTokenStorage secureTokenStorage(Ref ref) {
+  return SecureTokenStorage();
+}
+
+/// Provides PIN storage for local PIN management.
+@Riverpod(keepAlive: true)
+PinStorage pinStorage(Ref ref) {
+  return PinStorage();
+}
+
+/// Provides the remote data source for auth API calls.
+@Riverpod(keepAlive: true)
+AuthRemoteDataSource authRemoteDataSource(Ref ref) {
+  final dio = ref.watch(dioProvider);
+  return AuthRemoteDataSource(dio);
+}
+
+/// Provides the auth repository implementation.
+@Riverpod(keepAlive: true)
+AuthRepository authRepository(Ref ref) {
+  final dataSource = ref.watch(authRemoteDataSourceProvider);
+  final tokenStorage = ref.watch(secureTokenStorageProvider);
+  final pinStorage = ref.watch(pinStorageProvider);
+
+  return AuthRepositoryImpl(
+    dataSource: dataSource,
+    tokenStorage: tokenStorage,
+    pinStorage: pinStorage,
   );
 }

@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/network/network_providers.dart';
 import '../../domain/entities/user.dart';
 
 part 'auth_providers.g.dart';
@@ -15,7 +16,13 @@ class AuthStateUnauthenticated extends AuthState {
   const AuthStateUnauthenticated();
 }
 
-/// Utilisateur authentifié mais PIN pas encore vérifié.
+/// Utilisateur authentifié mais PIN pas encore configuré (première connexion).
+class AuthStatePinSetupRequired extends AuthState {
+  /// Constructor.
+  const AuthStatePinSetupRequired();
+}
+
+/// Utilisateur authentifié mais PIN pas encore vérifié (PIN configuré, vérification requise).
 class AuthStatePinRequired extends AuthState {
   /// Constructor.
   const AuthStatePinRequired();
@@ -50,22 +57,55 @@ class AuthStateError extends AuthState {
 class Auth extends _$Auth {
   @override
   AuthState build() {
-    // TODO: Initialize auth state by checking for existing JWT tokens
-    // and PIN configuration in secure storage.
-    // For now, start unauthenticated.
-    return const AuthStateUnauthenticated();
+    // Listen for token expiry from refresh interceptor.
+    final expiredController = ref.watch(authExpiredControllerProvider);
+    final sub = expiredController.stream.listen((_) {
+      state = const AuthStateUnauthenticated();
+    });
+    ref.onDispose(sub.cancel);
+
+    // Initialize auth state asynchronously.
+    _initializeAuthState();
+    return const AuthStateLoading();
+  }
+
+  /// Initializes auth state by checking for existing tokens and PIN config.
+  Future<void> _initializeAuthState() async {
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      final user = await repo.getCurrentUser();
+
+      if (user == null) {
+        state = const AuthStateUnauthenticated();
+        return;
+      }
+
+      final hasPinSetup = await repo.hasPinSetup();
+      state = hasPinSetup
+          ? const AuthStatePinRequired()
+          : const AuthStatePinSetupRequired();
+    } catch (_) {
+      state = const AuthStateUnauthenticated();
+    }
   }
 
   /// Authentifie via email + mot de passe.
   Future<void> login(String email, String password) async {
     state = const AuthStateLoading();
     try {
-      // TODO: Call authRepository.login(email, password).
-      // This should store JWT tokens in flutter_secure_storage.
-      // For now, just transition to PIN required state.
-      state = const AuthStatePinRequired();
+      final repo = ref.read(authRepositoryProvider);
+      final user = await repo.login(email: email, password: password);
+      final hasPinSetup = await repo.hasPinSetup();
+
+      if (hasPinSetup) {
+        state = const AuthStatePinRequired();
+      } else {
+        state = const AuthStatePinSetupRequired();
+      }
     } catch (e) {
-      state = AuthStateError(e.toString());
+      final message = _userFriendlyError(e);
+      state = AuthStateError(message);
+      rethrow;
     }
   }
 
@@ -77,12 +117,23 @@ class Auth extends _$Auth {
   ) async {
     state = const AuthStateLoading();
     try {
-      // TODO: Call authRepository.register(email, password, phoneNumber).
-      // This should create the user account and store JWT tokens.
-      // For now, just transition to PIN setup state (PinRequired).
-      state = const AuthStatePinRequired();
+      final repo = ref.read(authRepositoryProvider);
+      final user = await repo.register(
+        email: email,
+        password: password,
+        phoneNumber: phoneNumber,
+      );
+      final hasPinSetup = await repo.hasPinSetup();
+
+      if (hasPinSetup) {
+        state = const AuthStatePinRequired();
+      } else {
+        state = const AuthStatePinSetupRequired();
+      }
     } catch (e) {
-      state = AuthStateError(e.toString());
+      final message = _userFriendlyError(e);
+      state = AuthStateError(message);
+      rethrow;
     }
   }
 
@@ -90,16 +141,23 @@ class Auth extends _$Auth {
   Future<void> verifyPin(String pin) async {
     state = const AuthStateLoading();
     try {
-      // TODO: Call authRepository.verifyPin(pin).
-      // For now, just transition to authenticated (with dummy user).
-      const user = User(
-        id: '00000000-0000-0000-0000-000000000000',
-        email: 'demo@example.com',
-        phoneNumber: '+225 0123456789',
-      );
-      state = AuthStateAuthenticated(user);
+      final repo = ref.read(authRepositoryProvider);
+      final isCorrect = await repo.verifyPin(pin);
+
+      if (!isCorrect) {
+        throw Exception('PIN incorrect');
+      }
+
+      final user = await repo.getCurrentUser();
+      if (user != null) {
+        state = AuthStateAuthenticated(user);
+      } else {
+        state = const AuthStateUnauthenticated();
+      }
     } catch (e) {
-      state = AuthStateError(e.toString());
+      final message = _userFriendlyError(e);
+      state = AuthStateError(message);
+      rethrow;
     }
   }
 
@@ -107,21 +165,41 @@ class Auth extends _$Auth {
   Future<void> setupPin(String pin) async {
     state = const AuthStateLoading();
     try {
-      // TODO: Call authRepository.setupPin(pin).
-      // For now, just transition to authenticated.
-      const user = User(
-        id: '00000000-0000-0000-0000-000000000000',
-        email: 'demo@example.com',
-        phoneNumber: '+225 0123456789',
-      );
-      state = AuthStateAuthenticated(user);
+      final repo = ref.read(authRepositoryProvider);
+      await repo.setupPin(pin);
+      await repo.resetPinAttempts();
+
+      final user = await repo.getCurrentUser();
+      if (user != null) {
+        state = AuthStateAuthenticated(user);
+      } else {
+        state = const AuthStateUnauthenticated();
+      }
     } catch (e) {
-      state = AuthStateError(e.toString());
+      final message = _userFriendlyError(e);
+      state = AuthStateError(message);
+      rethrow;
     }
   }
 
   /// Déconnecte l'utilisateur courant.
-  void logout() {
-    state = const AuthStateUnauthenticated();
+  Future<void> logout() async {
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.logout();
+    } finally {
+      state = const AuthStateUnauthenticated();
+    }
+  }
+
+  /// Converts exception to user-friendly error message.
+  String _userFriendlyError(Object e) {
+    final str = e.toString();
+    if (str.contains('email')) return 'Email déjà utilisé';
+    if (str.contains('password')) return 'Email ou mot de passe incorrect';
+    if (str.contains('connection')) return 'Pas de connexion';
+    if (str.contains('timeout')) return 'Délai dépassé';
+    if (str.contains('verrouillé')) return str;
+    return str;
   }
 }

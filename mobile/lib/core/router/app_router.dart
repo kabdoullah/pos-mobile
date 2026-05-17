@@ -100,11 +100,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Redirect based on auth state.
       return switch (authState) {
-        // Unauthenticated: redirect to email login or PIN login.
+        // Unauthenticated: redirect to email login.
         AuthStateUnauthenticated() => Routes.emailLogin,
 
-        // Authenticated but PIN required: redirect to PIN setup.
-        AuthStatePinRequired() => Routes.pinSetup,
+        // PIN setup required (first login, PIN not yet created).
+        AuthStatePinSetupRequired() => Routes.pinSetup,
+
+        // PIN verification required (PIN exists, needs verification).
+        AuthStatePinRequired() => Routes.pinLogin,
 
         // Fully authenticated: allow access to main app.
         AuthStateAuthenticated() => null,
