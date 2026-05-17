@@ -289,10 +289,10 @@ class _ScannerPanel extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         MobileScanner(controller: controller, onDetect: onBarcodeDetected),
-        CustomPaint(
+        const CustomPaint(
           painter: _ScannerOverlayPainter(overlayColor: AppColors.scrim),
         ),
-        Center(
+        const Center(
           child: SizedBox(
             width: 200,
             height: 200,
@@ -393,16 +393,16 @@ class _CartPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
-        borderRadius: const BorderRadius.vertical(
+        borderRadius: BorderRadius.vertical(
           top: Radius.circular(AppSpacing.radiusLg),
         ),
         boxShadow: [
           BoxShadow(
             color: AppColors.scrim,
             blurRadius: 8,
-            offset: const Offset(0, -2),
+            offset: Offset(0, -2),
           ),
         ],
       ),
@@ -429,7 +429,7 @@ class _CartPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'Articles scannés',
                         style: AppTypography.labelMedium,
                       ),
@@ -443,7 +443,7 @@ class _CartPanel extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('TOTAL', style: AppTypography.labelSmall),
+                    const Text('TOTAL', style: AppTypography.labelSmall),
                     AmountDisplay(
                       amount: cartState.total,
                       size: AmountSize.hero,
