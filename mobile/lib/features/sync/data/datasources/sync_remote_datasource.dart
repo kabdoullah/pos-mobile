@@ -3,6 +3,7 @@ import 'package:retrofit/retrofit.dart';
 
 import '../../../../core/network/api_models/sale_dto.dart';
 import '../../../../core/network/api_models/sync_changes_dto.dart';
+import '../../../../core/network/api_models/sync_responses_dto.dart';
 
 part 'sync_remote_datasource.g.dart';
 
@@ -22,13 +23,17 @@ abstract class SyncRemoteDataSource {
     @Query('cursor') String? cursor,
   });
 
-  /// Pushes product changes to server (state-based sync).
-  /// Endpoint: PUT /api/v1/sync/products
-  @PUT('/api/v1/sync/products')
-  Future<SyncResponseDto> pushProducts(@Body() ProductSyncBatchDto batch);
-
-  /// Pushes a sale to server (event-based sync with idempotence).
+  /// Pushes a batch of sales to server (event-based sync with idempotence).
   /// Endpoint: POST /api/v1/sync/sales
   @POST('/api/v1/sync/sales')
-  Future<SyncResponseDto> pushSale(@Body() SaleCreateDto sale);
+  Future<SalesSyncBatchResponseDto> pushSales(
+    @Body() SalesSyncBatchRequestDto batch,
+  );
+
+  /// Pushes a single product change to server (state-based sync).
+  /// Endpoint: PUT /api/v1/sync/products
+  @PUT('/api/v1/sync/products')
+  Future<ProductSyncResponseDto> pushProduct(
+    @Body() ProductSyncItemDto product,
+  );
 }
