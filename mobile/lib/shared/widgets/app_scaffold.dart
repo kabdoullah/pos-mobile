@@ -38,7 +38,12 @@ class AppScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOnline = ref.watch(connectivityStatusProvider);
+    final isOnlineAsync = ref.watch(isOnlineProvider);
+    final isOnline = isOnlineAsync.when(
+      data: (v) => v,
+      loading: () => true,
+      error: (_, _) => false,
+    );
 
     return Scaffold(
       appBar: AppBar(title: Text(title), actions: actions),
