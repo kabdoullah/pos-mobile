@@ -50,6 +50,12 @@ class _CatalogRepositoryImpl implements CatalogRepository {
     // TODO: Query drift DB
     return null;
   }
+
+  @override
+  Future<Product?> getByBarcode(String barcode) async {
+    // TODO: Query drift DB by barcode column
+    return null;
+  }
 }
 
 /// Provides the catalog repository instance.

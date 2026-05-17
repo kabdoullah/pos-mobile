@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -39,11 +40,10 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         final authState = ref.read(authProvider);
 
         // Route based on auth state.
-        // This is handled by the GoRouter redirect logic, but we can
-        // use context.go() if we need explicit control.
+        // Let GoRouter redirect logic handle auth state routing.
         if (authState is! AuthStateLoading) {
           if (mounted) {
-            context.go('/');
+            context.go(Routes.home);
           }
         }
       }),

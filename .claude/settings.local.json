@@ -12,7 +12,10 @@
       "Bash(flutter build *)",
       "Bash(make gen *)",
       "Bash(flutter test *)",
-      "Bash(grep -E \"\\(error|^$|^Analyzing\\)\")"
+      "Bash(grep -E \"\\(error|^$|^Analyzing\\)\")",
+      "Skill(caveman:caveman)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs"
     ]
   }
 }

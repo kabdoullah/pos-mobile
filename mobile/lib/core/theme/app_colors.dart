@@ -109,4 +109,7 @@ class AppColors {
 
   /// Inactive state tint (lighter than disabled text, for outlines).
   static const Color inactive = Color(0xFFE0D9D2);
+
+  /// Dark neutral background for camera-off state overlay.
+  static const Color cameraBackground = Color(0xFF1C1C1E);
 }

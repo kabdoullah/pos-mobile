@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/app.dart';
 
-void main() {
-  // Configuration globale ici si besoin (orientation, system UI, etc.)
+void main() async {
+  await initializeDateFormatting('fr_FR');
   runApp(const ProviderScope(child: PosMobileApp()));
 }

@@ -26,6 +26,9 @@ parts/
 sdist/
 var/
 wheels/
+
+# Exception: track mobile app source code
+!mobile/lib/
 *.egg-info/
 .installed.cfg
 *.egg

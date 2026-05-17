@@ -31,4 +31,7 @@ abstract class CatalogRepository {
 
   /// Get a single product by ID.
   Future<Product?> getProduct(String id);
+
+  /// Find a product by barcode. Returns null if not found.
+  Future<Product?> getByBarcode(String barcode);
 }
