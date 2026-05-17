@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/sync/sync_orchestrator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/providers/connectivity_provider.dart';
 import '../providers/auth_providers.dart';
 
 /// Splash/loading screen.
@@ -42,6 +44,14 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         // Route based on auth state.
         // Let GoRouter redirect logic handle auth state routing.
         if (authState is! AuthStateLoading) {
+          // Trigger background sync if authenticated and online
+          if (authState is AuthStateAuthenticated) {
+            final isOnline = ref.read(isOnlineProvider).value ?? false;
+            if (isOnline) {
+              unawaited(ref.read(syncOrchestratorProvider.notifier).syncNow());
+            }
+          }
+
           if (mounted) {
             context.go(Routes.home);
           }

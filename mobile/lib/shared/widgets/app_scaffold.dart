@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
-import '../../core/theme/app_typography.dart';
-import '../providers/connectivity_provider.dart';
+import 'sync_status_indicator.dart';
 
 /// Standard app scaffold with optional offline banner.
 ///
@@ -38,44 +35,11 @@ class AppScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isOnlineAsync = ref.watch(isOnlineProvider);
-    final isOnline = isOnlineAsync.when(
-      data: (v) => v,
-      loading: () => true,
-      error: (_, _) => false,
-    );
-
     return Scaffold(
       appBar: AppBar(title: Text(title), actions: actions),
       body: Column(
         children: [
-          if (showOfflineBanner && !isOnline)
-            Container(
-              width: double.infinity,
-              color: AppColors.warning,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Hors-ligne',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Vos ventes seront sauvegardées en ligne dès le retour du réseau',
-                    style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          if (showOfflineBanner) const SyncStatusIndicator(),
           Expanded(child: body),
         ],
       ),

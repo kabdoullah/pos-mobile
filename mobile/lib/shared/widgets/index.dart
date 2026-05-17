@@ -7,3 +7,4 @@ export 'empty_state.dart';
 export 'loading_indicator.dart';
 export 'primary_button.dart';
 export 'secondary_button.dart';
+export 'sync_status_indicator.dart';

@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/network/network_providers.dart';
 import '../../../../core/sync/pull_service.dart';
+import '../../../../core/sync/push_service.dart';
+import '../../../../core/sync/sync_queue_repository.dart';
 import '../../../../database/app_database.dart';
 import '../../../catalog/domain/entities/product.dart' as product_entity;
 import '../../../sales/domain/entities/sale.dart' as sale_entity;
@@ -97,4 +99,31 @@ Future<bool> pullChanges(Ref ref) async {
   }
 
   return result;
+}
+
+/// Provides the sync queue repository for managing pending syncs.
+@riverpod
+SyncQueueRepository syncQueueRepository(Ref ref) {
+  return SyncQueueRepository(db: ref.watch(databaseProvider));
+}
+
+/// Provides the push service for syncing local changes to server.
+@riverpod
+PushService pushService(Ref ref) {
+  return PushService(
+    remoteDataSource: ref.watch(syncRemoteDataSourceProvider),
+    queueRepository: ref.watch(syncQueueRepositoryProvider),
+    db: ref.watch(databaseProvider),
+    logger: Logger(),
+  );
+}
+
+/// Live count of pending and failed sync queue entries.
+@riverpod
+Stream<int> pendingSyncCount(Ref ref) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(db.syncQueue)
+        ..where((row) => row.status.isIn(['pending', 'failed'])))
+      .watch()
+      .map((rows) => rows.length);
 }

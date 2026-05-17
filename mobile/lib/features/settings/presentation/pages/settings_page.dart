@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/router/app_router.dart';
+import '../../../../core/sync/sync_orchestrator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -12,6 +13,7 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/presentation/providers/store_provider.dart';
 import '../../../auth/presentation/pages/store_setup_page.dart';
 import '../../../printing/presentation/providers/printer_provider.dart';
+import '../../../sync/presentation/providers/sync_providers.dart';
 
 /// Settings page — store info, printer config, account management.
 class SettingsPage extends ConsumerWidget {
@@ -150,6 +152,24 @@ class SettingsPage extends ConsumerWidget {
               ],
             ),
 
+            // SAUVEGARDE section
+            _SettingsSection(
+              title: 'SAUVEGARDE',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.cloud_sync_outlined),
+                  title: const Text('Sauvegarder maintenant'),
+                  subtitle: _getSyncSubtitle(ref),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () => _handleManualSync(context, ref),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                ),
+              ],
+            ),
+
             // COMPTE section
             _SettingsSection(
               title: 'COMPTE',
@@ -212,6 +232,63 @@ class SettingsPage extends ConsumerWidget {
       ),
       _ => const Text('Non configurée'),
     };
+  }
+
+  static Widget? _getSyncSubtitle(WidgetRef ref) {
+    final syncStatus = ref.watch(syncOrchestratorProvider);
+    final pendingCount = ref.watch(pendingSyncCountProvider).value ?? 0;
+
+    return switch (syncStatus) {
+      SyncStatusSyncing() => const Text('Synchronisation en cours...'),
+      SyncStatusError() => const Text(
+        'Erreur — Réessayer',
+        style: TextStyle(color: AppColors.error),
+      ),
+      SyncStatusIdle(lastSyncAt: final lastSyncAt) => Text(
+        pendingCount > 0
+            ? '$pendingCount en attente'
+            : lastSyncAt == null
+            ? 'Jamais synchronisé'
+            : 'Dernière: ${lastSyncAt.hour}:${lastSyncAt.minute.toString().padLeft(2, '0')}',
+      ),
+    };
+  }
+
+  static Future<void> _handleManualSync(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final orchestrator = ref.read(syncOrchestratorProvider.notifier);
+
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Sauvegarde en cours...'),
+        duration: Duration(seconds: 60),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    try {
+      await orchestrator.syncNow();
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Tout est sauvegardé'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Erreur de sauvegarde — réessayez'),
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 
