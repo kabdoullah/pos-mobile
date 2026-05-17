@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/repositories/auth_repository.dart';
+import '../../features/sync/data/datasources/sync_remote_datasource.dart';
 import '../storage/pin_storage.dart';
 import '../storage/secure_token_storage.dart';
 import 'dio_client.dart';
@@ -75,4 +76,11 @@ AuthRepository authRepository(Ref ref) {
     tokenStorage: tokenStorage,
     pinStorage: pinStorage,
   );
+}
+
+/// Provides the sync remote data source for sync operations.
+@Riverpod(keepAlive: true)
+SyncRemoteDataSource syncRemoteDataSource(Ref ref) {
+  final dio = ref.watch(dioProvider);
+  return SyncRemoteDataSource(dio);
 }

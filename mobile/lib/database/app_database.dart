@@ -57,6 +57,21 @@ class Sales extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Métadonnées de synchronisation — stocke les timestamps du dernier pull.
+class SyncMetadata extends Table {
+  /// Clé unique (ex: 'last_pull').
+  TextColumn get key => text()();
+
+  /// Valeur du timestamp (ISO 8601).
+  TextColumn get value => text()();
+
+  /// Dernière mise à jour.
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
 /// File d'attente locale pour la synchronisation.
 class SyncQueue extends Table {
   /// Auto-incrémenté.
@@ -88,14 +103,14 @@ class SyncQueue extends Table {
 }
 
 /// Base de données drift de l'application.
-@DriftDatabase(tables: [Products, Sales, SyncQueue])
+@DriftDatabase(tables: [Products, Sales, SyncQueue, SyncMetadata])
 class AppDatabase extends _$AppDatabase {
   /// Constructor.
   AppDatabase() : super(_openConnection());
 
   /// Version courante du schéma drift.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'pos_mobile');
