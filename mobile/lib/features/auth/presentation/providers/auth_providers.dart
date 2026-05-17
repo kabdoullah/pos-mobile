@@ -94,7 +94,7 @@ class Auth extends _$Auth {
     state = const AuthStateLoading();
     try {
       final repo = ref.read(authRepositoryProvider);
-      final user = await repo.login(email: email, password: password);
+      await repo.login(email: email, password: password);
       final hasPinSetup = await repo.hasPinSetup();
 
       if (hasPinSetup) {
@@ -118,7 +118,7 @@ class Auth extends _$Auth {
     state = const AuthStateLoading();
     try {
       final repo = ref.read(authRepositoryProvider);
-      final user = await repo.register(
+      await repo.register(
         email: email,
         password: password,
         phoneNumber: phoneNumber,
