@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../../../../core/network/api_models/product_dto.dart';
@@ -10,7 +11,7 @@ extension ProductDtoToDomain on ProductDto {
   domain.Product toDomain() => domain.Product(
     id: id,
     name: name,
-    unitPrice: unitPrice,
+    unitPrice: Decimal.parse(unitPrice),
     barcode: barcode,
     currentStock: currentStock,
     updatedAt: DateTime.parse(updatedAt),
@@ -27,7 +28,7 @@ extension DomainProductToDrift on domain.Product {
     barcode: barcode != null
         ? drift.Value(barcode)
         : const drift.Value.absent(),
-    unitPrice: drift.Value(unitPrice),
+    unitPrice: drift.Value(unitPrice.toString()),
     currentStock: currentStock != null
         ? drift.Value(currentStock)
         : const drift.Value.absent(),
@@ -45,7 +46,7 @@ extension DriftProductToDomain on drift_db.Product {
   domain.Product toDomain() => domain.Product(
     id: id,
     name: name,
-    unitPrice: unitPrice,
+    unitPrice: Decimal.parse(unitPrice),
     barcode: barcode,
     currentStock: currentStock,
     updatedAt: updatedAt,
@@ -59,7 +60,7 @@ extension DomainProductCreateDtoMapper on domain.Product {
   ProductCreateDto toCreateDto() => ProductCreateDto(
     name: name,
     barcode: barcode,
-    unitPrice: unitPrice,
+    unitPrice: unitPrice.toString(),
     currentStock: currentStock,
   );
 }
@@ -70,7 +71,7 @@ extension DomainProductUpdateDtoMapper on domain.Product {
   ProductUpdateDto toUpdateDto() => ProductUpdateDto(
     name: name,
     barcode: barcode,
-    unitPrice: unitPrice,
+    unitPrice: unitPrice.toString(),
     currentStock: currentStock,
   );
 }

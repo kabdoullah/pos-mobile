@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
 
@@ -67,7 +68,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final product = product_domain.Product(
       id: id,
       name: name,
-      unitPrice: unitPrice,
+      unitPrice: Decimal.parse(unitPrice),
       barcode: barcode,
       currentStock: currentStock,
       updatedAt: now,
@@ -161,7 +162,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
     return product_domain.Product(
       id: id,
       name: updatedName,
-      unitPrice: updatedPrice,
+      unitPrice: Decimal.parse(updatedPrice),
       barcode: updatedBarcode,
       currentStock: updatedStock,
       updatedAt: now,

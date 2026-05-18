@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -43,7 +44,7 @@ Stream<List<product_entity.Product>> productsStream(Ref ref) async* {
             id: r.id,
             name: r.name,
             barcode: r.barcode,
-            unitPrice: r.unitPrice,
+            unitPrice: Decimal.parse(r.unitPrice),
             currentStock: r.currentStock,
             updatedAt: r.updatedAt,
             deletedAt: r.deletedAt,
@@ -64,8 +65,8 @@ Stream<List<sale_entity.Sale>> salesStream(Ref ref) async* {
           (r) => sale_entity.Sale(
             id: r.id,
             receiptNumber: r.receiptNumber,
-            totalAmount: r.totalAmount,
-            vatAmount: r.vatAmount,
+            totalAmount: Decimal.parse(r.totalAmount),
+            vatAmount: Decimal.parse(r.vatAmount),
             paymentMethod: _parsePaymentMethod(r.paymentMethod),
             createdAt: r.createdAt,
           ),

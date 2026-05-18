@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' as drift;
 
 import '../../../../core/network/api_models/sale_dto.dart';
@@ -33,8 +34,8 @@ extension SaleDtoToDomain on SaleDto {
   domain.Sale toDomain() => domain.Sale(
     id: id,
     receiptNumber: receiptNumber ?? 0,
-    totalAmount: totalAmount,
-    vatAmount: vatAmount,
+    totalAmount: Decimal.parse(totalAmount),
+    vatAmount: Decimal.parse(vatAmount),
     paymentMethod: _paymentMethodFromString(paymentMethod),
     createdAt: DateTime.parse(createdAt),
   );
@@ -46,8 +47,8 @@ extension DomainSaleToDrift on domain.Sale {
   drift_db.SalesCompanion toDriftCompanion() => drift_db.SalesCompanion(
     id: drift.Value(id),
     receiptNumber: drift.Value(receiptNumber),
-    totalAmount: drift.Value(totalAmount),
-    vatAmount: drift.Value(vatAmount),
+    totalAmount: drift.Value(totalAmount.toString()),
+    vatAmount: drift.Value(vatAmount.toString()),
     paymentMethod: drift.Value(_paymentMethodToString(paymentMethod)),
     createdAt: drift.Value(createdAt),
   );
@@ -59,8 +60,8 @@ extension DriftSaleToDomain on drift_db.Sale {
   domain.Sale toDomain() => domain.Sale(
     id: id,
     receiptNumber: receiptNumber,
-    totalAmount: totalAmount,
-    vatAmount: vatAmount,
+    totalAmount: Decimal.parse(totalAmount),
+    vatAmount: Decimal.parse(vatAmount),
     paymentMethod: _paymentMethodFromString(paymentMethod),
     createdAt: createdAt,
   );
@@ -76,8 +77,8 @@ extension DomainSaleCreateDtoMapper on domain.Sale {
   }) => SaleCreateDto(
     id: id,
     items: items,
-    totalAmount: totalAmount,
-    vatAmount: vatAmount,
+    totalAmount: totalAmount.toString(),
+    vatAmount: vatAmount.toString(),
     paymentMethod: switch (paymentMethod) {
       domain.PaymentMethod.cash => PaymentMethodDto.cash,
       domain.PaymentMethod.orangeMoney => PaymentMethodDto.mobileMoneyOrange,

@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
@@ -64,8 +65,8 @@ class _SalesRepositoryImpl implements SalesRepository {
     return sale_entity.Sale(
       id: saleId,
       receiptNumber: 0,
-      totalAmount: totalAmount,
-      vatAmount: vatAmount,
+      totalAmount: Decimal.parse(totalAmount),
+      vatAmount: Decimal.parse(vatAmount),
       paymentMethod: paymentMethod,
       createdAt: now,
     );
@@ -92,8 +93,8 @@ class _SalesRepositoryImpl implements SalesRepository {
           (s) => sale_entity.Sale(
             id: s.id,
             receiptNumber: s.receiptNumber,
-            totalAmount: s.totalAmount,
-            vatAmount: s.vatAmount,
+            totalAmount: Decimal.parse(s.totalAmount),
+            vatAmount: Decimal.parse(s.vatAmount),
             paymentMethod: _parsePaymentMethod(s.paymentMethod),
             createdAt: s.createdAt,
           ),
@@ -112,8 +113,8 @@ class _SalesRepositoryImpl implements SalesRepository {
     return sale_entity.Sale(
       id: sale.id,
       receiptNumber: sale.receiptNumber,
-      totalAmount: sale.totalAmount,
-      vatAmount: sale.vatAmount,
+      totalAmount: Decimal.parse(sale.totalAmount),
+      vatAmount: Decimal.parse(sale.vatAmount),
       paymentMethod: _parsePaymentMethod(sale.paymentMethod),
       createdAt: sale.createdAt,
     );
