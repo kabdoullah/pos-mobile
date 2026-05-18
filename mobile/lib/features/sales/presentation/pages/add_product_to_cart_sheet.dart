@@ -92,7 +92,10 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ajouter un produit', style: AppTypography.titleLarge),
+                    const Text(
+                      'Ajouter un produit',
+                      style: AppTypography.titleLarge,
+                    ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
                       label: 'Rechercher',

@@ -326,7 +326,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               ),
             ),
             const Spacer(),
-            if (isSelected) const Icon(Icons.check_circle, color: AppColors.primary),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: AppColors.primary),
           ],
         ),
       ),

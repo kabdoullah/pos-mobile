@@ -183,7 +183,6 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
 }
 
 class _ScannerPanel extends StatelessWidget {
-
   const _ScannerPanel({
     required this.controller,
     required this.isCameraActive,
@@ -326,9 +325,7 @@ class _ScannerPanel extends StatelessWidget {
               if (isPermissionGranted && !isCheckingPermission) ...[
                 _FloatingIconButton(
                   icon: isTorchOn ? Icons.flashlight_off : Icons.flashlight_on,
-                  onPressed: isCameraActive
-                      ? onToggleTorch
-                      : null,
+                  onPressed: isCameraActive ? onToggleTorch : null,
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _FloatingIconButton(
@@ -345,7 +342,6 @@ class _ScannerPanel extends StatelessWidget {
 }
 
 class _FloatingIconButton extends StatelessWidget {
-
   const _FloatingIconButton({required this.icon, this.onPressed});
   final IconData icon;
   final VoidCallback? onPressed;
@@ -375,7 +371,6 @@ class _FloatingIconButton extends StatelessWidget {
 }
 
 class _CartPanel extends StatelessWidget {
-
   const _CartPanel({
     required this.cartState,
     required this.onUpdateQuantity,
@@ -519,7 +514,6 @@ class _CartPanel extends StatelessWidget {
 }
 
 class _CartItemRow extends StatelessWidget {
-
   const _CartItemRow({
     required this.item,
     required this.onDecrease,
@@ -580,7 +574,6 @@ class _CartItemRow extends StatelessWidget {
 }
 
 class _QuantityButton extends StatelessWidget {
-
   const _QuantityButton({required this.icon, required this.onTap});
   final IconData icon;
   final VoidCallback onTap;
@@ -603,7 +596,6 @@ class _QuantityButton extends StatelessWidget {
 }
 
 class _ScannerOverlayPainter extends CustomPainter {
-
   const _ScannerOverlayPainter({required this.overlayColor});
   final Color overlayColor;
 
@@ -633,7 +625,6 @@ class _ScannerOverlayPainter extends CustomPainter {
 }
 
 class _ViewfinderCornersPainter extends CustomPainter {
-
   const _ViewfinderCornersPainter({required this.color});
   final Color color;
 

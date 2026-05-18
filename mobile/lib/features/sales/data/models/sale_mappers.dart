@@ -77,8 +77,8 @@ extension DomainSaleCreateDtoMapper on domain.Sale {
   }) => SaleCreateDto(
     id: id,
     items: items,
-    totalAmount: totalAmount.toDouble().toStringAsFixed(2),
-    vatAmount: vatAmount.toDouble().toStringAsFixed(2),
+    totalAmount: totalAmount.toString(),
+    vatAmount: vatAmount.toString(),
     paymentMethod: switch (paymentMethod) {
       domain.PaymentMethod.cash => PaymentMethodDto.cash,
       domain.PaymentMethod.orangeMoney => PaymentMethodDto.mobileMoneyOrange,
@@ -86,8 +86,8 @@ extension DomainSaleCreateDtoMapper on domain.Sale {
       domain.PaymentMethod.wave => PaymentMethodDto.mobileMoneyWave,
       domain.PaymentMethod.mixed => PaymentMethodDto.mixed,
     },
-    cashAmount: cashAmount?.toDouble().toStringAsFixed(2),
-    mobileMoneyAmount: mobileMoneyAmount?.toDouble().toStringAsFixed(2),
+    cashAmount: cashAmount?.toString(),
+    mobileMoneyAmount: mobileMoneyAmount?.toString(),
     createdAt: createdAt.toIso8601String(),
   );
 }

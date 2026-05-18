@@ -7,7 +7,6 @@ part 'cart_provider.g.dart';
 
 /// CartState holds the current shopping cart items.
 class CartState {
-
   const CartState({required this.items});
   final List<CartItem> items;
 
