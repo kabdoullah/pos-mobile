@@ -12,7 +12,8 @@ class CartState {
   const CartState({required this.items});
 
   /// Total amount in FCFA (sum of all line totals).
-  Decimal get total => items.fold(Decimal.zero, (sum, item) => sum + item.lineTotal);
+  Decimal get total =>
+      items.fold(Decimal.zero, (sum, item) => sum + item.lineTotal);
 
   /// Item count (unique products).
   int get itemCount => items.length;

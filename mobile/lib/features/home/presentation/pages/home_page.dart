@@ -51,7 +51,7 @@ class HomePage extends ConsumerWidget {
             // Hero summary card
             dailySummaryAsync.when(
               loading: () => const AppLoadingIndicator(),
-              error: (_, __) => const _SummaryCard(summary: DailySummary.empty),
+              error: (_, _) => _SummaryCard(summary: DailySummary.empty),
               data: (summary) => _SummaryCard(summary: summary),
             ),
             const SizedBox(height: AppSpacing.lg),

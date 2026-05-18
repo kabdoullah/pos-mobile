@@ -11,11 +11,13 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/catalog_providers.dart';
 
+/// Page for creating or editing a product.
 class ProductFormPage extends ConsumerStatefulWidget {
+  /// Creates a [ProductFormPage].
+  const ProductFormPage({super.key, this.productId});
+
   /// Product ID for edit mode, null for create mode.
   final String? productId;
-
-  const ProductFormPage({super.key, this.productId});
 
   @override
   ConsumerState<ProductFormPage> createState() => _ProductFormPageState();

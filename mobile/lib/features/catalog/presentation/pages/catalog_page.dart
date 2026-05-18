@@ -94,7 +94,11 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                    const Icon(
+                      Icons.error_outline,
+                      size: 48,
+                      color: AppColors.error,
+                    ),
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       'Erreur: $error',
@@ -160,7 +164,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                                   AmountDisplay(
                                     amount: product.unitPrice,
                                     size: AmountSize.medium,
-                                  ), 
+                                  ),
                                 ],
                               ),
                               if (product.barcode != null) ...[
