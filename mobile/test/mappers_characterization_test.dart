@@ -8,8 +8,7 @@ import 'package:mobile/features/catalog/data/models/product_mappers.dart';
 import 'package:mobile/features/catalog/domain/entities/product.dart'
     as domain_product;
 import 'package:mobile/features/sales/data/models/sale_mappers.dart';
-import 'package:mobile/features/sales/domain/entities/sale.dart'
-    as domain_sale;
+import 'package:mobile/features/sales/domain/entities/sale.dart' as domain_sale;
 
 void main() {
   group('Mappers Characterization Tests', () {
@@ -98,79 +97,81 @@ void main() {
     });
 
     group('Product Mappers - Monetary Precision', () {
+      test('ProductDtoToDomain: preserves unitPrice decimal precision', () {
+        const testCases = [
+          '1234567.89',
+          '0.00',
+          '0.50',
+          '0.05',
+          '999999999.99',
+          '1.00',
+          '100',
+        ];
+
+        for (final price in testCases) {
+          final dto = ProductDto(
+            id: 'prod-1',
+            storeId: 'store-1',
+            name: 'Test Product',
+            barcode: null,
+            unitPrice: price,
+            currentStock: 10,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T00:00:00Z',
+            deletedAt: null,
+          );
+
+          final domain = dto.toDomain();
+
+          expect(
+            domain.unitPrice,
+            price,
+            reason: 'Price $price should be preserved exactly',
+          );
+        }
+      });
+
       test(
-        'ProductDtoToDomain: preserves unitPrice decimal precision',
+        'DomainProductToDrift: preserves unitPrice through drift companion',
         () {
-          const testCases = [
-            '1234567.89',
-            '0.00',
-            '0.50',
-            '0.05',
-            '999999999.99',
-            '1.00',
-            '100',
-          ];
+          final domain = domain_product.Product(
+            id: 'prod-1',
+            name: 'Test Product',
+            unitPrice: '1234567.89',
+            barcode: 'BAR-123',
+            currentStock: 50,
+            updatedAt: DateTime(2025, 1, 1),
+            deletedAt: null,
+          );
 
-          for (final price in testCases) {
-            final dto = ProductDto(
-              id: 'prod-1',
-              storeId: 'store-1',
-              name: 'Test Product',
-              barcode: null,
-              unitPrice: price,
-              currentStock: 10,
-              createdAt: '2025-01-01T00:00:00Z',
-              updatedAt: '2025-01-01T00:00:00Z',
-              deletedAt: null,
-            );
-
-            final domain = dto.toDomain();
-
-            expect(
-              domain.unitPrice,
-              price,
-              reason: 'Price $price should be preserved exactly',
-            );
-          }
+          expect(domain.toDriftCompanion().unitPrice.value, '1234567.89');
         },
       );
 
-      test('DomainProductToDrift: preserves unitPrice through drift companion',
-          () {
-        final domain = domain_product.Product(
-          id: 'prod-1',
-          name: 'Test Product',
-          unitPrice: '1234567.89',
-          barcode: 'BAR-123',
-          currentStock: 50,
-          updatedAt: DateTime(2025, 1, 1),
-          deletedAt: null,
-        );
+      test(
+        'ProductDtoToDomain → DomainProductToDrift: complete round-trip',
+        () {
+          const dto = ProductDto(
+            id: 'prod-1',
+            storeId: 'store-1',
+            name: 'Test Product',
+            barcode: 'BAR-001',
+            unitPrice: '1234567.89',
+            currentStock: 25,
+            createdAt: '2025-01-01T00:00:00Z',
+            updatedAt: '2025-01-01T12:00:00Z',
+            deletedAt: null,
+          );
 
-        expect(domain.toDriftCompanion().unitPrice.value, '1234567.89');
-      });
+          final domain = dto.toDomain();
+          final companion = domain.toDriftCompanion();
 
-      test('ProductDtoToDomain → DomainProductToDrift: complete round-trip', () {
-        const dto = ProductDto(
-          id: 'prod-1',
-          storeId: 'store-1',
-          name: 'Test Product',
-          barcode: 'BAR-001',
-          unitPrice: '1234567.89',
-          currentStock: 25,
-          createdAt: '2025-01-01T00:00:00Z',
-          updatedAt: '2025-01-01T12:00:00Z',
-          deletedAt: null,
-        );
-
-        final domain = dto.toDomain();
-        final companion = domain.toDriftCompanion();
-
-        expect(companion.unitPrice.value, '1234567.89');
-        expect(companion.name.value, 'Test Product');
-        expect(companion.barcode.value, 'BAR-001');
-        expect(companion.currentStock.value, 25);
-      });
+          expect(companion.unitPrice.value, '1234567.89');
+          expect(companion.name.value, 'Test Product');
+          expect(companion.barcode.value, 'BAR-001');
+          expect(companion.currentStock.value, 25);
+        },
+      );
 
       test('Product mappers with null optional fields', () {
         const dto = ProductDto(
@@ -254,10 +255,16 @@ void main() {
 
           final domain = dto.toDomain();
 
-          expect(domain.totalAmount, totalAmount,
-              reason: 'Total $totalAmount should be preserved');
-          expect(domain.vatAmount, vatAmount,
-              reason: 'VAT $vatAmount should be preserved');
+          expect(
+            domain.totalAmount,
+            totalAmount,
+            reason: 'Total $totalAmount should be preserved',
+          );
+          expect(
+            domain.vatAmount,
+            vatAmount,
+            reason: 'VAT $vatAmount should be preserved',
+          );
         }
       });
 
@@ -285,8 +292,11 @@ void main() {
 
           final domain = dto.toDomain();
 
-          expect(domain.paymentMethod, expectedEnum,
-              reason: 'Payment method $apiMethod should map to $expectedEnum');
+          expect(
+            domain.paymentMethod,
+            expectedEnum,
+            reason: 'Payment method $apiMethod should map to $expectedEnum',
+          );
         }
       });
 
@@ -327,37 +337,37 @@ void main() {
 
           final companion = domain.toDriftCompanion();
 
-          expect(companion.paymentMethod.value, expectedString,
-              reason: '$domainEnum should map to $expectedString');
+          expect(
+            companion.paymentMethod.value,
+            expectedString,
+            reason: '$domainEnum should map to $expectedString',
+          );
         }
       });
 
-      test(
-        'SaleDtoToDomain → DomainSaleToDrift: complete round-trip',
-        () {
-          const dto = SaleDto(
-            id: 'sale-123',
-            storeId: 'store-1',
-            receiptNumber: 42,
-            totalAmount: '50000.50',
-            vatAmount: '5000.05',
-            paymentMethod: 'mixed',
-            cashAmount: '25000.25',
-            mobileMoneyAmount: '25000.25',
-            createdAt: '2025-01-15T14:30:00Z',
-            syncedAt: '2025-01-15T14:30:00Z',
-            items: [],
-          );
+      test('SaleDtoToDomain → DomainSaleToDrift: complete round-trip', () {
+        const dto = SaleDto(
+          id: 'sale-123',
+          storeId: 'store-1',
+          receiptNumber: 42,
+          totalAmount: '50000.50',
+          vatAmount: '5000.05',
+          paymentMethod: 'mixed',
+          cashAmount: '25000.25',
+          mobileMoneyAmount: '25000.25',
+          createdAt: '2025-01-15T14:30:00Z',
+          syncedAt: '2025-01-15T14:30:00Z',
+          items: [],
+        );
 
-          final domain = dto.toDomain();
-          final companion = domain.toDriftCompanion();
+        final domain = dto.toDomain();
+        final companion = domain.toDriftCompanion();
 
-          expect(companion.totalAmount.value, '50000.50');
-          expect(companion.vatAmount.value, '5000.05');
-          expect(companion.paymentMethod.value, 'mixed');
-          expect(companion.receiptNumber.value, 42);
-        },
-      );
+        expect(companion.totalAmount.value, '50000.50');
+        expect(companion.vatAmount.value, '5000.05');
+        expect(companion.paymentMethod.value, 'mixed');
+        expect(companion.receiptNumber.value, 42);
+      });
 
       test('DomainSaleCreateDtoMapper: monetary precision in request', () {
         final domain = domain_sale.Sale(
@@ -427,8 +437,11 @@ void main() {
           );
 
           final companion = domain.toDriftCompanion();
-          expect(companion.paymentMethod.present, true,
-              reason: 'Payment method $method should map to string');
+          expect(
+            companion.paymentMethod.present,
+            true,
+            reason: 'Payment method $method should map to string',
+          );
           expect(companion.paymentMethod.value, isA<String>());
         }
       });

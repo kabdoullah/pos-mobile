@@ -550,7 +550,7 @@ class _CartItemRow extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 AmountDisplay(
-                  amount: int.parse(item.unitPrice),
+                  amount: double.parse(item.unitPrice),
                   size: AmountSize.small,
                 ),
               ],

@@ -151,7 +151,7 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                                       ),
                                       const SizedBox(height: AppSpacing.xs),
                                       AmountDisplay(
-                                        amount: int.parse(product.unitPrice),
+                                        amount: double.parse(product.unitPrice),
                                         size: AmountSize.small,
                                       ),
                                     ],
