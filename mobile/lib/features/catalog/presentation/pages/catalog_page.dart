@@ -158,7 +158,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                                   ),
                                   const SizedBox(width: AppSpacing.md),
                                   AmountDisplay(
-                                    amount: int.parse(product.unitPrice),
+                                    amount: product.unitPrice,
                                     size: AmountSize.medium,
                                   ), 
                                 ],

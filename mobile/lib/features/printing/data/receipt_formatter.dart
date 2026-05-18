@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:logger/logger.dart';
@@ -86,25 +87,23 @@ class ReceiptFormatter {
     bytes.addAll(generator.text(_separator));
 
     // --- TOTAL ---
-    final totalInt = int.tryParse(sale.totalAmount) ?? 0;
     bytes.addAll(
       generator.row([
         PosColumn(text: 'TOTAL', width: 6, styles: const PosStyles(bold: true)),
         PosColumn(
-          text: _formatFcfa(totalInt),
+          text: _formatFcfa(sale.totalAmount),
           width: 6,
           styles: const PosStyles(bold: true, align: PosAlign.right),
         ),
       ]),
     );
 
-    if (sale.vatAmount != '0') {
-      final vatInt = int.tryParse(sale.vatAmount) ?? 0;
+    if (sale.vatAmount != Decimal.zero) {
       bytes.addAll(
         generator.row([
           PosColumn(text: 'TVA', width: 6),
           PosColumn(
-            text: _formatFcfa(vatInt),
+            text: _formatFcfa(sale.vatAmount),
             width: 6,
             styles: const PosStyles(align: PosAlign.right),
           ),
@@ -155,9 +154,9 @@ class ReceiptFormatter {
     ]);
   }
 
-  /// Formats an integer amount as localized FCFA string.
-  static String _formatFcfa(int amount) {
-    return NumberFormat('#,##0', 'fr_FR').format(amount);
+  /// Formats a Decimal amount as localized FCFA string.
+  static String _formatFcfa(Decimal amount) {
+    return NumberFormat('#,##0', 'fr_FR').format(amount.toDouble());
   }
 
   /// Returns localized payment method label.

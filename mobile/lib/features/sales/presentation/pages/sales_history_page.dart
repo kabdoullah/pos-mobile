@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -132,7 +133,7 @@ class _SaleCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              _formatAmount(int.tryParse(sale.totalAmount) ?? 0),
+              _formatAmount(sale.totalAmount),
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
             Chip(
@@ -170,7 +171,7 @@ class _SaleCard extends ConsumerWidget {
     };
   }
 
-  static String _formatAmount(int amount) {
-    return '${(amount / 1000).toStringAsFixed(0)}k FCFA';
+  static String _formatAmount(Decimal amount) {
+    return '${(amount / Decimal.fromInt(1000)).toDouble().toStringAsFixed(0)}k FCFA';
   }
 }

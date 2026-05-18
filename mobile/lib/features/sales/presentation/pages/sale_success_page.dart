@@ -94,7 +94,7 @@ class SaleSuccessPage extends ConsumerWidget {
                       children: [
                         Text('Montant', style: AppTypography.bodyMedium),
                         AmountDisplay(
-                          amount: int.tryParse(sale.totalAmount) ?? 0,
+                          amount: sale.totalAmount,
                           size: AmountSize.large,
                         ),
                       ],

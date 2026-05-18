@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../domain/entities/cart_item.dart';
 import '../../../catalog/domain/entities/product.dart';
@@ -11,7 +12,7 @@ class CartState {
   const CartState({required this.items});
 
   /// Total amount in FCFA (sum of all line totals).
-  int get total => items.fold(0, (sum, item) => sum + item.lineTotal);
+  Decimal get total => items.fold(Decimal.zero, (sum, item) => sum + item.lineTotal);
 
   /// Item count (unique products).
   int get itemCount => items.length;

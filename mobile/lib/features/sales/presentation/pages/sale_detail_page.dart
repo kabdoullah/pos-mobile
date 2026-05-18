@@ -81,7 +81,7 @@ class SaleDetailPage extends ConsumerWidget {
                       Text('Montant total', style: AppTypography.captionText),
                       const SizedBox(height: AppSpacing.xs),
                       AmountDisplay(
-                        amount: int.tryParse(sale.totalAmount) ?? 0,
+                        amount: sale.totalAmount,
                         size: AmountSize.large,
                       ),
                     ],

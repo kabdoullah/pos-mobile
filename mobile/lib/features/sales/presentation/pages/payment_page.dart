@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -52,18 +53,15 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     });
   }
 
-  int _getCartTotal() {
+  Decimal _getCartTotal() {
     return ref.read(cartProvider).total;
   }
 
-  int _getChangeAmount() {
-    if (_selectedMethod != PaymentMethod.cash) return 0;
-    try {
-      final received = int.parse(_cashReceivedController.text.trim());
-      return received - _getCartTotal();
-    } catch (_) {
-      return 0;
-    }
+  Decimal _getChangeAmount() {
+    if (_selectedMethod != PaymentMethod.cash) return Decimal.zero;
+    final received = Decimal.tryParse(_cashReceivedController.text.trim());
+    if (received == null) return Decimal.zero;
+    return received - _getCartTotal();
   }
 
   bool _validate() {
@@ -85,20 +83,18 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         setState(() => _cashReceivedError = 'Entrez le montant reçu');
         isValid = false;
       } else {
-        try {
-          final received = int.parse(_cashReceivedController.text.trim());
-          if (received < _getCartTotal()) {
-            setState(() => _cashReceivedError = 'Montant insuffisant');
-            isValid = false;
-          }
-        } catch (_) {
+        final received = Decimal.tryParse(_cashReceivedController.text.trim());
+        if (received == null) {
           setState(() => _cashReceivedError = 'Montant invalide');
+          isValid = false;
+        } else if (received < _getCartTotal()) {
+          setState(() => _cashReceivedError = 'Montant insuffisant');
           isValid = false;
         }
       }
     } else if (_selectedMethod == PaymentMethod.mixed) {
-      bool hasCash = _cashReceivedController.text.trim().isNotEmpty;
-      bool hasMobileMoney = _mobileMoneyController.text.trim().isNotEmpty;
+      final hasCash = _cashReceivedController.text.trim().isNotEmpty;
+      final hasMobileMoney = _mobileMoneyController.text.trim().isNotEmpty;
 
       if (!hasCash && !hasMobileMoney) {
         setState(() {
@@ -107,21 +103,23 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         });
         isValid = false;
       } else {
-        int total = 0;
+        var total = Decimal.zero;
         if (hasCash) {
-          try {
-            total += int.parse(_cashReceivedController.text.trim());
-          } catch (_) {
+          final cash = Decimal.tryParse(_cashReceivedController.text.trim());
+          if (cash == null) {
             setState(() => _cashReceivedError = 'Montant invalide');
             isValid = false;
+          } else {
+            total += cash;
           }
         }
         if (hasMobileMoney) {
-          try {
-            total += int.parse(_mobileMoneyController.text.trim());
-          } catch (_) {
+          final mm = Decimal.tryParse(_mobileMoneyController.text.trim());
+          if (mm == null) {
             setState(() => _mobileMoneyError = 'Montant invalide');
             isValid = false;
+          } else {
+            total += mm;
           }
         }
         if (isValid && total != _getCartTotal()) {
@@ -254,7 +252,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                 onChanged: (_) => setState(() {}),
               ),
               const SizedBox(height: AppSpacing.lg),
-              if (change > 0)
+              if (change > Decimal.zero)
                 AppCard(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

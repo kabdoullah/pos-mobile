@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'home_providers.g.dart';
@@ -13,23 +14,23 @@ class DailySummary {
   });
 
   /// Total revenue today in FCFA.
-  final int totalAmount;
+  final Decimal totalAmount;
 
   /// Number of completed sales today.
   final int saleCount;
 
   /// Cash portion of total.
-  final int cashTotal;
+  final Decimal cashTotal;
 
   /// Mobile money portion (all types combined).
-  final int mobileMoneyTotal;
+  final Decimal mobileMoneyTotal;
 
   /// Empty summary for loading/error states.
-  static const empty = DailySummary(
-    totalAmount: 0,
+  static final empty = DailySummary(
+    totalAmount: Decimal.zero,
     saleCount: 0,
-    cashTotal: 0,
-    mobileMoneyTotal: 0,
+    cashTotal: Decimal.zero,
+    mobileMoneyTotal: Decimal.zero,
   );
 }
 

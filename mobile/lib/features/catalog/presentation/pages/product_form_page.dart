@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -70,9 +71,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
       setState(() => _priceError = 'Le prix est obligatoire');
       isValid = false;
     } else {
-      try {
-        int.parse(_priceController.text.trim());
-      } catch (_) {
+      if (Decimal.tryParse(_priceController.text.trim()) == null) {
         setState(() => _priceError = 'Entrez un montant valide');
         isValid = false;
       }
@@ -182,7 +181,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             _nameController.text.isEmpty &&
             _priceController.text.isEmpty) {
           _nameController.text = product.name;
-          _priceController.text = product.unitPrice;
+          _priceController.text = product.unitPrice.toString();
           if (product.barcode != null) {
             _barcodeController.text = product.barcode!;
           }
