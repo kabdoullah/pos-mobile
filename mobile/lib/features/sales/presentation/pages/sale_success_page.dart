@@ -13,7 +13,7 @@ import '../../../../shared/widgets/index.dart';
 import '../../../../shared/providers/connectivity_provider.dart';
 import '../../domain/entities/sale.dart';
 import '../../domain/entities/cart_item.dart';
-import '../../../printing/data/printer_service.dart';
+import '../../../printing/domain/repositories/printer_repository.dart';
 import '../../../printing/presentation/providers/printer_provider.dart';
 
 /// SaleSuccessPage — confirmation screen after successful sale.

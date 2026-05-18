@@ -8,7 +8,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../domain/entities/sale.dart';
 import '../../../printing/presentation/providers/printer_provider.dart';
-import '../../../printing/data/printer_service.dart';
+import '../../../printing/domain/repositories/printer_repository.dart';
 
 /// Sale detail page — read-only view of a completed sale.
 ///
@@ -23,7 +23,6 @@ class SaleDetailPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final printerState = ref.watch(printerProvider);
     final dateFormatter = DateFormat('EEEE d MMMM yyyy HH:mm', 'fr_FR');
     final receiptNumber = sale.receiptNumber > 0
         ? '#${sale.receiptNumber}'

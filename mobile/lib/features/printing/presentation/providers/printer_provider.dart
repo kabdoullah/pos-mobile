@@ -4,7 +4,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../data/printer_service.dart';
+import '../../domain/repositories/printer_repository.dart';
+import '../../data/printer_repository_provider.dart';
 import '../../../auth/presentation/providers/store_provider.dart';
 import '../../../sales/domain/entities/cart_item.dart';
 import '../../../sales/domain/entities/sale.dart';
@@ -97,7 +98,7 @@ class Printer extends _$Printer {
   Future<void> connect(String mac, String name) async {
     state = const PrinterConnecting();
     try {
-      final service = ref.read(printerServiceProvider);
+      final service = ref.read(printerRepositoryProvider);
       await service.connect(mac);
       await _storage.write(key: _PrinterKeys.mac, value: mac);
       await _storage.write(key: _PrinterKeys.name, value: name);
@@ -112,7 +113,7 @@ class Printer extends _$Printer {
 
   /// Disconnects the current BT printer.
   Future<void> disconnect() async {
-    final service = ref.read(printerServiceProvider);
+    final service = ref.read(printerRepositoryProvider);
     final current = state;
     await service.disconnect();
     if (current is PrinterConnected) {
@@ -138,7 +139,7 @@ class Printer extends _$Printer {
       );
     }
 
-    final service = ref.read(printerServiceProvider);
+    final service = ref.read(printerRepositoryProvider);
 
     // Auto-reconnect if we have a saved MAC and not connected
     if (state is! PrinterConnected) {
