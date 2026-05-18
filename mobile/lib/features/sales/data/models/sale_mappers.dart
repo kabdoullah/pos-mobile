@@ -72,13 +72,13 @@ extension DomainSaleCreateDtoMapper on domain.Sale {
   /// Converts domain entity to create request DTO.
   SaleCreateDto toCreateDto({
     required List<SaleItemCreateDto> items,
-    String? cashAmount,
-    String? mobileMoneyAmount,
+    Decimal? cashAmount,
+    Decimal? mobileMoneyAmount,
   }) => SaleCreateDto(
     id: id,
     items: items,
-    totalAmount: totalAmount.toString(),
-    vatAmount: vatAmount.toString(),
+    totalAmount: totalAmount.toDouble().toStringAsFixed(2),
+    vatAmount: vatAmount.toDouble().toStringAsFixed(2),
     paymentMethod: switch (paymentMethod) {
       domain.PaymentMethod.cash => PaymentMethodDto.cash,
       domain.PaymentMethod.orangeMoney => PaymentMethodDto.mobileMoneyOrange,
@@ -86,8 +86,8 @@ extension DomainSaleCreateDtoMapper on domain.Sale {
       domain.PaymentMethod.wave => PaymentMethodDto.mobileMoneyWave,
       domain.PaymentMethod.mixed => PaymentMethodDto.mixed,
     },
-    cashAmount: cashAmount,
-    mobileMoneyAmount: mobileMoneyAmount,
+    cashAmount: cashAmount?.toDouble().toStringAsFixed(2),
+    mobileMoneyAmount: mobileMoneyAmount?.toDouble().toStringAsFixed(2),
     createdAt: createdAt.toIso8601String(),
   );
 }

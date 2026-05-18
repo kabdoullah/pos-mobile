@@ -215,7 +215,7 @@ void main() {
         final domain = domain_product.Product(
           id: 'prod-1',
           name: 'Updated Product',
-          unitPrice: '999.99',
+          unitPrice: Decimal.parse('999.99'),
           barcode: null,
           currentStock: 50,
           updatedAt: DateTime(2025, 1, 1),
@@ -330,8 +330,8 @@ void main() {
           final domain = domain_sale.Sale(
             id: 'sale-1',
             receiptNumber: 1,
-            totalAmount: '100.00',
-            vatAmount: '10.00',
+            totalAmount: Decimal.parse('100.00'),
+            vatAmount: Decimal.parse('10.00'),
             paymentMethod: domainEnum,
             createdAt: DateTime(2025, 1, 1),
           );
@@ -364,7 +364,8 @@ void main() {
         final domain = dto.toDomain();
         final companion = domain.toDriftCompanion();
 
-        expect(companion.totalAmount.value, '50000.50');
+        // Decimal.toString() removes trailing zeros
+        expect(companion.totalAmount.value, '50000.5');
         expect(companion.vatAmount.value, '5000.05');
         expect(companion.paymentMethod.value, 'mixed');
         expect(companion.receiptNumber.value, 42);
@@ -374,21 +375,22 @@ void main() {
         final domain = domain_sale.Sale(
           id: 'sale-1',
           receiptNumber: 1,
-          totalAmount: '1234567.89',
-          vatAmount: '123456.78',
+          totalAmount: Decimal.parse('1234567.89'),
+          vatAmount: Decimal.parse('123456.78'),
           paymentMethod: domain_sale.PaymentMethod.mixed,
           createdAt: DateTime(2025, 1, 1, 12, 30),
         );
 
         final dto = domain.toCreateDto(
           items: const [],
-          cashAmount: '600000.00',
-          mobileMoneyAmount: '634567.89',
+          cashAmount: Decimal.parse('600000.00'),
+          mobileMoneyAmount: Decimal.parse('634567.89'),
         );
 
         expect(dto.totalAmount, '1234567.89');
         expect(dto.vatAmount, '123456.78');
         expect(dto.paymentMethod, PaymentMethodDto.mixed);
+        // toCreateDto uses toStringAsFixed(2) for API format
         expect(dto.cashAmount, '600000.00');
         expect(dto.mobileMoneyAmount, '634567.89');
       });
@@ -411,8 +413,8 @@ void main() {
         final domain = dto.toDomain();
 
         expect(domain.receiptNumber, 0);
-        expect(domain.totalAmount, '100.00');
-        expect(domain.vatAmount, '0.00');
+        expect(domain.totalAmount, Decimal.parse('100.00'));
+        expect(domain.vatAmount, Decimal.parse('0.00'));
         expect(domain.paymentMethod, domain_sale.PaymentMethod.cash);
       });
     });
@@ -431,8 +433,8 @@ void main() {
           final domain = domain_sale.Sale(
             id: 'test-id',
             receiptNumber: 0,
-            totalAmount: '0.00',
-            vatAmount: '0.00',
+            totalAmount: Decimal.parse('0.00'),
+            vatAmount: Decimal.parse('0.00'),
             paymentMethod: method,
             createdAt: DateTime.now(),
           );
