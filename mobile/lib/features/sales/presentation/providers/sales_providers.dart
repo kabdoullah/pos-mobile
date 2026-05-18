@@ -7,7 +7,7 @@ import 'cart_provider.dart';
 
 part 'sales_providers.g.dart';
 
-/// Submit current cart as a sale.
+/// Submit current cart as a sale (calls CreateSaleUseCase).
 @riverpod
 Future<sale_entity.Sale> submitSale(
   Ref ref, {
@@ -17,10 +17,10 @@ Future<sale_entity.Sale> submitSale(
   Decimal? cashAmount,
   Decimal? mobileMoneyAmount,
 }) async {
-  final repo = ref.watch(salesRepositoryProvider);
+  final useCase = ref.watch(createSaleUseCaseProvider);
   final cartState = ref.watch(cartProvider);
 
-  final sale = await repo.createSale(
+  final sale = await useCase(
     items: cartState.items,
     totalAmount: totalAmount,
     vatAmount: vatAmount,

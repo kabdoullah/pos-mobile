@@ -4,6 +4,7 @@ import '../features/catalog/data/repositories/catalog_repository_impl.dart';
 import '../features/catalog/domain/repositories/catalog_repository.dart';
 import '../features/sales/data/repositories/sales_repository_impl.dart';
 import '../features/sales/domain/repositories/sales_repository.dart';
+import '../features/sales/domain/usecases/create_sale_usecase.dart';
 import '../features/sync/presentation/providers/sync_providers.dart';
 
 part 'repository_providers.g.dart';
@@ -24,4 +25,10 @@ SalesRepository salesRepository(Ref ref) {
     db: ref.watch(databaseProvider),
     syncQueue: ref.watch(syncQueueRepositoryProvider),
   );
+}
+
+/// Provides the create sale use case (business logic).
+@riverpod
+CreateSaleUseCase createSaleUseCase(Ref ref) {
+  return CreateSaleUseCase(repository: ref.watch(salesRepositoryProvider));
 }
