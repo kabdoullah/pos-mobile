@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/network/api_models/product_dto.dart';
 import 'package:mobile/core/network/api_models/sale_dto.dart';
@@ -125,8 +126,8 @@ void main() {
 
           expect(
             domain.unitPrice,
-            price,
-            reason: 'Price $price should be preserved exactly',
+            Decimal.parse(price),
+            reason: 'Price $price should be preserved as Decimal',
           );
         }
       });
@@ -137,7 +138,7 @@ void main() {
           final domain = domain_product.Product(
             id: 'prod-1',
             name: 'Test Product',
-            unitPrice: '1234567.89',
+            unitPrice: Decimal.parse('1234567.89'),
             barcode: 'BAR-123',
             currentStock: 50,
             updatedAt: DateTime(2025, 1, 1),
@@ -196,7 +197,7 @@ void main() {
         final domain = domain_product.Product(
           id: 'prod-1',
           name: 'New Product',
-          unitPrice: '1234567.89',
+          unitPrice: Decimal.parse('1234567.89'),
           barcode: 'BAR-NEW',
           currentStock: 100,
           updatedAt: DateTime(2025, 1, 1),
@@ -257,13 +258,13 @@ void main() {
 
           expect(
             domain.totalAmount,
-            totalAmount,
-            reason: 'Total $totalAmount should be preserved',
+            Decimal.parse(totalAmount),
+            reason: 'Total $totalAmount should be preserved as Decimal',
           );
           expect(
             domain.vatAmount,
-            vatAmount,
-            reason: 'VAT $vatAmount should be preserved',
+            Decimal.parse(vatAmount),
+            reason: 'VAT $vatAmount should be preserved as Decimal',
           );
         }
       });
@@ -304,8 +305,8 @@ void main() {
         final domain = domain_sale.Sale(
           id: 'sale-1',
           receiptNumber: 1,
-          totalAmount: '1234567.89',
-          vatAmount: '123456.78',
+          totalAmount: Decimal.parse('1234567.89'),
+          vatAmount: Decimal.parse('123456.78'),
           paymentMethod: domain_sale.PaymentMethod.cash,
           createdAt: DateTime(2025, 1, 1, 12, 30),
         );
