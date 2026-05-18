@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'sale.freezed.dart';
@@ -26,8 +27,8 @@ sealed class Sale with _$Sale {
   const factory Sale({
     required String id,
     required int receiptNumber,
-    required String totalAmount, // FCFA as string (decimal precision)
-    required String vatAmount, // FCFA as string
+    required Decimal totalAmount,
+    required Decimal vatAmount,
     required PaymentMethod paymentMethod,
     required DateTime createdAt,
   }) = _Sale;

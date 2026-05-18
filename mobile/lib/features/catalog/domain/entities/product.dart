@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'product.freezed.dart';
@@ -10,8 +11,8 @@ sealed class Product with _$Product {
     required String id,
     required String name,
 
-    /// FCFA stored as string (decimal precision).
-    required String unitPrice,
+    /// FCFA as Decimal.
+    required Decimal unitPrice,
     String? barcode,
     int? currentStock,
     required DateTime updatedAt,

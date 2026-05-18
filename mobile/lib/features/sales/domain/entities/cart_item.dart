@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'cart_item.freezed.dart';
@@ -8,12 +9,12 @@ sealed class CartItem with _$CartItem {
   const factory CartItem({
     required String productId,
     required String productName,
-    required String unitPrice, // FCFA stored as string (decimal precision)
+    required Decimal unitPrice,
     required int quantity,
   }) = _CartItem;
 
   /// Line total: quantity × unitPrice (both in FCFA).
-  int get lineTotal => quantity * int.parse(unitPrice);
+  Decimal get lineTotal => unitPrice * Decimal.fromInt(quantity);
 
   const CartItem._();
 }
