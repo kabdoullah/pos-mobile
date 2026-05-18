@@ -47,7 +47,7 @@ class SalesRepositoryImpl implements SalesRepository {
     // Enqueue for sync (items will be added by caller if needed)
     final salePayload = {
       'id': saleId,
-      'items': <dynamic>[],
+      'items': <Map<String, dynamic>>[],
       'total_amount': totalAmount,
       'vat_amount': vatAmount,
       'payment_method': _paymentMethodToDtoString(paymentMethod),

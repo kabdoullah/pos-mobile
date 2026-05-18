@@ -183,18 +183,6 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
 }
 
 class _ScannerPanel extends StatelessWidget {
-  final MobileScannerController controller;
-  final bool isCameraActive;
-  final bool isTorchOn;
-  final bool isPermissionGranted;
-  final bool isCheckingPermission;
-  final void Function(BarcodeCapture) onBarcodeDetected;
-  final VoidCallback onEnableCamera;
-  final VoidCallback onDisableCamera;
-  final VoidCallback onToggleTorch;
-  final VoidCallback onOpenSettings;
-  final VoidCallback onBack;
-  final VoidCallback onOpenAppSettings;
 
   const _ScannerPanel({
     required this.controller,
@@ -210,6 +198,18 @@ class _ScannerPanel extends StatelessWidget {
     required this.onBack,
     required this.onOpenAppSettings,
   });
+  final MobileScannerController controller;
+  final bool isCameraActive;
+  final bool isTorchOn;
+  final bool isPermissionGranted;
+  final bool isCheckingPermission;
+  final void Function(BarcodeCapture) onBarcodeDetected;
+  final VoidCallback onEnableCamera;
+  final VoidCallback onDisableCamera;
+  final VoidCallback onToggleTorch;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onBack;
+  final VoidCallback onOpenAppSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -327,10 +327,7 @@ class _ScannerPanel extends StatelessWidget {
                 _FloatingIconButton(
                   icon: isTorchOn ? Icons.flashlight_off : Icons.flashlight_on,
                   onPressed: isCameraActive
-                      ? () {
-                          // ignore: discarded_futures
-                          onToggleTorch();
-                        }
+                      ? onToggleTorch
                       : null,
                 ),
                 const SizedBox(height: AppSpacing.sm),
@@ -348,10 +345,10 @@ class _ScannerPanel extends StatelessWidget {
 }
 
 class _FloatingIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onPressed;
 
   const _FloatingIconButton({required this.icon, this.onPressed});
+  final IconData icon;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -378,10 +375,6 @@ class _FloatingIconButton extends StatelessWidget {
 }
 
 class _CartPanel extends StatelessWidget {
-  final CartState cartState;
-  final void Function(String productId, int qty) onUpdateQuantity;
-  final void Function(String productId) onRemoveItem;
-  final VoidCallback onCheckout;
 
   const _CartPanel({
     required this.cartState,
@@ -389,6 +382,10 @@ class _CartPanel extends StatelessWidget {
     required this.onRemoveItem,
     required this.onCheckout,
   });
+  final CartState cartState;
+  final void Function(String productId, int qty) onUpdateQuantity;
+  final void Function(String productId) onRemoveItem;
+  final VoidCallback onCheckout;
 
   @override
   Widget build(BuildContext context) {
@@ -522,15 +519,15 @@ class _CartPanel extends StatelessWidget {
 }
 
 class _CartItemRow extends StatelessWidget {
-  final CartItem item;
-  final VoidCallback onDecrease;
-  final VoidCallback onIncrease;
 
   const _CartItemRow({
     required this.item,
     required this.onDecrease,
     required this.onIncrease,
   });
+  final CartItem item;
+  final VoidCallback onDecrease;
+  final VoidCallback onIncrease;
 
   @override
   Widget build(BuildContext context) {
@@ -583,10 +580,10 @@ class _CartItemRow extends StatelessWidget {
 }
 
 class _QuantityButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
 
   const _QuantityButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -606,9 +603,9 @@ class _QuantityButton extends StatelessWidget {
 }
 
 class _ScannerOverlayPainter extends CustomPainter {
-  final Color overlayColor;
 
   const _ScannerOverlayPainter({required this.overlayColor});
+  final Color overlayColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -636,9 +633,9 @@ class _ScannerOverlayPainter extends CustomPainter {
 }
 
 class _ViewfinderCornersPainter extends CustomPainter {
-  final Color color;
 
   const _ViewfinderCornersPainter({required this.color});
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {

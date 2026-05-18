@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
-import '../../../../core/network/api_models/sale_dto.dart';
 import '../../../../core/network/api_models/sync_changes_dto.dart';
 import '../../../../core/network/api_models/sync_responses_dto.dart';
 

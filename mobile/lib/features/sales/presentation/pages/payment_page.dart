@@ -2,7 +2,6 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
@@ -196,7 +195,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Total à payer', style: AppTypography.bodySmall),
+                  const Text('Total à payer', style: AppTypography.bodySmall),
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -210,7 +209,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
             ),
             const SizedBox(height: AppSpacing.xl),
             // Payment methods
-            Text('Mode de paiement', style: AppTypography.titleMedium),
+            const Text('Mode de paiement', style: AppTypography.titleMedium),
             const SizedBox(height: AppSpacing.md),
             _buildPaymentMethodButton(
               PaymentMethod.cash,
@@ -257,7 +256,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
+                      const Text(
                         'Monnaie à rendre',
                         style: AppTypography.titleMedium,
                       ),
@@ -327,7 +326,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               ),
             ),
             const Spacer(),
-            if (isSelected) Icon(Icons.check_circle, color: AppColors.primary),
+            if (isSelected) const Icon(Icons.check_circle, color: AppColors.primary),
           ],
         ),
       ),

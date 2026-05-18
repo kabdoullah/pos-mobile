@@ -92,7 +92,7 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Ajouter un produit', style: AppTypography.titleLarge),
+                    const Text('Ajouter un produit', style: AppTypography.titleLarge),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
                       label: 'Rechercher',
@@ -111,7 +111,7 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                       Center(child: Text('Erreur: $error')),
                   data: (products) {
                     if (products.isEmpty) {
-                      return Center(
+                      return const Center(
                         child: Text(
                           'Aucun produit',
                           style: AppTypography.bodyMedium,

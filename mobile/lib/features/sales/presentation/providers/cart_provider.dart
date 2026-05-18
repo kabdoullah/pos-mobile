@@ -7,9 +7,9 @@ part 'cart_provider.g.dart';
 
 /// CartState holds the current shopping cart items.
 class CartState {
-  final List<CartItem> items;
 
   const CartState({required this.items});
+  final List<CartItem> items;
 
   /// Total amount in FCFA (sum of all line totals).
   Decimal get total =>
