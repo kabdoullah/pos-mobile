@@ -18,6 +18,15 @@ class PosMobileApp extends ConsumerWidget {
       theme: AppTheme.light(),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            FocusScope.of(context).unfocus();
+          },
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

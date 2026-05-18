@@ -13,7 +13,7 @@ sealed class CartItem with _$CartItem {
   }) = _CartItem;
 
   /// Line total: quantity × unitPrice (both in FCFA).
-  double get lineTotal => quantity * double.parse(unitPrice);
+  int get lineTotal => quantity * int.parse(unitPrice);
 
   const CartItem._();
 }

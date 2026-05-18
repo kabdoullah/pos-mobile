@@ -64,8 +64,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
       title: 'Catalogue',
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
+        onPressed: _openProductForm,
         child: const Icon(Icons.add, color: AppColors.textOnPrimary),
-        onPressed: () => _openProductForm(),
       ),
       body: Column(
         children: [
@@ -94,7 +94,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                    const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                     const SizedBox(height: AppSpacing.md),
                     Text(
                       'Erreur: $error',
@@ -111,7 +111,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                     title: 'Aucun produit',
                     message: 'Commencez par ajouter votre premier produit',
                     actionLabel: 'Ajouter un produit',
-                    onAction: () => _openProductForm(),
+                    onAction: _openProductForm,
                   );
                 }
 
@@ -158,9 +158,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                                   ),
                                   const SizedBox(width: AppSpacing.md),
                                   AmountDisplay(
-                                    amount: double.parse(product.unitPrice),
+                                    amount: int.parse(product.unitPrice),
                                     size: AmountSize.medium,
-                                  ),
+                                  ), 
                                 ],
                               ),
                               if (product.barcode != null) ...[

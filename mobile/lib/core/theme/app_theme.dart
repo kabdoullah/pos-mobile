@@ -17,7 +17,6 @@ class AppTheme {
   /// Configures all Material Design components with semantic color roles,
   /// custom text styles, spacing tokens, and accessibility-focused sizing.
   static ThemeData light() {
-    // ignore: deprecated_member_use
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
       primary: AppColors.primary,
@@ -38,8 +37,7 @@ class AppTheme {
       onErrorContainer: AppColors.error,
       surface: AppColors.surface,
       onSurface: AppColors.textPrimary,
-      // ignore: deprecated_member_use
-      surfaceVariant: AppColors.surfaceVariant,
+      surfaceContainerHighest: AppColors.surfaceVariant,
       onSurfaceVariant: AppColors.textSecondary,
       outline: AppColors.border,
       outlineVariant: AppColors.divider,
@@ -125,8 +123,7 @@ class AppTheme {
   static InputDecorationTheme _buildInputDecorationTheme(
     ColorScheme colorScheme,
   ) {
-    // ignore: deprecated_member_use
-    final surfaceVariant = colorScheme.surfaceVariant;
+    final surfaceVariant = colorScheme.surfaceContainer;
     return InputDecorationTheme(
       filled: true,
       fillColor: surfaceVariant,
@@ -222,8 +219,7 @@ class AppTheme {
 
   /// Chip theme — compact badges and selectable tags.
   static ChipThemeData _buildChipTheme(ColorScheme colorScheme) {
-    // ignore: deprecated_member_use
-    final surfaceVariant = colorScheme.surfaceVariant;
+    final surfaceVariant = colorScheme.surfaceContainer;
     return ChipThemeData(
       backgroundColor: surfaceVariant,
       selectedColor: colorScheme.primaryContainer,
@@ -298,8 +294,7 @@ class AppTheme {
   static ProgressIndicatorThemeData _buildProgressIndicatorTheme(
     ColorScheme colorScheme,
   ) {
-    // ignore: deprecated_member_use
-    final surfaceVariant = colorScheme.surfaceVariant;
+    final surfaceVariant = colorScheme.surfaceContainer;
     return ProgressIndicatorThemeData(
       color: colorScheme.primary,
       linearTrackColor: surfaceVariant,
@@ -309,8 +304,7 @@ class AppTheme {
 
   /// Switch theme — primary color when active.
   static SwitchThemeData _buildSwitchTheme(ColorScheme colorScheme) {
-    // ignore: deprecated_member_use
-    final surfaceVariant = colorScheme.surfaceVariant;
+    final surfaceVariant = colorScheme.surfaceContainer;
     return SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
