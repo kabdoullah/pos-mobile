@@ -144,14 +144,29 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       final items = List<CartItem>.from(ref.read(cartProvider).items);
 
       final method = _selectedMethod!;
-      final total = _getCartTotal().toString();
-      const vat = '0'; // TODO: Calculate VAT from cart
+      final total = _getCartTotal();
+      final vat = Decimal.zero; // TODO: Calculate VAT from cart
+
+      Decimal? cashAmount;
+      Decimal? mobileMoneyAmount;
+      if (method == PaymentMethod.mixed) {
+        if (_cashReceivedController.text.trim().isNotEmpty) {
+          cashAmount = Decimal.tryParse(_cashReceivedController.text.trim());
+        }
+        if (_mobileMoneyController.text.trim().isNotEmpty) {
+          mobileMoneyAmount = Decimal.tryParse(
+            _mobileMoneyController.text.trim(),
+          );
+        }
+      }
 
       final sale = await ref.read(
         submitSaleProvider(
           totalAmount: total,
           vatAmount: vat,
           paymentMethod: method,
+          cashAmount: cashAmount,
+          mobileMoneyAmount: mobileMoneyAmount,
         ).future,
       );
 

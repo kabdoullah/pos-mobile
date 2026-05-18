@@ -69,7 +69,7 @@ class SaleSuccessPage extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.xl),
               // Title
-              Text(
+              const Text(
                 'Vente enregistrée',
                 style: AppTypography.displayMedium,
                 textAlign: TextAlign.center,
@@ -92,7 +92,7 @@ class SaleSuccessPage extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Montant', style: AppTypography.bodyMedium),
+                        const Text('Montant', style: AppTypography.bodyMedium),
                         AmountDisplay(
                           amount: sale.totalAmount,
                           size: AmountSize.large,
@@ -103,7 +103,7 @@ class SaleSuccessPage extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
+                        const Text(
                           'Mode de paiement',
                           style: AppTypography.bodyMedium,
                         ),
@@ -126,10 +126,10 @@ class SaleSuccessPage extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                     border: Border.all(color: AppColors.warning, width: 1),
                   ),
-                  child: Row(
+                  child: const Row(
                     children: [
-                      const Icon(Icons.cloud_off, color: AppColors.warning),
-                      const SizedBox(width: AppSpacing.md),
+                      Icon(Icons.cloud_off, color: AppColors.warning),
+                      SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
                           'Hors ligne. La vente sera envoyée au serveur au retour du réseau.',

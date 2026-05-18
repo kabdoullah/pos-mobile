@@ -57,6 +57,38 @@ class Sales extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Lignes de vente.
+class SaleItems extends Table {
+  /// UUID v4 généré côté client.
+  TextColumn get id => text()();
+
+  /// Référence à la vente (FK).
+  TextColumn get saleId => text()();
+
+  /// UUID du produit.
+  TextColumn get productId => text()();
+
+  /// Nom du produit au moment de la vente.
+  TextColumn get productName => text()();
+
+  /// Prix unitaire en FCFA, stocké en string.
+  TextColumn get unitPrice => text()();
+
+  /// Quantité.
+  IntColumn get quantity => integer()();
+
+  /// Total ligne en FCFA, stocké en string.
+  TextColumn get lineTotal => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+
+  @override
+  List<Set<Column>> get uniqueKeys => [
+    {saleId, productId},
+  ];
+}
+
 /// Métadonnées de synchronisation — stocke les timestamps du dernier pull.
 class SyncMetadata extends Table {
   /// Clé unique (ex: 'last_pull').
@@ -103,14 +135,14 @@ class SyncQueue extends Table {
 }
 
 /// Base de données drift de l'application.
-@DriftDatabase(tables: [Products, Sales, SyncQueue, SyncMetadata])
+@DriftDatabase(tables: [Products, Sales, SaleItems, SyncQueue, SyncMetadata])
 class AppDatabase extends _$AppDatabase {
   /// Constructor.
   AppDatabase() : super(_openConnection());
 
   /// Version courante du schéma drift.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'pos_mobile');

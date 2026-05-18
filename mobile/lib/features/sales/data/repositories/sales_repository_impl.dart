@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/sync/sync_queue_repository.dart';
 import '../../../../database/app_database.dart';
+import '../../domain/entities/cart_item.dart';
 import '../../domain/entities/sale.dart' as sale_entity;
 import '../../domain/repositories/sales_repository.dart';
 import '../models/sale_mappers.dart';
@@ -22,35 +23,74 @@ class SalesRepositoryImpl implements SalesRepository {
 
   @override
   Future<sale_entity.Sale> createSale({
-    required String totalAmount,
-    required String vatAmount,
+    required List<CartItem> items,
+    required Decimal totalAmount,
+    required Decimal vatAmount,
     required sale_entity.PaymentMethod paymentMethod,
+    Decimal? cashAmount,
+    Decimal? mobileMoneyAmount,
   }) async {
     const uuid = Uuid();
     final saleId = uuid.v4();
     final now = DateTime.now();
 
-    // Create sale record in drift (receipt_number=0 until backend assigns one)
-    await db
-        .into(db.sales)
-        .insert(
-          SalesCompanion(
-            id: drift.Value(saleId),
-            receiptNumber: const drift.Value(0),
-            totalAmount: drift.Value(totalAmount),
-            vatAmount: drift.Value(vatAmount),
-            paymentMethod: drift.Value(_paymentMethodToString(paymentMethod)),
-            createdAt: drift.Value(now),
-          ),
-        );
+    // Transaction: insert sale + items atomically
+    await db.transaction(() async {
+      // Create sale record
+      await db
+          .into(db.sales)
+          .insert(
+            SalesCompanion(
+              id: drift.Value(saleId),
+              receiptNumber: const drift.Value(0),
+              totalAmount: drift.Value(totalAmount.toString()),
+              vatAmount: drift.Value(vatAmount.toString()),
+              paymentMethod: drift.Value(_paymentMethodToString(paymentMethod)),
+              createdAt: drift.Value(now),
+            ),
+          );
 
-    // Enqueue for sync (items will be added by caller if needed)
+      // Create sale items
+      for (final item in items) {
+        final itemId = uuid.v4();
+        await db
+            .into(db.saleItems)
+            .insert(
+              SaleItemsCompanion(
+                id: drift.Value(itemId),
+                saleId: drift.Value(saleId),
+                productId: drift.Value(item.productId),
+                productName: drift.Value(item.productName),
+                unitPrice: drift.Value(item.unitPrice.toString()),
+                quantity: drift.Value(item.quantity),
+                lineTotal: drift.Value(item.lineTotal.toString()),
+              ),
+            );
+      }
+    });
+
+    // Build sync payload with items
+    final itemPayloads = items
+        .map(
+          (item) => {
+            'product_id': item.productId,
+            'product_name': item.productName,
+            'unit_price': item.unitPrice.toString(),
+            'quantity': item.quantity,
+            'line_total': item.lineTotal.toString(),
+          },
+        )
+        .toList();
+
     final salePayload = {
       'id': saleId,
-      'items': <Map<String, dynamic>>[],
-      'total_amount': totalAmount,
-      'vat_amount': vatAmount,
+      'items': itemPayloads,
+      'total_amount': totalAmount.toString(),
+      'vat_amount': vatAmount.toString(),
       'payment_method': _paymentMethodToDtoString(paymentMethod),
+      if (cashAmount != null) 'cash_amount': cashAmount.toString(),
+      if (mobileMoneyAmount != null)
+        'mobile_money_amount': mobileMoneyAmount.toString(),
       'created_at': now.toIso8601String(),
     };
 
@@ -59,8 +99,8 @@ class SalesRepositoryImpl implements SalesRepository {
     return sale_entity.Sale(
       id: saleId,
       receiptNumber: 0,
-      totalAmount: Decimal.parse(totalAmount),
-      vatAmount: Decimal.parse(vatAmount),
+      totalAmount: totalAmount,
+      vatAmount: vatAmount,
       paymentMethod: paymentMethod,
       createdAt: now,
     );

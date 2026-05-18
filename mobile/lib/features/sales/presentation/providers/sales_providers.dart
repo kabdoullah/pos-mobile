@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/repository_providers.dart';
@@ -10,16 +11,22 @@ part 'sales_providers.g.dart';
 @riverpod
 Future<sale_entity.Sale> submitSale(
   Ref ref, {
-  required String totalAmount,
-  required String vatAmount,
+  required Decimal totalAmount,
+  required Decimal vatAmount,
   required sale_entity.PaymentMethod paymentMethod,
+  Decimal? cashAmount,
+  Decimal? mobileMoneyAmount,
 }) async {
   final repo = ref.watch(salesRepositoryProvider);
+  final cartState = ref.watch(cartProvider);
 
   final sale = await repo.createSale(
+    items: cartState.items,
     totalAmount: totalAmount,
     vatAmount: vatAmount,
     paymentMethod: paymentMethod,
+    cashAmount: cashAmount,
+    mobileMoneyAmount: mobileMoneyAmount,
   );
 
   // Clear cart after successful submission

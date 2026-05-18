@@ -1,12 +1,18 @@
+import 'package:decimal/decimal.dart';
+
+import '../entities/cart_item.dart';
 import '../entities/sale.dart';
 
 /// Abstract repository for sales operations.
 abstract class SalesRepository {
-  /// Create and submit a new sale.
+  /// Create and submit a new sale with items.
   Future<Sale> createSale({
-    required String totalAmount, // FCFA as string
-    required String vatAmount, // FCFA as string
+    required List<CartItem> items,
+    required Decimal totalAmount,
+    required Decimal vatAmount,
     required PaymentMethod paymentMethod,
+    Decimal? cashAmount,
+    Decimal? mobileMoneyAmount,
   });
 
   /// Get sale history, optionally paginated.
