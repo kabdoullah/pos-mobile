@@ -40,6 +40,38 @@ Une feature peut importer le `domain` d'une autre feature, jamais sa `data`.
 - Après chaque modif des tables, lancer `make gen` (ou avoir `make gen-watch` qui tourne)
 - Les montants en FCFA sont stockés en `TextColumn` (préservation précision décimale)
 
+## Montants monétaires (FCFA)
+
+**Règle fondamentale : le type `Decimal` (package `decimal: ^3.0.0`) est le seul type autorisé pour les montants dans la couche domain.**
+
+| Couche | Type | Raison |
+|--------|------|--------|
+| API DTO (`core/network/api_models/`) | `String` | Sérialisation JSON exacte |
+| Drift DB (`database/`) | `TextColumn` → `String` | Pas de type NUMERIC en SQLite, précision décimale |
+| Domain entities | `Decimal` | Arithmétique exacte, pas de perte de précision |
+| Presentation | `Decimal` (passé au widget) | Reçoit le type domain directement |
+
+**Conversions :**
+- API → domain : `Decimal.parse(stringValue)` — dans les mappers uniquement, throw si malformé (fail-fast à la frontière)
+- domain → Drift : `decimalValue.toString()` — dans les mappers uniquement
+- Drift → domain : `Decimal.parse(stringValue)` — dans les mappers uniquement
+- Saisie utilisateur → validation : `Decimal.tryParse(text)` — retourne `null` si invalide (NE PAS utiliser `int.parse`)
+
+**Interdit :**
+- `int.parse(montant)` sur un champ monétaire — silencieusement faux sur les prix décimaux
+- `double` pour les montants — perte de précision sur les grands entiers FCFA
+- `num` comme type de paramètre pour les widgets monétaires
+
+**Calculs :**
+- Ligne de panier : `unitPrice * Decimal.fromInt(quantity)` (pas `Decimal.parse(quantity.toString())`)
+- Total panier : `items.fold(Decimal.zero, (sum, item) => sum + item.lineTotal)`
+- Rendu monnaie : `received - cartTotal` (les deux `Decimal`)
+
+**Affichage (`AmountDisplay`) :**
+- Accepte `Decimal amount`
+- Formatte via `NumberFormat('#,##0', 'fr_FR').format(amount.toDouble())`
+- `toDouble()` est sans perte pour les montants FCFA (entiers < 2^53)
+
 ## Sync offline-online
 
 Voir `docs/adr/0003-sync-hybride.md`. Règles :
