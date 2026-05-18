@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../catalog/presentation/providers/catalog_providers.dart';
+import '../../../../core/repository_providers.dart';
 import '../../domain/entities/cart_item.dart';
 import 'cart_provider.dart';
 

@@ -1,68 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '../../../../core/repository_providers.dart';
 import '../../domain/entities/product.dart';
-import '../../domain/repositories/catalog_repository.dart';
 
 part 'catalog_providers.g.dart';
-
-// TODO: Implement CatalogRepository with drift/retrofit data layer
-class _CatalogRepositoryImpl implements CatalogRepository {
-  @override
-  Future<List<Product>> getProducts({
-    String? query,
-    String? cursor,
-    int limit = 50,
-  }) async {
-    // TODO: Query drift table or call API
-    return [];
-  }
-
-  @override
-  Future<Product> createProduct({
-    required String name,
-    required String unitPrice,
-    String? barcode,
-    int? currentStock,
-  }) async {
-    // TODO: Insert into drift DB and sync to API
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Product> updateProduct({
-    required String id,
-    String? name,
-    String? unitPrice,
-    String? barcode,
-    int? currentStock,
-  }) async {
-    // TODO: Update drift DB and mark dirty for sync
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteProduct(String id) async {
-    // TODO: Soft delete in drift DB
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Product?> getProduct(String id) async {
-    // TODO: Query drift DB
-    return null;
-  }
-
-  @override
-  Future<Product?> getByBarcode(String barcode) async {
-    // TODO: Query drift DB by barcode column
-    return null;
-  }
-}
-
-/// Provides the catalog repository instance.
-@riverpod
-CatalogRepository catalogRepository(Ref ref) {
-  return _CatalogRepositoryImpl();
-}
 
 /// CatalogListNotifier manages product list with pagination and search.
 @riverpod
