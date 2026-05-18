@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -31,7 +32,7 @@ class AmountDisplay extends StatelessWidget {
   });
 
   /// The amount to display (in FCFA).
-  final num amount;
+  final Decimal amount;
 
   /// Size variant for the display.
   final AmountSize size;
@@ -47,7 +48,7 @@ class AmountDisplay extends StatelessWidget {
 
   String _formatAmount() {
     final formatter = NumberFormat('#,##0', 'fr_FR');
-    return formatter.format(amount);
+    return formatter.format(amount.toDouble());
   }
 
   @override
