@@ -57,7 +57,7 @@ backend/
 ├── Dockerfile               Image production
 └── Makefile                 Commandes courantes
 ```
-
+feat(mobile): add sync orchestration, triggers and user-facing sync indicators
 ## Conventions
 
 Voir `docs/architecture.md` à la racine du repo pour les conventions de découpage en modules. En résumé :

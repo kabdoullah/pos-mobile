@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -196,7 +198,7 @@ class SettingsPage extends ConsumerWidget {
                       isDangerous: true,
                     );
                     if (confirm && context.mounted) {
-                      ref.read(authProvider.notifier).logout();
+                      unawaited(ref.read(authProvider.notifier).logout());
                     }
                   },
                 ),

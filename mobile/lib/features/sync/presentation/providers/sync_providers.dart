@@ -11,8 +11,8 @@ import '../../../sales/domain/entities/sale.dart' as sale_entity;
 
 part 'sync_providers.g.dart';
 
-/// Provides the app database instance.
-@riverpod
+/// Provides the app database instance (singleton, never disposed).
+@Riverpod(keepAlive: true)
 AppDatabase database(Ref ref) {
   return AppDatabase();
 }

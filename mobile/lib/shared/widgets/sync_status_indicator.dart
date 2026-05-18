@@ -8,7 +8,9 @@ import '../../core/theme/app_typography.dart';
 import '../providers/connectivity_provider.dart';
 import '../../features/sync/presentation/providers/sync_providers.dart';
 
+/// Displays real-time sync status banner: offline, syncing, pending, error, or idle.
 class SyncStatusIndicator extends ConsumerWidget {
+  /// Creates sync status indicator.
   const SyncStatusIndicator({super.key});
 
   @override
@@ -71,7 +73,7 @@ class SyncStatusIndicator extends ConsumerWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
-      child: Row(
+      child: const Row(
         children: [
           SizedBox(
             width: 16,
@@ -81,10 +83,10 @@ class SyncStatusIndicator extends ConsumerWidget {
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          SizedBox(width: AppSpacing.sm),
           Text(
             'Sauvegarde en ligne...',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
+            style: TextStyle(fontSize: 12, color: AppColors.primary),
           ),
         ],
       ),
@@ -94,19 +96,19 @@ class SyncStatusIndicator extends ConsumerWidget {
   Widget _buildErrorBanner(String message) {
     return Container(
       width: double.infinity,
-      color: AppColors.error.withOpacity(0.1),
+      color: AppColors.error.withValues(alpha: 0.1),
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
-      child: Row(
+      child: const Row(
         children: [
           Icon(Icons.warning_rounded, color: AppColors.error, size: 18),
-          const SizedBox(width: AppSpacing.sm),
+          SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               'Erreur de sauvegarde — réessayez plus tard',
-              style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+              style: TextStyle(fontSize: 12, color: AppColors.error),
             ),
           ),
         ],
@@ -127,13 +129,15 @@ class SyncStatusIndicator extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.cloud_upload_outlined, color: AppColors.warning, size: 18),
+          const Icon(
+            Icons.cloud_upload_outlined,
+            color: AppColors.warning,
+            size: 18,
+          ),
           const SizedBox(width: AppSpacing.sm),
           Text(
             label,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
           ),
         ],
       ),
@@ -151,15 +155,13 @@ class SyncStatusIndicator extends ConsumerWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,
       ),
-      child: Row(
+      child: const Row(
         children: [
           Icon(Icons.check_circle, color: AppColors.secondary, size: 16),
-          const SizedBox(width: AppSpacing.xs),
+          SizedBox(width: AppSpacing.xs),
           Text(
             'À jour',
-            style: AppTypography.captionText.copyWith(
-              color: AppColors.secondary,
-            ),
+            style: TextStyle(fontSize: 10, color: AppColors.secondary),
           ),
         ],
       ),

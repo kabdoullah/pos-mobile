@@ -7,7 +7,7 @@ class AppConfig {
   /// En prod : https://api.pos-mobile-ci.com
   static const String apiUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'http://192.168.112.252:8000',
   );
 
   /// Timeout des requêtes HTTP en secondes.
