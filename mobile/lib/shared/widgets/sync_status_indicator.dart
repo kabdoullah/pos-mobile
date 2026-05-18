@@ -73,9 +73,9 @@ class SyncStatusIndicator extends ConsumerWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
-      child: const Row(
+      child: Row(
         children: [
-          SizedBox(
+          const SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
@@ -83,10 +83,10 @@ class SyncStatusIndicator extends ConsumerWidget {
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
-          SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: AppSpacing.sm),
           Text(
             'Sauvegarde en ligne...',
-            style: TextStyle(fontSize: 12, color: AppColors.primary),
+            style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
           ),
         ],
       ),
@@ -101,14 +101,14 @@ class SyncStatusIndicator extends ConsumerWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.warning_rounded, color: AppColors.error, size: 18),
-          SizedBox(width: AppSpacing.sm),
+          const Icon(Icons.warning_rounded, color: AppColors.error, size: 18),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               'Erreur de sauvegarde — réessayez plus tard',
-              style: TextStyle(fontSize: 12, color: AppColors.error),
+              style: AppTypography.bodySmall.copyWith(color: AppColors.error),
             ),
           ),
         ],
@@ -137,7 +137,9 @@ class SyncStatusIndicator extends ConsumerWidget {
           const SizedBox(width: AppSpacing.sm),
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+            style: AppTypography.bodySmall.copyWith(
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -155,13 +157,15 @@ class SyncStatusIndicator extends ConsumerWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,
       ),
-      child: const Row(
+      child: Row(
         children: [
-          Icon(Icons.check_circle, color: AppColors.secondary, size: 16),
-          SizedBox(width: AppSpacing.xs),
+          const Icon(Icons.check_circle, color: AppColors.secondary, size: 16),
+          const SizedBox(width: AppSpacing.xs),
           Text(
             'À jour',
-            style: TextStyle(fontSize: 10, color: AppColors.secondary),
+            style: AppTypography.captionText.copyWith(
+              color: AppColors.secondary,
+            ),
           ),
         ],
       ),
