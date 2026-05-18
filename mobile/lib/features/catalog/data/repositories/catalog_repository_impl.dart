@@ -11,10 +11,7 @@ import '../models/product_mappers.dart';
 /// Local-first: reads/writes drift database. Changes enqueued for sync.
 class CatalogRepositoryImpl implements CatalogRepository {
   /// Creates a CatalogRepositoryImpl.
-  CatalogRepositoryImpl({
-    required this.db,
-    required this.syncQueue,
-  });
+  CatalogRepositoryImpl({required this.db, required this.syncQueue});
 
   /// Local drift database instance.
   final AppDatabase db;
@@ -36,8 +33,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
     // Search by name or barcode
     if (query != null && query.isNotEmpty) {
       final searchTerm = '%$query%';
-      dbQuery.where((p) =>
-          p.name.like(searchTerm) | p.barcode.like(searchTerm));
+      dbQuery.where(
+        (p) => p.name.like(searchTerm) | p.barcode.like(searchTerm),
+      );
     }
 
     dbQuery.orderBy([(p) => drift.OrderingTerm(expression: p.id)]);
@@ -77,13 +75,19 @@ class CatalogRepositoryImpl implements CatalogRepository {
     );
 
     // Write to drift
-    await db.into(db.products).insert(
+    await db
+        .into(db.products)
+        .insert(
           ProductsCompanion(
             id: drift.Value(id),
             name: drift.Value(name),
-            barcode: barcode != null ? drift.Value(barcode) : const drift.Value.absent(),
+            barcode: barcode != null
+                ? drift.Value(barcode)
+                : const drift.Value.absent(),
             unitPrice: drift.Value(unitPrice),
-            currentStock: currentStock != null ? drift.Value(currentStock) : const drift.Value.absent(),
+            currentStock: currentStock != null
+                ? drift.Value(currentStock)
+                : const drift.Value.absent(),
             dirty: const drift.Value(true), // Mark for sync
             updatedAt: drift.Value(now),
           ),
@@ -113,8 +117,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
     int? currentStock,
   }) async {
     // Fetch current product
-    final current = await (db.select(db.products)..where((p) => p.id.equals(id)))
-        .getSingleOrNull();
+    final current = await (db.select(
+      db.products,
+    )..where((p) => p.id.equals(id))).getSingleOrNull();
     if (current == null) {
       throw Exception('Product not found: $id');
     }
@@ -126,21 +131,20 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final updatedStock = currentStock ?? current.currentStock;
 
     // Update drift
-    await (db.update(db.products)..where((p) => p.id.equals(id)))
-        .write(
-          ProductsCompanion(
-            name: drift.Value(updatedName),
-            barcode: updatedBarcode != null
-                ? drift.Value(updatedBarcode)
-                : const drift.Value.absent(),
-            unitPrice: drift.Value(updatedPrice),
-            currentStock: updatedStock != null
-                ? drift.Value(updatedStock)
-                : const drift.Value.absent(),
-            dirty: const drift.Value(true), // Mark for sync
-            updatedAt: drift.Value(now),
-          ),
-        );
+    await (db.update(db.products)..where((p) => p.id.equals(id))).write(
+      ProductsCompanion(
+        name: drift.Value(updatedName),
+        barcode: updatedBarcode != null
+            ? drift.Value(updatedBarcode)
+            : const drift.Value.absent(),
+        unitPrice: drift.Value(updatedPrice),
+        currentStock: updatedStock != null
+            ? drift.Value(updatedStock)
+            : const drift.Value.absent(),
+        dirty: const drift.Value(true), // Mark for sync
+        updatedAt: drift.Value(now),
+      ),
+    );
 
     // Enqueue for synchronization
     await syncQueue.enqueueProductChange(
@@ -170,13 +174,12 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final now = DateTime.now();
 
     // Soft delete in drift
-    await (db.update(db.products)..where((p) => p.id.equals(id)))
-        .write(
-          ProductsCompanion(
-            dirty: const drift.Value(true),
-            deletedAt: drift.Value(now),
-          ),
-        );
+    await (db.update(db.products)..where((p) => p.id.equals(id))).write(
+      ProductsCompanion(
+        dirty: const drift.Value(true),
+        deletedAt: drift.Value(now),
+      ),
+    );
 
     // Enqueue for synchronization
     await syncQueue.enqueueProductChange(
@@ -187,19 +190,21 @@ class CatalogRepositoryImpl implements CatalogRepository {
 
   @override
   Future<product_domain.Product?> getProduct(String id) async {
-    final record = await (db.select(db.products)
-          ..where((p) => p.id.equals(id))
-          ..where((p) => p.deletedAt.isNull()))
-        .getSingleOrNull();
+    final record =
+        await (db.select(db.products)
+              ..where((p) => p.id.equals(id))
+              ..where((p) => p.deletedAt.isNull()))
+            .getSingleOrNull();
     return record?.toDomain();
   }
 
   @override
   Future<product_domain.Product?> getByBarcode(String barcode) async {
-    final record = await (db.select(db.products)
-          ..where((p) => p.barcode.equals(barcode))
-          ..where((p) => p.deletedAt.isNull()))
-        .getSingleOrNull();
+    final record =
+        await (db.select(db.products)
+              ..where((p) => p.barcode.equals(barcode))
+              ..where((p) => p.deletedAt.isNull()))
+            .getSingleOrNull();
     return record?.toDomain();
   }
 }
