@@ -128,9 +128,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     try {
       final authNotifier = ref.read(authProvider.notifier);
       await authNotifier.register(
-        _emailController.text,
+        _emailController.text.trim(),
         _passwordController.text,
-        _phoneController.text,
+        _phoneController.text.trim(),
       );
       // Router redirect automatically handles navigation based on new auth state
       // (AuthStatePinRequired → /pin-setup, etc.)

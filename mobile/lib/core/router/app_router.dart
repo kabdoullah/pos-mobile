@@ -102,17 +102,14 @@ GoRouter appRouter(Ref ref) {
         '[Router.redirect] Current path: ${state.fullPath}, authState: ${authState.runtimeType}',
       );
 
-      // Public routes: no redirect needed.
+      // Public routes (accessible while unauthenticated).
       final publicRoutes = {Routes.splash, Routes.register, Routes.emailLogin};
-      if (publicRoutes.contains(state.fullPath)) {
-        logger.i('[Router.redirect] Public route, no redirect');
-        return null;
-      }
 
       // Redirect based on auth state.
       final targetRoute = switch (authState) {
-        // Unauthenticated: redirect to email login.
-        AuthStateUnauthenticated() => Routes.emailLogin,
+        // Unauthenticated: allow public routes, redirect others to email login.
+        AuthStateUnauthenticated() =>
+          publicRoutes.contains(state.fullPath) ? null : Routes.emailLogin,
 
         // PIN setup required (first login, PIN not yet created).
         AuthStatePinSetupRequired() => Routes.pinSetup,
