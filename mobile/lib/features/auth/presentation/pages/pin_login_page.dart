@@ -26,8 +26,6 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
   late TextEditingController _pinController;
 
   String? _error;
-  final bool _isLocked = false;
-  late DateTime _lockoutEnd;
 
   @override
   void initState() {
@@ -42,14 +40,6 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
   }
 
   Future<void> _verifyPin() async {
-    if (_isLocked) {
-      final remaining = _lockoutEnd.difference(DateTime.now()).inSeconds;
-      setState(() {
-        _error = 'Essai impossible. Réessayez dans $remaining secondes.';
-      });
-      return;
-    }
-
     final pin = _pinController.text;
     if (pin.length != 4) {
       setState(() {
@@ -61,8 +51,11 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
     try {
       final authNotifier = ref.read(authProvider.notifier);
       await authNotifier.verifyPin(pin);
-      // Router redirect automatically handles navigation based on new auth state
-      // (AuthStateAuthenticated → /home, etc.)
+
+      if (mounted) {
+        // ignore: use_build_context_synchronously
+        context.go(Routes.home);
+      }
     } catch (e) {
       setState(() {
         _error = 'Erreur: ${e.toString()}';

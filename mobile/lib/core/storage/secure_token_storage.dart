@@ -17,6 +17,9 @@ abstract class _TokenStorageKeys {
 
   /// Store ID extracted from JWT payload.
   static const String storeId = 'store_id';
+
+  /// User email saved at login time.
+  static const String email = 'email';
 }
 
 /// Concrete implementation of TokenStorage using flutter_secure_storage.
@@ -63,6 +66,7 @@ class SecureTokenStorage implements TokenStorage {
     _storage.delete(key: _TokenStorageKeys.refreshToken),
     _storage.delete(key: _TokenStorageKeys.userId),
     _storage.delete(key: _TokenStorageKeys.storeId),
+    _storage.delete(key: _TokenStorageKeys.email),
   ]);
 
   /// Retrieves the stored user ID.
@@ -70,6 +74,13 @@ class SecureTokenStorage implements TokenStorage {
 
   /// Retrieves the stored store ID.
   Future<String?> getStoreId() => _storage.read(key: _TokenStorageKeys.storeId);
+
+  /// Saves the user email (typically called after successful login/registration).
+  Future<void> saveEmail(String email) =>
+      _storage.write(key: _TokenStorageKeys.email, value: email);
+
+  /// Retrieves the stored user email.
+  Future<String?> getEmail() => _storage.read(key: _TokenStorageKeys.email);
 
   /// Extracts user_id (sub) and store_id from a JWT access token.
   /// Does NOT verify the signature (server responsibility).

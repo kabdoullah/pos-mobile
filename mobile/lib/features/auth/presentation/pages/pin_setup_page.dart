@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 
 import '../../../../core/responsive/responsive.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -114,8 +116,19 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
       try {
         final authNotifier = ref.read(authProvider.notifier);
         await authNotifier.setupPin(pin);
-        // Router redirect automatically handles navigation based on new auth state
-        // (AuthStateAuthenticated → /home, etc.)
+
+        // Navigate based on whether user has a store
+        if (mounted) {
+          final authState = ref.read(authProvider);
+          final nextRoute = authState is AuthStateAuthenticated
+              ? authState.user.storeId != null
+                    ? Routes.home
+                    : Routes.storeSetup
+              : Routes.emailLogin;
+
+          // ignore: use_build_context_synchronously
+          context.go(nextRoute);
+        }
       } catch (e) {
         if (mounted) {
           setState(() {
@@ -230,7 +243,7 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                 const Text('Confirmer le PIN', style: AppTypography.titleLarge),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Retapez ${_pinController.text} pour confirmer',
+                  'Confirmez votre PIN',
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),

@@ -101,16 +101,9 @@ GoRouter appRouter(Ref ref) {
       logger.i(
         '[Router.redirect] Current path: ${state.fullPath}, authState: ${authState.runtimeType}',
       );
-      // Routes that don't require redirect logic.
-      final publicRoutes = {Routes.splash, Routes.register, Routes.emailLogin};
-
-      if (publicRoutes.contains(state.fullPath)) {
-        logger.i('[Router.redirect] Public route, no redirect');
-        return null;
-      }
 
       // Redirect based on auth state.
-      final redirect = switch (authState) {
+      final targetRoute = switch (authState) {
         // Unauthenticated: redirect to email login.
         AuthStateUnauthenticated() => Routes.emailLogin,
 
@@ -126,7 +119,13 @@ GoRouter appRouter(Ref ref) {
         // Loading or error: stay on current route.
         _ => null,
       };
-      logger.i('[Router.redirect] Redirect result: $redirect');
+
+      // Only redirect if target differs from current path.
+      final shouldRedirect =
+          targetRoute != null && targetRoute != state.fullPath;
+      final redirect = shouldRedirect ? targetRoute : null;
+
+      logger.i('[Router.redirect] Target: $targetRoute, redirect: $redirect');
       return redirect;
     },
     routes: [

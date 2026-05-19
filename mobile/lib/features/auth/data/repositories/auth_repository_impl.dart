@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/storage/pin_storage.dart';
@@ -54,6 +53,9 @@ class AuthRepositoryImpl implements AuthRepository {
         refreshToken: tokenRes.refreshToken,
       );
 
+      // Store email for later retrieval.
+      await tokenStorage.saveEmail(email);
+
       // Return user constructed from JWT claims.
       final userId = await tokenStorage.getUserId();
       return User(
@@ -79,9 +81,15 @@ class AuthRepositoryImpl implements AuthRepository {
         refreshToken: tokenRes.refreshToken,
       );
 
+      // Store email for later retrieval.
+      await tokenStorage.saveEmail(email);
+
       final userId = await tokenStorage.getUserId();
+      if (userId == null) {
+        throw Exception('Login failed: user ID missing from token');
+      }
       return User(
-        id: userId ?? const Uuid().v4(),
+        id: userId,
         email: email,
         phoneNumber: '',
         storeId: await tokenStorage.getStoreId(),
@@ -131,11 +139,9 @@ class AuthRepositoryImpl implements AuthRepository {
     final userId = await tokenStorage.getUserId();
     if (userId == null) return null;
 
-    // Note: in a full implementation, we'd fetch additional user details
-    // from GET /api/v1/auth/me. For now, return user with basic info.
     return User(
       id: userId,
-      email: '', // Not available in token; would need API call.
+      email: await tokenStorage.getEmail() ?? '',
       phoneNumber: '',
       storeId: await tokenStorage.getStoreId(),
     );
