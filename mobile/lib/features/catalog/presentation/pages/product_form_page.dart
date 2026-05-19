@@ -254,7 +254,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
                               AppSpacing.radiusMd,
                             ),
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.qr_code_2,
                             color: AppColors.primary,
                             size: 28,

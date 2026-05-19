@@ -157,7 +157,7 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
                     onToggleTorch: _toggleTorch,
                     onOpenSettings: () => context.push(Routes.settings),
                     onBack: () => context.pop(),
-                    onOpenAppSettings: () => openAppSettings(),
+                    onOpenAppSettings: openAppSettings,
                   ),
                 ),
                 // Cart panel overlapping the scanner

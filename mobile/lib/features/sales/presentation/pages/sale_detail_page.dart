@@ -46,7 +46,7 @@ class SaleDetailPage extends ConsumerWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Reçu N°', style: AppTypography.captionText),
+                          const Text('Reçu N°', style: AppTypography.captionText),
                           const SizedBox(height: AppSpacing.xs),
                           Text(receiptNumber, style: AppTypography.titleLarge),
                         ],
@@ -54,7 +54,7 @@ class SaleDetailPage extends ConsumerWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
+                          const Text(
                             'Mode de paiement',
                             style: AppTypography.captionText,
                           ),
@@ -78,7 +78,7 @@ class SaleDetailPage extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Montant total', style: AppTypography.captionText),
+                      const Text('Montant total', style: AppTypography.captionText),
                       const SizedBox(height: AppSpacing.xs),
                       AmountDisplay(
                         amount: sale.totalAmount,
@@ -99,10 +99,10 @@ class SaleDetailPage extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 ),
                 padding: const EdgeInsets.all(AppSpacing.md),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Icon(Icons.info_outline, color: AppColors.warning),
-                    const SizedBox(width: AppSpacing.md),
+                    Icon(Icons.info_outline, color: AppColors.warning),
+                    SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Text(
                         'Le détail des articles n\'est disponible que pendant la session de vente.',

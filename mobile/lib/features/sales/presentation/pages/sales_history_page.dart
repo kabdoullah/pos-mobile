@@ -74,7 +74,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
               ),
               data: (sales) {
                 if (sales.isEmpty) {
-                  return EmptyState(
+                  return const EmptyState(
                     icon: Icons.receipt_long_outlined,
                     title: 'Aucune vente',
                     message: 'Pas de vente enregistrée ce jour.',
@@ -89,7 +89,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                     ),
                   ),
                   itemCount: sales.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final sale = sales[index];
@@ -125,7 +125,7 @@ class _SaleCard extends ConsumerWidget {
     return AppCard(
       onTap: () => context.push(Routes.saleDetail, extra: sale),
       child: ListTile(
-        leading: Icon(Icons.receipt_outlined, color: AppColors.primary),
+        leading: const Icon(Icons.receipt_outlined, color: AppColors.primary),
         title: Text(receiptLabel),
         subtitle: Text('$timeLabel • $paymentLabel'),
         trailing: Column(

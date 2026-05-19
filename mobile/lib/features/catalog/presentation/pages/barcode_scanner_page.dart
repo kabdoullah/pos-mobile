@@ -68,19 +68,19 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.no_photography_outlined,
                   size: 64,
                   color: AppColors.error,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                Text(
+                const Text(
                   'Accès à la caméra refusé',
                   style: AppTypography.titleMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text(
+                const Text(
                   'Pour scanner des codes-barres, autorisez l\'accès à la caméra dans les paramètres.',
                   style: AppTypography.bodyMedium,
                   textAlign: TextAlign.center,
@@ -149,14 +149,14 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
 }
 
 class PrimaryButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
 
   const PrimaryButton({
     super.key,
     required this.label,
     required this.onPressed,
   });
+  final String label;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {

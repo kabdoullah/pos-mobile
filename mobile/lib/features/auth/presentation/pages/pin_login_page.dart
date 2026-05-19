@@ -26,7 +26,7 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
   late TextEditingController _pinController;
 
   String? _error;
-  bool _isLocked = false;
+  final bool _isLocked = false;
   late DateTime _lockoutEnd;
 
   @override

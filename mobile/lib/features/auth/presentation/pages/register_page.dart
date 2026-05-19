@@ -217,7 +217,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Vous avez un compte ? ', style: AppTypography.bodyMedium),
+                const Text('Vous avez un compte ? ', style: AppTypography.bodyMedium),
                 GestureDetector(
                   onTap: () => context.go(Routes.emailLogin),
                   child: Text(

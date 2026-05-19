@@ -81,7 +81,7 @@ void main() {
       var refreshCallCount = 0;
 
       when(
-        () => tokenStorage.getRefreshToken(),
+        tokenStorage.getRefreshToken,
       ).thenAnswer((_) async => 'expired_refresh_token');
 
       Future<({String accessToken, String refreshToken})> refreshCall(
@@ -134,7 +134,7 @@ void main() {
       final refreshCompleter = Completer<void>();
 
       when(
-        () => tokenStorage.getRefreshToken(),
+        tokenStorage.getRefreshToken,
       ).thenAnswer((_) async => 'refresh_token');
       when(
         () => tokenStorage.saveTokens(
@@ -219,7 +219,7 @@ void main() {
         final tokenStorage = MockTokenStorage();
 
         when(
-          () => tokenStorage.getRefreshToken(),
+          tokenStorage.getRefreshToken,
         ).thenAnswer((_) async => null);
 
         var onAuthExpiredCalled = false;

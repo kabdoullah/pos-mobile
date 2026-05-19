@@ -17,7 +17,7 @@ void main() {
       tokenStorage = SecureTokenStorage(secureStorage: mockStorage);
     });
 
-    String _createJwt({String? userId, String? storeId}) {
+    String createJwt({String? userId, String? storeId}) {
       const header = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
       final payload = {
         'sub': userId ?? '550e8400-e29b-41d4-a716-446655440000',
@@ -27,7 +27,7 @@ void main() {
                 .millisecondsSinceEpoch ~/
             1000,
         'type': 'access',
-        if (storeId != null) 'store_id': storeId,
+        'store_id': ?storeId,
       };
       final payloadEncoded = base64Url
           .encode(utf8.encode(jsonEncode(payload)))
@@ -63,7 +63,7 @@ void main() {
     test('saveTokens extracts and stores user_id from JWT', () async {
       const userId = '550e8400-e29b-41d4-a716-446655440000';
       const refreshToken = 'refresh_token_test';
-      final accessToken = _createJwt(userId: userId);
+      final accessToken = createJwt(userId: userId);
 
       when(
         () => mockStorage.write(
@@ -83,7 +83,7 @@ void main() {
     test('saveTokens extracts and stores store_id from JWT', () async {
       const storeId = '660e8400-e29b-41d4-a716-446655440000';
       const refreshToken = 'refresh_token_test';
-      final accessToken = _createJwt(storeId: storeId);
+      final accessToken = createJwt(storeId: storeId);
 
       when(
         () => mockStorage.write(

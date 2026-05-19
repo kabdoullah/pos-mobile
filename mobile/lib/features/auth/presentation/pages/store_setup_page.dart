@@ -170,16 +170,16 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
               prefixIcon: Icons.card_giftcard_outlined,
             ),
             const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.only(left: AppSpacing.md),
+            const Padding(
+              padding: EdgeInsets.only(left: AppSpacing.md),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.help_outline,
                     size: 16,
                     color: AppColors.textSecondary,
                   ),
-                  const SizedBox(width: AppSpacing.xs),
+                  SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
                       'Numéro attribué par les autorités fiscales pour la facturation',
@@ -199,14 +199,14 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
+                  const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Assujetti à la TVA',
                         style: AppTypography.labelMedium,
                       ),
-                      const SizedBox(height: AppSpacing.xs),
+                      SizedBox(height: AppSpacing.xs),
                       Text(
                         'Votre boutique facture avec TVA',
                         style: AppTypography.captionText,
