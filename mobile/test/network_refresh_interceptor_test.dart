@@ -218,9 +218,7 @@ void main() {
       () async {
         final tokenStorage = MockTokenStorage();
 
-        when(
-          tokenStorage.getRefreshToken,
-        ).thenAnswer((_) async => null);
+        when(tokenStorage.getRefreshToken).thenAnswer((_) async => null);
 
         var onAuthExpiredCalled = false;
 

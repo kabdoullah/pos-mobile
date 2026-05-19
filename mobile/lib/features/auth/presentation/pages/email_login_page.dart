@@ -101,6 +101,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState is AuthStateLoading;
+    final errorMessage = authState is AuthStateError ? authState.message : null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -119,6 +120,23 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
               style: AppTypography.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.lg),
+            if (errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  border: Border.all(color: AppColors.error),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  errorMessage,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
             AppTextField(
               label: 'Email',
               hint: 'vous@example.com',

@@ -46,7 +46,10 @@ class SaleDetailPage extends ConsumerWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Reçu N°', style: AppTypography.captionText),
+                          const Text(
+                            'Reçu N°',
+                            style: AppTypography.captionText,
+                          ),
                           const SizedBox(height: AppSpacing.xs),
                           Text(receiptNumber, style: AppTypography.titleLarge),
                         ],
@@ -78,7 +81,10 @@ class SaleDetailPage extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Montant total', style: AppTypography.captionText),
+                      const Text(
+                        'Montant total',
+                        style: AppTypography.captionText,
+                      ),
                       const SizedBox(height: AppSpacing.xs),
                       AmountDisplay(
                         amount: sale.totalAmount,

@@ -6,7 +6,6 @@ part 'cart_item.freezed.dart';
 /// CartItem entity — represents a product line in a shopping cart.
 @freezed
 sealed class CartItem with _$CartItem {
-
   const CartItem._();
   const factory CartItem({
     required String productId,

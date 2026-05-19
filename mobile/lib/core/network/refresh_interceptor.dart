@@ -37,12 +37,26 @@ class RefreshInterceptor extends Interceptor {
   /// Completer for waiters of the current refresh attempt.
   Completer<bool>? _refreshCompleter;
 
+  static const _publicPaths = {
+    '/api/v1/auth/register',
+    '/api/v1/auth/login',
+    '/api/v1/auth/forgot-password',
+    '/api/v1/auth/reset-password',
+    '/health',
+  };
+
   @override
   Future<void> onError(
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
     if (err.response?.statusCode != 401) {
+      handler.next(err);
+      return;
+    }
+
+    // Don't refresh tokens for public endpoints.
+    if (_isPublicPath(err.requestOptions.path)) {
       handler.next(err);
       return;
     }
@@ -114,4 +128,6 @@ class RefreshInterceptor extends Interceptor {
       _refreshCompleter = null;
     }
   }
+
+  bool _isPublicPath(String path) => _publicPaths.contains(path);
 }

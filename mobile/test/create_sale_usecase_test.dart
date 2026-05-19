@@ -189,14 +189,16 @@ void main() {
             paymentMethod: PaymentMethod.mixed,
           );
 
-          when(() => mockRepository.createSale(
-            items: any(named: 'items'),
-            totalAmount: any(named: 'totalAmount'),
-            vatAmount: any(named: 'vatAmount'),
-            paymentMethod: any(named: 'paymentMethod'),
-            cashAmount: any(named: 'cashAmount'),
-            mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-          )).thenAnswer((_) async => mockSale);
+          when(
+            () => mockRepository.createSale(
+              items: any(named: 'items'),
+              totalAmount: any(named: 'totalAmount'),
+              vatAmount: any(named: 'vatAmount'),
+              paymentMethod: any(named: 'paymentMethod'),
+              cashAmount: any(named: 'cashAmount'),
+              mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
+            ),
+          ).thenAnswer((_) async => mockSale);
 
           final result = await useCase(
             items: items,
@@ -208,14 +210,16 @@ void main() {
           );
 
           expect(result.id, 'sale-123');
-          verify(() => mockRepository.createSale(
-            items: any(named: 'items'),
-            totalAmount: Decimal.parse('100'),
-            vatAmount: Decimal.parse('0'),
-            paymentMethod: PaymentMethod.mixed,
-            cashAmount: Decimal.parse('60'),
-            mobileMoneyAmount: Decimal.parse('40'),
-          )).called(1);
+          verify(
+            () => mockRepository.createSale(
+              items: any(named: 'items'),
+              totalAmount: Decimal.parse('100'),
+              vatAmount: Decimal.parse('0'),
+              paymentMethod: PaymentMethod.mixed,
+              cashAmount: Decimal.parse('60'),
+              mobileMoneyAmount: Decimal.parse('40'),
+            ),
+          ).called(1);
         },
       );
 
@@ -242,50 +246,53 @@ void main() {
             ),
           );
 
-          verifyNever(() => mockRepository.createSale(
-            items: any(named: 'items'),
-            totalAmount: any(named: 'totalAmount'),
-            vatAmount: any(named: 'vatAmount'),
-            paymentMethod: any(named: 'paymentMethod'),
-          ));
+          verifyNever(
+            () => mockRepository.createSale(
+              items: any(named: 'items'),
+              totalAmount: any(named: 'totalAmount'),
+              vatAmount: any(named: 'vatAmount'),
+              paymentMethod: any(named: 'paymentMethod'),
+            ),
+          );
         },
       );
 
-      test(
-        'treats null cashAmount as Decimal.zero in mixed payment',
-        () async {
-          final items = [makeCartItem(unitPrice: Decimal.parse('100'))];
-          final mockSale = makeSale(totalAmount: Decimal.parse('100'));
+      test('treats null cashAmount as Decimal.zero in mixed payment', () async {
+        final items = [makeCartItem(unitPrice: Decimal.parse('100'))];
+        final mockSale = makeSale(totalAmount: Decimal.parse('100'));
 
-          when(() => mockRepository.createSale(
+        when(
+          () => mockRepository.createSale(
             items: any(named: 'items'),
             totalAmount: any(named: 'totalAmount'),
             vatAmount: any(named: 'vatAmount'),
             paymentMethod: any(named: 'paymentMethod'),
             cashAmount: any(named: 'cashAmount'),
             mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-          )).thenAnswer((_) async => mockSale);
+          ),
+        ).thenAnswer((_) async => mockSale);
 
-          final result = await useCase(
-            items: items,
-            totalAmount: Decimal.parse('100'),
-            vatAmount: Decimal.parse('0'),
-            paymentMethod: PaymentMethod.mixed,
-            cashAmount: null,
-            mobileMoneyAmount: Decimal.parse('100'),
-          );
+        final result = await useCase(
+          items: items,
+          totalAmount: Decimal.parse('100'),
+          vatAmount: Decimal.parse('0'),
+          paymentMethod: PaymentMethod.mixed,
+          cashAmount: null,
+          mobileMoneyAmount: Decimal.parse('100'),
+        );
 
-          expect(result.id, 'sale-123');
-          verify(() => mockRepository.createSale(
+        expect(result.id, 'sale-123');
+        verify(
+          () => mockRepository.createSale(
             items: any(named: 'items'),
             totalAmount: Decimal.parse('100'),
             vatAmount: Decimal.parse('0'),
             paymentMethod: PaymentMethod.mixed,
             cashAmount: null,
             mobileMoneyAmount: Decimal.parse('100'),
-          )).called(1);
-        },
-      );
+          ),
+        ).called(1);
+      });
 
       test(
         'throws when both cashAmount and mobileMoneyAmount are null with positive total',
@@ -310,12 +317,14 @@ void main() {
             ),
           );
 
-          verifyNever(() => mockRepository.createSale(
-            items: any(named: 'items'),
-            totalAmount: any(named: 'totalAmount'),
-            vatAmount: any(named: 'vatAmount'),
-            paymentMethod: any(named: 'paymentMethod'),
-          ));
+          verifyNever(
+            () => mockRepository.createSale(
+              items: any(named: 'items'),
+              totalAmount: any(named: 'totalAmount'),
+              vatAmount: any(named: 'vatAmount'),
+              paymentMethod: any(named: 'paymentMethod'),
+            ),
+          );
         },
       );
     });
@@ -337,14 +346,16 @@ void main() {
           paymentMethod: PaymentMethod.cash,
         );
 
-        when(() => mockRepository.createSale(
-          items: any(named: 'items'),
-          totalAmount: any(named: 'totalAmount'),
-          vatAmount: any(named: 'vatAmount'),
-          paymentMethod: any(named: 'paymentMethod'),
-          cashAmount: any(named: 'cashAmount'),
-          mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-        )).thenAnswer((_) async => mockSale);
+        when(
+          () => mockRepository.createSale(
+            items: any(named: 'items'),
+            totalAmount: any(named: 'totalAmount'),
+            vatAmount: any(named: 'vatAmount'),
+            paymentMethod: any(named: 'paymentMethod'),
+            cashAmount: any(named: 'cashAmount'),
+            mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
+          ),
+        ).thenAnswer((_) async => mockSale);
 
         final result = await useCase(
           items: items,
@@ -355,14 +366,16 @@ void main() {
 
         expect(result.id, 'sale-123');
         expect(result.totalAmount, expectedTotal);
-        verify(() => mockRepository.createSale(
-          items: items,
-          totalAmount: expectedTotal,
-          vatAmount: Decimal.parse('0'),
-          paymentMethod: PaymentMethod.cash,
-          cashAmount: null,
-          mobileMoneyAmount: null,
-        )).called(1);
+        verify(
+          () => mockRepository.createSale(
+            items: items,
+            totalAmount: expectedTotal,
+            vatAmount: Decimal.parse('0'),
+            paymentMethod: PaymentMethod.cash,
+            cashAmount: null,
+            mobileMoneyAmount: null,
+          ),
+        ).called(1);
       });
 
       test('creates sale with mobile money payment successfully', () async {
@@ -372,14 +385,16 @@ void main() {
           paymentMethod: PaymentMethod.orangeMoney,
         );
 
-        when(() => mockRepository.createSale(
-          items: any(named: 'items'),
-          totalAmount: any(named: 'totalAmount'),
-          vatAmount: any(named: 'vatAmount'),
-          paymentMethod: any(named: 'paymentMethod'),
-          cashAmount: any(named: 'cashAmount'),
-          mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-        )).thenAnswer((_) async => mockSale);
+        when(
+          () => mockRepository.createSale(
+            items: any(named: 'items'),
+            totalAmount: any(named: 'totalAmount'),
+            vatAmount: any(named: 'vatAmount'),
+            paymentMethod: any(named: 'paymentMethod'),
+            cashAmount: any(named: 'cashAmount'),
+            mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
+          ),
+        ).thenAnswer((_) async => mockSale);
 
         final result = await useCase(
           items: items,
@@ -389,14 +404,16 @@ void main() {
         );
 
         expect(result.paymentMethod, PaymentMethod.orangeMoney);
-        verify(() => mockRepository.createSale(
-          items: items,
-          totalAmount: Decimal.parse('1000'),
-          vatAmount: Decimal.parse('0'),
-          paymentMethod: PaymentMethod.orangeMoney,
-          cashAmount: null,
-          mobileMoneyAmount: null,
-        )).called(1);
+        verify(
+          () => mockRepository.createSale(
+            items: items,
+            totalAmount: Decimal.parse('1000'),
+            vatAmount: Decimal.parse('0'),
+            paymentMethod: PaymentMethod.orangeMoney,
+            cashAmount: null,
+            mobileMoneyAmount: null,
+          ),
+        ).called(1);
       });
     });
 
@@ -413,14 +430,16 @@ void main() {
         final expectedTotal = Decimal.parse('1235.55');
         final mockSale = makeSale(totalAmount: expectedTotal);
 
-        when(() => mockRepository.createSale(
-          items: any(named: 'items'),
-          totalAmount: any(named: 'totalAmount'),
-          vatAmount: any(named: 'vatAmount'),
-          paymentMethod: any(named: 'paymentMethod'),
-          cashAmount: any(named: 'cashAmount'),
-          mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-        )).thenAnswer((_) async => mockSale);
+        when(
+          () => mockRepository.createSale(
+            items: any(named: 'items'),
+            totalAmount: any(named: 'totalAmount'),
+            vatAmount: any(named: 'vatAmount'),
+            paymentMethod: any(named: 'paymentMethod'),
+            cashAmount: any(named: 'cashAmount'),
+            mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
+          ),
+        ).thenAnswer((_) async => mockSale);
 
         final result = await useCase(
           items: items,
@@ -430,14 +449,16 @@ void main() {
         );
 
         expect(result.totalAmount, expectedTotal);
-        verify(() => mockRepository.createSale(
-          items: items,
-          totalAmount: expectedTotal,
-          vatAmount: Decimal.parse('0'),
-          paymentMethod: PaymentMethod.cash,
-          cashAmount: null,
-          mobileMoneyAmount: null,
-        )).called(1);
+        verify(
+          () => mockRepository.createSale(
+            items: items,
+            totalAmount: expectedTotal,
+            vatAmount: Decimal.parse('0'),
+            paymentMethod: PaymentMethod.cash,
+            cashAmount: null,
+            mobileMoneyAmount: null,
+          ),
+        ).called(1);
       });
 
       test('accurately sums cart with multiple decimal items', () async {
@@ -453,14 +474,16 @@ void main() {
         final expectedTotal = Decimal.parse('402');
         final mockSale = makeSale(totalAmount: expectedTotal);
 
-        when(() => mockRepository.createSale(
-          items: any(named: 'items'),
-          totalAmount: any(named: 'totalAmount'),
-          vatAmount: any(named: 'vatAmount'),
-          paymentMethod: any(named: 'paymentMethod'),
-          cashAmount: any(named: 'cashAmount'),
-          mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-        )).thenAnswer((_) async => mockSale);
+        when(
+          () => mockRepository.createSale(
+            items: any(named: 'items'),
+            totalAmount: any(named: 'totalAmount'),
+            vatAmount: any(named: 'vatAmount'),
+            paymentMethod: any(named: 'paymentMethod'),
+            cashAmount: any(named: 'cashAmount'),
+            mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
+          ),
+        ).thenAnswer((_) async => mockSale);
 
         final result = await useCase(
           items: items,
@@ -478,14 +501,16 @@ void main() {
         final items = [makeCartItem()];
         final repositoryError = Exception('Database connection failed');
 
-        when(() => mockRepository.createSale(
-          items: any(named: 'items'),
-          totalAmount: any(named: 'totalAmount'),
-          vatAmount: any(named: 'vatAmount'),
-          paymentMethod: any(named: 'paymentMethod'),
-          cashAmount: any(named: 'cashAmount'),
-          mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-        )).thenThrow(repositoryError);
+        when(
+          () => mockRepository.createSale(
+            items: any(named: 'items'),
+            totalAmount: any(named: 'totalAmount'),
+            vatAmount: any(named: 'vatAmount'),
+            paymentMethod: any(named: 'paymentMethod'),
+            cashAmount: any(named: 'cashAmount'),
+            mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
+          ),
+        ).thenThrow(repositoryError);
 
         expect(
           () => useCase(
@@ -502,9 +527,23 @@ void main() {
     group('Integration: full workflow', () {
       test('complex multi-item sale with VAT and mixed payment', () async {
         final items = [
-          makeCartItem(productName: 'Riz 25kg', unitPrice: Decimal.parse('15000'), quantity: 2),
-          makeCartItem(productId: 'prod-2', productName: 'Huile 5L', unitPrice: Decimal.parse('8500'), quantity: 1),
-          makeCartItem(productId: 'prod-3', productName: 'Sucre 1kg', unitPrice: Decimal.parse('2500'), quantity: 3),
+          makeCartItem(
+            productName: 'Riz 25kg',
+            unitPrice: Decimal.parse('15000'),
+            quantity: 2,
+          ),
+          makeCartItem(
+            productId: 'prod-2',
+            productName: 'Huile 5L',
+            unitPrice: Decimal.parse('8500'),
+            quantity: 1,
+          ),
+          makeCartItem(
+            productId: 'prod-3',
+            productName: 'Sucre 1kg',
+            unitPrice: Decimal.parse('2500'),
+            quantity: 3,
+          ),
         ];
         // Total: 15000*2 + 8500*1 + 2500*3 = 30000 + 8500 + 7500 = 46000
         final expectedTotal = Decimal.parse('46000');
@@ -516,14 +555,16 @@ void main() {
           paymentMethod: PaymentMethod.mixed,
         );
 
-        when(() => mockRepository.createSale(
-          items: any(named: 'items'),
-          totalAmount: any(named: 'totalAmount'),
-          vatAmount: any(named: 'vatAmount'),
-          paymentMethod: any(named: 'paymentMethod'),
-          cashAmount: any(named: 'cashAmount'),
-          mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
-        )).thenAnswer((_) async => mockSale);
+        when(
+          () => mockRepository.createSale(
+            items: any(named: 'items'),
+            totalAmount: any(named: 'totalAmount'),
+            vatAmount: any(named: 'vatAmount'),
+            paymentMethod: any(named: 'paymentMethod'),
+            cashAmount: any(named: 'cashAmount'),
+            mobileMoneyAmount: any(named: 'mobileMoneyAmount'),
+          ),
+        ).thenAnswer((_) async => mockSale);
 
         final result = await useCase(
           items: items,
@@ -537,14 +578,16 @@ void main() {
         expect(result.totalAmount, expectedTotal);
         expect(result.vatAmount, expectedVat);
         expect(result.paymentMethod, PaymentMethod.mixed);
-        verify(() => mockRepository.createSale(
-          items: items,
-          totalAmount: expectedTotal,
-          vatAmount: expectedVat,
-          paymentMethod: PaymentMethod.mixed,
-          cashAmount: Decimal.parse('20000'),
-          mobileMoneyAmount: Decimal.parse('26000'),
-        )).called(1);
+        verify(
+          () => mockRepository.createSale(
+            items: items,
+            totalAmount: expectedTotal,
+            vatAmount: expectedVat,
+            paymentMethod: PaymentMethod.mixed,
+            cashAmount: Decimal.parse('20000'),
+            mobileMoneyAmount: Decimal.parse('26000'),
+          ),
+        ).called(1);
       });
     });
   });

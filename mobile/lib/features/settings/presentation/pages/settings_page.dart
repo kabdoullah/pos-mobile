@@ -177,7 +177,10 @@ class SettingsPage extends ConsumerWidget {
               title: 'COMPTE',
               children: [
                 ListTile(
-                  leading: const Icon(Icons.logout_outlined, color: AppColors.error),
+                  leading: const Icon(
+                    Icons.logout_outlined,
+                    color: AppColors.error,
+                  ),
                   title: Text(
                     'Se déconnecter',
                     style: AppTypography.labelLarge.copyWith(

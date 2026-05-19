@@ -149,7 +149,6 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
 }
 
 class PrimaryButton extends StatelessWidget {
-
   const PrimaryButton({
     super.key,
     required this.label,

@@ -153,6 +153,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final isLoading = authState is AuthStateLoading;
+    final errorMessage = authState is AuthStateError ? authState.message : null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -173,6 +174,23 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
+            if (errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  border: Border.all(color: AppColors.error),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  errorMessage,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
             AppTextField(
               label: 'Email',
               hint: 'vous@example.com',
@@ -217,7 +235,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Vous avez un compte ? ', style: AppTypography.bodyMedium),
+                const Text(
+                  'Vous avez un compte ? ',
+                  style: AppTypography.bodyMedium,
+                ),
                 GestureDetector(
                   onTap: () => context.go(Routes.emailLogin),
                   child: Text(
