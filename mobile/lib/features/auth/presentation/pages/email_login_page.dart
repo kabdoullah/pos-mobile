@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -91,10 +92,11 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
     } catch (e) {
       _logger.e('[EmailLogin] Login failed with error: $e');
       if (mounted) {
+        final message = e is NetworkException ? e.message : e.toString();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Erreur: ${e.toString()}',
+              message,
               style: const TextStyle(color: AppColors.textOnPrimary),
             ),
             backgroundColor: AppColors.error,

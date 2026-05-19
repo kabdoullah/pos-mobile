@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -109,10 +110,11 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
       }
     } catch (e) {
       if (mounted) {
+        final message = e is NetworkException ? e.message : e.toString();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Erreur: ${e.toString()}',
+              'Erreur: $message',
               style: const TextStyle(color: AppColors.textOnPrimary),
             ),
             backgroundColor: AppColors.error,

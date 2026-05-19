@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -132,7 +133,8 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
       } catch (e) {
         if (mounted) {
           setState(() {
-            _confirmPinError = 'Erreur: ${e.toString()}';
+            final message = e is NetworkException ? e.message : e.toString();
+            _confirmPinError = 'Erreur: $message';
           });
         }
       }
