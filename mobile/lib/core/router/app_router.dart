@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -23,6 +23,8 @@ import '../../features/sales/domain/entities/cart_item.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/printing/presentation/pages/bluetooth_setup_page.dart';
+
+part 'app_router.g.dart';
 
 /// Navigation routes for the app.
 abstract class Routes {
@@ -85,7 +87,8 @@ abstract class Routes {
 }
 
 /// Root router configuration.
-final appRouterProvider = Provider<GoRouter>((ref) {
+@Riverpod(keepAlive: true)
+GoRouter appRouter(Ref ref) {
   final authState = ref.watch(authProvider);
 
   return GoRouter(
@@ -203,4 +206,4 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-});
+}
