@@ -91,14 +91,13 @@ abstract class Routes {
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
   final logger = Logger();
-  final authState = ref.watch(authProvider);
-  logger.i(
-    '[Router] appRouter re-evaluating with authState: ${authState.runtimeType}',
-  );
+  logger.i('[Router] Creating router instance');
 
-  return GoRouter(
+  late GoRouter router;
+  router = GoRouter(
     initialLocation: Routes.splash,
     redirect: (BuildContext context, GoRouterState state) {
+      final authState = ref.read(authProvider);
       logger.i(
         '[Router.redirect] Current path: ${state.fullPath}, authState: ${authState.runtimeType}',
       );
@@ -217,4 +216,12 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
   );
+
+  // Listen to auth state changes and refresh router without recreating it.
+  ref.listen(authProvider, (_, _) {
+    logger.i('[Router] Auth state changed, calling router.refresh()');
+    router.refresh();
+  });
+
+  return router;
 }
