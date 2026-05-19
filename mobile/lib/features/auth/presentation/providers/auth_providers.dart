@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logger/logger.dart';
 
+import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/network_providers.dart';
 import '../../domain/entities/user.dart';
 import '../../../auth/providers/auth_di_providers.dart';
@@ -210,12 +211,16 @@ class Auth extends _$Auth {
 
   /// Converts exception to user-friendly error message.
   String _userFriendlyError(Object e) {
-    final str = e.toString();
-    if (str.contains('email')) return 'Email déjà utilisé';
-    if (str.contains('password')) return 'Email ou mot de passe incorrect';
-    if (str.contains('connection')) return 'Pas de connexion';
-    if (str.contains('timeout')) return 'Délai dépassé';
-    if (str.contains('verrouillé')) return str;
-    return str;
+    // Extract message from NetworkException (ApiException, ConflictException, etc.)
+    final message = e is NetworkException ? e.message : e.toString();
+
+    if (message.toLowerCase().contains('email')) return 'Email déjà utilisé';
+    if (message.toLowerCase().contains('password')) {
+      return 'Email ou mot de passe incorrect';
+    }
+    if (message.toLowerCase().contains('connection')) return 'Pas de connexion';
+    if (message.toLowerCase().contains('timeout')) return 'Délai dépassé';
+    if (message.toLowerCase().contains('verrouillé')) return message;
+    return message;
   }
 }
