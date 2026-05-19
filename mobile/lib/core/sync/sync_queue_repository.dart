@@ -70,42 +70,39 @@ class SyncQueueRepository {
 
   /// Mark a queue entry as syncing.
   Future<bool> markSyncing(int id) async {
-    return _db
-        .update(_db.syncQueue)
-        .replace(
+    final rowsAffected =
+        await (_db.update(_db.syncQueue)..where((t) => t.id.equals(id))).write(
           SyncQueueCompanion(
-            id: drift.Value(id),
             status: const drift.Value('syncing'),
             lastAttemptAt: drift.Value(DateTime.now()),
           ),
         );
+    return rowsAffected > 0;
   }
 
   /// Mark a queue entry as successfully synced.
   Future<bool> markSynced(int id) async {
-    return _db
-        .update(_db.syncQueue)
-        .replace(
+    final rowsAffected =
+        await (_db.update(_db.syncQueue)..where((t) => t.id.equals(id))).write(
           SyncQueueCompanion(
-            id: drift.Value(id),
             status: const drift.Value('synced'),
             lastAttemptAt: drift.Value(DateTime.now()),
           ),
         );
+    return rowsAffected > 0;
   }
 
   /// Mark a queue entry as failed with an error message.
   Future<bool> markFailed(int id, String error) async {
-    return _db
-        .update(_db.syncQueue)
-        .replace(
+    final rowsAffected =
+        await (_db.update(_db.syncQueue)..where((t) => t.id.equals(id))).write(
           SyncQueueCompanion(
-            id: drift.Value(id),
             status: const drift.Value('failed'),
             lastError: drift.Value(error),
             lastAttemptAt: drift.Value(DateTime.now()),
           ),
         );
+    return rowsAffected > 0;
   }
 
   /// Increment the retry count for an entry.
@@ -118,15 +115,14 @@ class SyncQueueRepository {
     final newRetryCount = entry.retryCount + 1;
     final newStatus = newRetryCount > _maxRetries ? 'failed' : 'pending';
 
-    return _db
-        .update(_db.syncQueue)
-        .replace(
+    final rowsAffected =
+        await (_db.update(_db.syncQueue)..where((t) => t.id.equals(id))).write(
           SyncQueueCompanion(
-            id: drift.Value(id),
             retryCount: drift.Value(newRetryCount),
             status: drift.Value(newStatus),
           ),
         );
+    return rowsAffected > 0;
   }
 
   /// Purge synced entries older than 7 days.
