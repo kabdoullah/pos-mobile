@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:logger/logger.dart';
 
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -89,20 +90,28 @@ abstract class Routes {
 /// Root router configuration.
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
+  final logger = Logger();
   final authState = ref.watch(authProvider);
+  logger.i(
+    '[Router] appRouter re-evaluating with authState: ${authState.runtimeType}',
+  );
 
   return GoRouter(
     initialLocation: Routes.splash,
     redirect: (BuildContext context, GoRouterState state) {
+      logger.i(
+        '[Router.redirect] Current path: ${state.fullPath}, authState: ${authState.runtimeType}',
+      );
       // Routes that don't require redirect logic.
       final publicRoutes = {Routes.splash, Routes.register, Routes.emailLogin};
 
       if (publicRoutes.contains(state.fullPath)) {
+        logger.i('[Router.redirect] Public route, no redirect');
         return null;
       }
 
       // Redirect based on auth state.
-      return switch (authState) {
+      final redirect = switch (authState) {
         // Unauthenticated: redirect to email login.
         AuthStateUnauthenticated() => Routes.emailLogin,
 
@@ -118,6 +127,8 @@ GoRouter appRouter(Ref ref) {
         // Loading or error: stay on current route.
         _ => null,
       };
+      logger.i('[Router.redirect] Redirect result: $redirect');
+      return redirect;
     },
     routes: [
       GoRoute(

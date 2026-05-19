@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logger/logger.dart';
 
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
@@ -29,6 +30,8 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
   String? _emailError;
   String? _passwordError;
   final bool _obscurePassword = true;
+
+  static final _logger = Logger();
 
   @override
   void initState() {
@@ -77,12 +80,16 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
   Future<void> _login() async {
     if (!_validateForm()) return;
 
+    _logger.i('[EmailLogin] Login clicked: ${_emailController.text}');
     try {
       final authNotifier = ref.read(authProvider.notifier);
+      _logger.i('[EmailLogin] Calling authNotifier.login()');
       await authNotifier.login(_emailController.text, _passwordController.text);
+      _logger.i('[EmailLogin] Login succeeded, router should redirect');
       // Router redirect automatically handles navigation based on new auth state
       // (AuthStatePinRequired → /pin-login, AuthStateAuthenticated → /home, etc.)
     } catch (e) {
+      _logger.e('[EmailLogin] Login failed with error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

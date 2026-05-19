@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:logger/logger.dart';
 
 import '../../../../core/network/network_providers.dart';
 import '../../domain/entities/user.dart';
@@ -56,11 +57,15 @@ class AuthStateError extends AuthState {
 /// Provider de l'état d'authentification global.
 @riverpod
 class Auth extends _$Auth {
+  static final _logger = Logger();
+
   @override
   AuthState build() {
+    _logger.i('[Auth] build() called');
     // Listen for token expiry from refresh interceptor.
     final expiredController = ref.watch(authExpiredControllerProvider);
     final sub = expiredController.stream.listen((_) {
+      _logger.w('[Auth] Token expired detected, setting Unauthenticated');
       state = const AuthStateUnauthenticated();
     });
     ref.onDispose(sub.cancel);
@@ -92,20 +97,30 @@ class Auth extends _$Auth {
 
   /// Authentifie via email + mot de passe.
   Future<void> login(String email, String password) async {
+    _logger.i('[Auth.login] Starting login for $email');
     state = const AuthStateLoading();
+    _logger.i('[Auth.login] State set to AuthStateLoading');
     try {
       final repo = ref.read(authRepositoryProvider);
+      _logger.i('[Auth.login] Calling repo.login()');
       await repo.login(email: email, password: password);
+      _logger.i('[Auth.login] repo.login() succeeded');
       final hasPinSetup = await repo.hasPinSetup();
 
       if (hasPinSetup) {
+        _logger.i('[Auth.login] PIN is setup, setting AuthStatePinRequired');
         state = const AuthStatePinRequired();
       } else {
+        _logger.i(
+          '[Auth.login] PIN not setup, setting AuthStatePinSetupRequired',
+        );
         state = const AuthStatePinSetupRequired();
       }
     } catch (e) {
       final message = _userFriendlyError(e);
+      _logger.e('[Auth.login] Login failed: $e -> $message');
       state = AuthStateError(message);
+      _logger.i('[Auth.login] State set to AuthStateError($message)');
       rethrow;
     }
   }
