@@ -2,12 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
-import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -117,19 +115,7 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
       try {
         final authNotifier = ref.read(authProvider.notifier);
         await authNotifier.setupPin(pin);
-
-        // Navigate based on whether user has a store
-        if (mounted) {
-          final authState = ref.read(authProvider);
-          final nextRoute = authState is AuthStateAuthenticated
-              ? authState.user.storeId != null
-                    ? Routes.home
-                    : Routes.storeSetup
-              : Routes.emailLogin;
-
-          // ignore: use_build_context_synchronously
-          context.go(nextRoute);
-        }
+        // Router redirect automatically navigates to home when auth state becomes Authenticated
       } catch (e) {
         if (mounted) {
           setState(() {

@@ -1,16 +1,11 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 
 import '../../../../core/router/app_router.dart';
-import '../../../../core/sync/sync_orchestrator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../../../../shared/providers/connectivity_provider.dart';
 import '../providers/auth_providers.dart';
 
 /// Splash/loading screen.
@@ -27,51 +22,29 @@ class SplashPage extends ConsumerStatefulWidget {
 
 class _SplashPageState extends ConsumerState<SplashPage> {
   static final _logger = Logger();
-  late DateTime _splashStartTime;
-  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
     _logger.i('[Splash] SplashPage mounted');
-    _splashStartTime = DateTime.now();
+    _delayMinimumSplashTime();
   }
 
-  void _navigateBasedOnAuthState(AuthState authState) {
-    switch (authState) {
-      case AuthStateUnauthenticated():
-        _logger.i('[Splash] Unauthenticated, going to email login');
-        context.go(Routes.emailLogin);
-      case AuthStatePinRequired():
-        _logger.i('[Splash] PIN required, going to pin login');
-        context.go(Routes.pinLogin);
-      case AuthStatePinSetupRequired():
-        _logger.i('[Splash] PIN setup required, going to pin setup');
-        context.go(Routes.pinSetup);
-      case AuthStateAuthenticated():
-        _logger.i('[Splash] User authenticated, checking sync');
-        final isOnline = ref.read(isOnlineProvider).value ?? false;
-        if (isOnline) {
-          _logger.i('[Splash] Online, syncing');
-          unawaited(ref.read(syncOrchestratorProvider.notifier).syncNow());
-        }
-        _logger.i('[Splash] Going to home');
-        context.go(Routes.home);
-      case AuthStateError():
-        _logger.e('[Splash] Auth error, staying on splash');
-      case AuthStateLoading():
-        // Should not reach here due to early return
-        break;
-    }
+  void _delayMinimumSplashTime() {
+    // Ensure minimum splash display time (1 second for visual polish) before redirect.
+    Future<void>.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        _logger.i('[Splash] Minimum splash time elapsed, triggering router refresh');
+        // Trigger router redirect mechanism to navigate based on auth state.
+        ref.read(appRouterProvider).refresh();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // Watch auth state and navigate when it changes (and minimum splash time passed).
-    final authState = ref.watch(authProvider);
-    if (!_hasNavigated && authState is! AuthStateLoading) {
-      _checkAndNavigate(authState);
-    }
+    // Watch auth state to trigger router refresh when it changes.
+    ref.watch(authProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -97,27 +70,5 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         ),
       ),
     );
-  }
-
-  void _checkAndNavigate(AuthState authState) {
-    _logger.i('[Splash] Auth state changed: ${authState.runtimeType}');
-
-    // Ensure minimum splash display time (1 second for visual polish).
-    final elapsedMs = DateTime.now()
-        .difference(_splashStartTime)
-        .inMilliseconds;
-    final remainingMs = 1000 - elapsedMs;
-
-    if (remainingMs > 0) {
-      Future<void>.delayed(Duration(milliseconds: remainingMs), () {
-        if (mounted && !_hasNavigated) {
-          _hasNavigated = true;
-          _navigateBasedOnAuthState(authState);
-        }
-      });
-    } else {
-      _hasNavigated = true;
-      _navigateBasedOnAuthState(authState);
-    }
   }
 }
