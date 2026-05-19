@@ -102,6 +102,13 @@ GoRouter appRouter(Ref ref) {
         '[Router.redirect] Current path: ${state.fullPath}, authState: ${authState.runtimeType}',
       );
 
+      // Public routes: no redirect needed.
+      final publicRoutes = {Routes.splash, Routes.register, Routes.emailLogin};
+      if (publicRoutes.contains(state.fullPath)) {
+        logger.i('[Router.redirect] Public route, no redirect');
+        return null;
+      }
+
       // Redirect based on auth state.
       final targetRoute = switch (authState) {
         // Unauthenticated: redirect to email login.
