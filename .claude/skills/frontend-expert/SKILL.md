@@ -3,7 +3,7 @@ name: frontend-expert
 description: Expertise Flutter du projet POS. Utiliser pour toute génération de code ou prompt mobile (écrans, providers, repository, sync, design).
 ---
 
-# Frontend Expert — POS Mobile CI
+# Frontend Expert — POS Mobile
 
 ## Stack
 Flutter, Riverpod (PAS BLoC), drift (SQLite local), dio + retrofit, freezed, decimal.

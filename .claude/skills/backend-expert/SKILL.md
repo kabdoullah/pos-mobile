@@ -3,7 +3,7 @@ name: backend-expert
 description: Expertise backend FastAPI du projet POS. Utiliser pour toute génération de code ou prompt backend (modules, endpoints, repository, migrations, RLS).
 ---
 
-# Backend Expert — POS Mobile CI
+# Backend Expert — POS Mobile
 
 ## Stack
 FastAPI, PostgreSQL, SQLAlchemy 2.0 (async), Alembic, uv, ruff. 100% open source.

@@ -27,59 +27,52 @@ class SplashPage extends ConsumerStatefulWidget {
 
 class _SplashPageState extends ConsumerState<SplashPage> {
   static final _logger = Logger();
+  late DateTime _splashStartTime;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
     _logger.i('[Splash] SplashPage mounted');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAuthStatus();
-    });
+    _splashStartTime = DateTime.now();
   }
 
-  void _checkAuthStatus() {
-    _logger.i('[Splash] _checkAuthStatus() called');
-    // Give the splash a minimum display time for visual polish.
-    unawaited(
-      Future<void>.delayed(const Duration(seconds: 1)).then((_) {
-        _logger.i('[Splash] Delay complete, checking auth state');
-        if (!mounted) {
-          _logger.i('[Splash] Not mounted, skipping');
-          return;
+  void _navigateBasedOnAuthState(AuthState authState) {
+    switch (authState) {
+      case AuthStateUnauthenticated():
+        _logger.i('[Splash] Unauthenticated, going to email login');
+        context.go(Routes.emailLogin);
+      case AuthStatePinRequired():
+        _logger.i('[Splash] PIN required, going to pin login');
+        context.go(Routes.pinLogin);
+      case AuthStatePinSetupRequired():
+        _logger.i('[Splash] PIN setup required, going to pin setup');
+        context.go(Routes.pinSetup);
+      case AuthStateAuthenticated():
+        _logger.i('[Splash] User authenticated, checking sync');
+        final isOnline = ref.read(isOnlineProvider).value ?? false;
+        if (isOnline) {
+          _logger.i('[Splash] Online, syncing');
+          unawaited(ref.read(syncOrchestratorProvider.notifier).syncNow());
         }
-
-        final authState = ref.read(authProvider);
-        _logger.i('[Splash] Current authState: ${authState.runtimeType}');
-
-        // Route based on auth state.
-        // Let GoRouter redirect logic handle auth state routing.
-        if (authState is! AuthStateLoading) {
-          _logger.i(
-            '[Splash] AuthState is not Loading, proceeding with navigation',
-          );
-          // Trigger background sync if authenticated and online
-          if (authState is AuthStateAuthenticated) {
-            _logger.i('[Splash] User authenticated, checking sync');
-            final isOnline = ref.read(isOnlineProvider).value ?? false;
-            if (isOnline) {
-              _logger.i('[Splash] Online, syncing');
-              unawaited(ref.read(syncOrchestratorProvider.notifier).syncNow());
-            }
-          }
-
-          if (mounted) {
-            _logger.i('[Splash] Navigating to home');
-            context.go(Routes.home);
-          }
-        } else {
-          _logger.i('[Splash] AuthState is Loading, staying on splash');
-        }
-      }),
-    );
+        _logger.i('[Splash] Going to home');
+        context.go(Routes.home);
+      case AuthStateError():
+        _logger.e('[Splash] Auth error, staying on splash');
+      case AuthStateLoading():
+        // Should not reach here due to early return
+        break;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch auth state and navigate when it changes (and minimum splash time passed).
+    final authState = ref.watch(authProvider);
+    if (!_hasNavigated && authState is! AuthStateLoading) {
+      _checkAndNavigate(authState);
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(
@@ -104,5 +97,27 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         ),
       ),
     );
+  }
+
+  void _checkAndNavigate(AuthState authState) {
+    _logger.i('[Splash] Auth state changed: ${authState.runtimeType}');
+
+    // Ensure minimum splash display time (1 second for visual polish).
+    final elapsedMs = DateTime.now()
+        .difference(_splashStartTime)
+        .inMilliseconds;
+    final remainingMs = 1000 - elapsedMs;
+
+    if (remainingMs > 0) {
+      Future<void>.delayed(Duration(milliseconds: remainingMs), () {
+        if (mounted && !_hasNavigated) {
+          _hasNavigated = true;
+          _navigateBasedOnAuthState(authState);
+        }
+      });
+    } else {
+      _hasNavigated = true;
+      _navigateBasedOnAuthState(authState);
+    }
   }
 }
