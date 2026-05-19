@@ -1,9 +1,9 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../data/printer_service.dart';
 import '../domain/repositories/printer_repository.dart';
-import 'printer_service.dart';
 
-part 'printer_repository_provider.g.dart';
+part 'printing_di_providers.g.dart';
 
 /// Provides a singleton [PrinterRepository] implementation.
 ///

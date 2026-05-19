@@ -1,6 +1,6 @@
 # Features
 
-Chaque feature suit la même structure en 3 couches :
+Chaque feature suit la même structure en 4 couches :
 
 ```
 feature_name/
@@ -14,21 +14,35 @@ feature_name/
 ├── domain/                   Couche métier (abstraite, indépendante)
 │   ├── entities/             Modèles métier (immutables, freezed)
 │   ├── repositories/         Interfaces des repositories
-│   └── usecases/             Cas d'usage métier
+│   └── usecases/             Cas d'usage métier (Dart pur, ZÉRO Riverpod)
+├── providers/                Couche DI (wiring, instantiation)
+│   └── feature_di_providers.dart   Providers Riverpod pour repo + usecases
 └── presentation/             Couche UI (Flutter + Riverpod)
     ├── pages/                Écrans complets
     ├── widgets/              Widgets spécifiques à la feature
-    └── providers/            Providers Riverpod
+    └── providers/            Providers Riverpod pour l'état UI (notifiers)
 ```
 
 ## Règles de dépendances
 
-- `presentation` peut importer `domain` (entities, usecases) — JAMAIS `data`
-- `data` peut importer `domain` (pour implémenter les interfaces)
-- `domain` n'importe JAMAIS de `data` ni de `presentation`
-- Une feature peut importer le `domain` d'une autre feature, jamais sa `data`
+- `domain` n'importe **RIEN** d'autre (Dart pur) : pas de `riverpod`, pas de `flutter`, pas de `data`
+- `data` importe `domain` uniquement (pour implémenter les interfaces)
+- `providers/` (couche DI) importe `data` ET `domain` — c'est le **SEUL** endroit hors `data` autorisé à connaître `data/`
+- `presentation` importe `domain` et `providers/` (couche DI) — **JAMAIS** `data` directement
+- Une feature peut importer le `domain` (et les `providers/`) d'une autre feature, jamais sa `data`
 
-Cette règle force le découplage : on peut changer d'API ou de DB locale sans impacter la couche UI.
+**Flux de dépendance :**
+```
+domain (Dart pur)
+  ↑
+data (implémentations concrètes)
+  ↑
+providers/ (wiring DI : expose les interfaces du domain, instancie les impls du data)
+  ↑
+presentation (UI consomme les providers, reçoit les entités du domain)
+```
+
+Cette organisation force le découplage : on peut changer d'API ou de DB locale sans impacter la couche UI, grâce à la couche DI qui centralise l'instantiation.
 
 ## Liste des features
 

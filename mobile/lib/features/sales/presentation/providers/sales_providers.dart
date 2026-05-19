@@ -1,7 +1,7 @@
 import 'package:decimal/decimal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../../core/repository_providers.dart';
+import '../../providers/sales_di_providers.dart';
 import '../../domain/entities/sale.dart' as sale_entity;
 import 'cart_provider.dart';
 

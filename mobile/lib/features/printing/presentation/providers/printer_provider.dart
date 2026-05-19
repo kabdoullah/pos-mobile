@@ -5,7 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../domain/repositories/printer_repository.dart';
-import '../../data/printer_repository_provider.dart';
+import '../../providers/printing_di_providers.dart';
 import '../../../auth/presentation/providers/store_provider.dart';
 import '../../../sales/domain/entities/cart_item.dart';
 import '../../../sales/domain/entities/sale.dart';
@@ -133,7 +133,7 @@ class Printer extends _$Printer {
     final storeAsync = ref.read(storeConfigProvider);
     final store = storeAsync.whenOrNull(data: (s) => s);
     if (store == null) {
-      throw PrintException(
+      throw const PrintException(
         reason: PrintFailureReason.noPrinterConfigured,
         details: 'Store not configured',
       );
@@ -150,7 +150,7 @@ class Printer extends _$Printer {
       };
 
       if (savedMac == null) {
-        throw PrintException(
+        throw const PrintException(
           reason: PrintFailureReason.noPrinterConfigured,
           details: 'No printer configured',
         );

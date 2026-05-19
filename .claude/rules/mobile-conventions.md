@@ -10,13 +10,22 @@ globs:
 
 ## Architecture feature-first + Clean Architecture allégée
 
-Voir `mobile/lib/features/README.md` pour les détails. Règles de dépendances strictes :
+Voir `mobile/lib/features/README.md` pour les détails. **4 couches par feature :**
 
-- `presentation` → peut importer `domain`, JAMAIS `data`
-- `data` → implémente les interfaces de `domain`
-- `domain` → n'importe RIEN d'autre (entités pures, indépendantes)
+```
+feature_name/
+├── domain/       Entités, interfaces repository, usecases (Dart pur, ZÉRO Riverpod/Flutter)
+├── data/         Implémentations concrètes (datasources, models, repository impl)
+├── providers/    Couche DI : instancie les repos et usecases (exposé au domain)
+└── presentation/ UI (pages, widgets, state notifiers consomment providers/)
+```
 
-Une feature peut importer le `domain` d'une autre feature, jamais sa `data`.
+**Règles strictes :**
+- `domain` n'importe RIEN (Dart pur)
+- `data` importe `domain` uniquement
+- `providers/` importe `data` ET `domain` — c'est le SEUL endroit hors data autorisé à connaître data/
+- `presentation` importe `domain` et `providers/` — JAMAIS `data` directement
+- Une feature peut importer le `domain` (et `providers/`) d'une autre feature, jamais sa `data`
 
 ## Conventions Dart
 
@@ -30,7 +39,9 @@ Une feature peut importer le `domain` d'une autre feature, jamais sa `data`.
 
 - Tous les états globaux passent par Riverpod 3+
 - Préférer les providers générés via `riverpod_generator` quand c'est possible
-- Les providers d'une feature sont dans `<feature>/presentation/providers/`
+- **Deux types de providers, deux emplacements :**
+  - **DI providers** (repository, usecase, datasource) → `<feature>/providers/<feature>_di_providers.dart`
+  - **UI state providers** (notifiers, asyncValue) → `<feature>/presentation/providers/`
 - Pas de `StatefulWidget` avec state local quand un provider serait plus propre
 
 ## Persistance locale : drift
