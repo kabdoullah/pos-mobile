@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logger/logger.dart';
 
+import 'page_transitions.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/pin_setup_page.dart';
@@ -170,83 +171,112 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: Routes.register,
-        builder: (context, state) => const RegisterPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.fade(context, state, const RegisterPage()),
       ),
       GoRoute(
         path: Routes.emailLogin,
-        builder: (context, state) => const EmailLoginPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.fade(context, state, const EmailLoginPage()),
       ),
       GoRoute(
         path: Routes.pinSetup,
-        builder: (context, state) => const PinSetupPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.fade(context, state, const PinSetupPage()),
       ),
       GoRoute(
         path: Routes.pinLogin,
-        builder: (context, state) => const PinLoginPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.fade(context, state, const PinLoginPage()),
       ),
       GoRoute(
         path: Routes.storeSetup,
-        builder: (context, state) => const StoreSetupPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.fade(context, state, const StoreSetupPage()),
       ),
       GoRoute(
         path: Routes.tutorial,
-        builder: (context, state) => const TutorialPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.fade(context, state, const TutorialPage()),
       ),
-      GoRoute(path: Routes.home, builder: (context, state) => const HomePage()),
+      GoRoute(
+        path: Routes.home,
+        pageBuilder: (context, state) =>
+            PageTransitions.slideRight(context, state, const HomePage()),
+      ),
       GoRoute(
         path: Routes.catalog,
-        builder: (context, state) => const CatalogPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.slideRight(context, state, const CatalogPage()),
       ),
       GoRoute(
         path: Routes.productNew,
-        builder: (context, state) => const ProductFormPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.scale(context, state, const ProductFormPage()),
       ),
       GoRoute(
         path: Routes.productEdit,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final productId = state.pathParameters['id'];
-          return ProductFormPage(productId: productId);
+          return PageTransitions.scale(
+            context,
+            state,
+            ProductFormPage(productId: productId),
+          );
         },
       ),
       GoRoute(
         path: Routes.barcodeScanner,
-        builder: (context, state) => const BarcodeScannerPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.scale(context, state, const BarcodeScannerPage()),
       ),
       GoRoute(
         path: Routes.newSale,
-        builder: (context, state) => const NewSalePage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.slideRight(context, state, const NewSalePage()),
       ),
       GoRoute(
         path: Routes.payment,
-        builder: (context, state) => const PaymentPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.scale(context, state, const PaymentPage()),
       ),
       GoRoute(
         path: Routes.saleSuccess,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final extra = state.extra as ({Sale sale, List<CartItem> items})?;
-          if (extra == null) return const SalesHistoryPage();
-          return SaleSuccessPage(sale: extra.sale, items: extra.items);
+          final child = extra == null
+              ? const SalesHistoryPage()
+              : SaleSuccessPage(sale: extra.sale, items: extra.items);
+          return PageTransitions.fadeScale(context, state, child);
         },
       ),
       GoRoute(
         path: Routes.salesHistory,
-        builder: (context, state) => const SalesHistoryPage(),
+        pageBuilder: (context, state) => PageTransitions.slideRight(
+          context,
+          state,
+          const SalesHistoryPage(),
+        ),
       ),
       GoRoute(
         path: Routes.saleDetail,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final sale = state.extra as Sale?;
-          if (sale == null) return const SalesHistoryPage();
-          return SaleDetailPage(sale: sale);
+          final child = sale == null
+              ? const SalesHistoryPage()
+              : SaleDetailPage(sale: sale);
+          return PageTransitions.scale(context, state, child);
         },
       ),
       GoRoute(
         path: Routes.settings,
-        builder: (context, state) => const SettingsPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.fade(context, state, const SettingsPage()),
       ),
       GoRoute(
         path: Routes.bluetoothSetup,
-        builder: (context, state) => const BluetoothSetupPage(),
+        pageBuilder: (context, state) =>
+            PageTransitions.scale(context, state, const BluetoothSetupPage()),
       ),
     ],
   );

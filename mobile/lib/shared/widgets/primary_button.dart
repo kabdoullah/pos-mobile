@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
@@ -41,7 +44,12 @@ class PrimaryButton extends StatelessWidget {
         color: isDisabled ? AppColors.inactive : AppColors.primary,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         child: InkWell(
-          onTap: isLoading || isDisabled ? null : onPressed,
+          onTap: isLoading || isDisabled
+              ? null
+              : () {
+                  unawaited(HapticFeedback.lightImpact());
+                  onPressed?.call();
+                },
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           child: Center(
             child: isLoading
