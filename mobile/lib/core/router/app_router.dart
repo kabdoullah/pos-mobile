@@ -97,32 +97,63 @@ GoRouter appRouter(Ref ref) {
   router = GoRouter(
     initialLocation: Routes.splash,
     redirect: (BuildContext context, GoRouterState state) {
-      final authState = ref.read(authProvider);
+      final authValue = ref.read(authProvider);
       logger.i(
-        '[Router.redirect] Current path: ${state.fullPath}, authState: ${authState.runtimeType}',
+        '[Router.redirect] Current path: ${state.fullPath}, authValue: ${authValue.runtimeType}',
       );
 
       // Public routes (accessible while unauthenticated).
-      final publicRoutes = {Routes.splash, Routes.register, Routes.emailLogin};
+      final publicRoutes = {Routes.register, Routes.emailLogin};
 
-      // Redirect based on auth state.
-      final targetRoute = switch (authState) {
-        // Unauthenticated: allow public routes, redirect others to email login.
-        AuthStateUnauthenticated() =>
-          publicRoutes.contains(state.fullPath) ? null : Routes.emailLogin,
-
-        // PIN setup required (first login, PIN not yet created).
-        AuthStatePinSetupRequired() => Routes.pinSetup,
-
-        // PIN verification required (PIN exists, needs verification).
-        AuthStatePinRequired() => Routes.pinLogin,
-
-        // Fully authenticated: allow access to main app.
-        AuthStateAuthenticated() => null,
-
-        // Loading or error: stay on current route.
-        _ => null,
+      // Auth/onboarding routes (not accessible when fully authenticated).
+      final authRoutes = {
+        Routes.splash,
+        Routes.register,
+        Routes.emailLogin,
+        Routes.pinSetup,
+        Routes.pinLogin,
+        Routes.storeSetup,
+        Routes.tutorial,
       };
+
+      // Redirect based on AsyncValue<AuthStatus> state.
+      // AsyncLoading: stay on current route (init in progress).
+      // AsyncError: send to login (auth failed, need to re-authenticate).
+      // AsyncData: switch on the AuthStatus value.
+      final targetRoute = authValue.when(
+        loading: () {
+          logger.i(
+            '[Router.redirect] Auth loading, staying on ${state.fullPath}',
+          );
+          return null;
+        },
+        error: (_, _) {
+          logger.i(
+            '[Router.redirect] Auth error, redirecting to ${Routes.emailLogin}',
+          );
+          return Routes.emailLogin;
+        },
+        data: (status) {
+          return switch (status) {
+            // Unauthenticated: allow public routes, redirect others to email login.
+            AuthUnauthenticated() =>
+              publicRoutes.contains(state.fullPath) ? null : Routes.emailLogin,
+
+            // Store setup required (first registration, store not yet configured).
+            AuthStoreSetupRequired() => Routes.storeSetup,
+
+            // PIN setup required (first login, PIN not yet created).
+            AuthPinSetupRequired() => Routes.pinSetup,
+
+            // PIN verification required (PIN exists, needs verification).
+            AuthPinRequired() => Routes.pinLogin,
+
+            // Fully authenticated: redirect from auth routes to home, allow access to main app.
+            AuthAuthenticated() =>
+              authRoutes.contains(state.fullPath) ? Routes.home : null,
+          };
+        },
+      );
 
       // Only redirect if target differs from current path.
       final shouldRedirect =

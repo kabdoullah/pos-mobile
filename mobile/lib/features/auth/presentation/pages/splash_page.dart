@@ -34,7 +34,9 @@ class _SplashPageState extends ConsumerState<SplashPage> {
     // Ensure minimum splash display time (1 second for visual polish) before redirect.
     Future<void>.delayed(const Duration(seconds: 1), () {
       if (mounted) {
-        _logger.i('[Splash] Minimum splash time elapsed, triggering router refresh');
+        _logger.i(
+          '[Splash] Minimum splash time elapsed, triggering router refresh',
+        );
         // Trigger router redirect mechanism to navigate based on auth state.
         ref.read(appRouterProvider).refresh();
       }

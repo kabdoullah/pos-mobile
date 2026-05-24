@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 
-import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -88,29 +87,18 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
       await authNotifier.login(_emailController.text, _passwordController.text);
       _logger.i('[EmailLogin] Login succeeded, router should redirect');
       // Router redirect automatically handles navigation based on new auth state
-      // (AuthStatePinRequired → /pin-login, AuthStateAuthenticated → /home, etc.)
-    } catch (e) {
-      _logger.e('[EmailLogin] Login failed with error: $e');
-      if (mounted) {
-        final message = e is NetworkException ? e.message : e.toString();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              message,
-              style: const TextStyle(color: AppColors.textOnPrimary),
-            ),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      // (AuthPinRequired → /pin-login, AuthAuthenticated → /home, etc.)
+    } catch (_) {
+      // Error state already displayed via authValue.asError in build()
+      // No additional error handling needed here — AsyncNotifier stores the message
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final isLoading = authState is AuthStateLoading;
-    final errorMessage = authState is AuthStateError ? authState.message : null;
+    final authValue = ref.watch(authProvider);
+    final isLoading = authValue.isLoading;
+    final errorMessage = authValue.asError?.error.toString();
 
     return Scaffold(
       backgroundColor: AppColors.background,

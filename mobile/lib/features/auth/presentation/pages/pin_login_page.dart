@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 
-import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -52,21 +51,20 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
     try {
       final authNotifier = ref.read(authProvider.notifier);
       await authNotifier.verifyPin(pin);
-
-      if (mounted) {
-        // ignore: use_build_context_synchronously
-        context.go(Routes.home);
-      }
-    } catch (e) {
-      setState(() {
-        final message = e is NetworkException ? e.message : e.toString();
-        _error = 'Erreur: $message';
-      });
+      // Router handles redirect automatically when state becomes AuthAuthenticated
+    } catch (_) {
+      // Error state already displayed via systemError (from authValue.asError)
+      // No additional error handling needed here
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch auth to display system errors (lockout, network, etc.)
+    // Local _error shows PIN validation errors before submit (e.g., "4 chiffres requis")
+    final authValue = ref.watch(authProvider);
+    final systemError = authValue.asError?.error.toString();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -132,11 +130,12 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
                   onChanged: (_) => setState(() => _error = null),
                 ),
               ),
-              if (_error != null) ...[
+              // Show either local validation error or system error (lockout, network, etc.)
+              if (_error != null || systemError != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 Center(
                   child: Text(
-                    _error!,
+                    _error ?? systemError!,
                     style: AppTypography.errorText,
                     textAlign: TextAlign.center,
                   ),

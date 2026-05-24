@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logger/logger.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
-import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
+import '../providers/auth_providers.dart';
 import '../providers/store_provider.dart';
 import '../../domain/entities/store.dart';
 
@@ -46,20 +47,28 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
 
     // Pre-fill form if editing existing store
     if (widget.isEditMode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadExistingStore());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadExistingStore();
+      });
     }
   }
 
-  Future<void> _loadExistingStore() async {
+  void _loadExistingStore() {
     final storeAsync = ref.read(storeConfigProvider);
-    storeAsync.whenData((store) {
-      if (store != null && mounted) {
-        _nameController.text = store.name;
-        _addressController.text = store.address ?? '';
-        _nccController.text = store.ncc ?? '';
-        setState(() => _isSubjectToVat = store.isSubjectToVat);
-      }
-    });
+    storeAsync.when(
+      data: (store) {
+        if (store != null && mounted) {
+          _nameController.text = store.name;
+          _addressController.text = store.address ?? '';
+          _nccController.text = store.ncc ?? '';
+          setState(() => _isSubjectToVat = store.isSubjectToVat);
+        }
+      },
+      error: (error, _) {
+        Logger().w('Failed to load existing store: $error');
+      },
+      loading: () {},
+    );
   }
 
   @override
@@ -99,18 +108,36 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
         isSubjectToVat: _isSubjectToVat,
         receiptFooterText: null,
       );
-      await ref.read(storeConfigProvider.notifier).save(store);
 
-      if (mounted) {
-        if (widget.isEditMode) {
-          context.pop();
-        } else {
-          context.go(Routes.tutorial);
+      try {
+        await ref.read(storeConfigProvider.notifier).save(store);
+      } catch (e) {
+        // If provider is disposed during save (router redirected), ignore silently
+        if (!mounted || e.toString().contains('disposed')) {
+          return;
         }
+        rethrow;
+      }
+
+      // Check if widget is still mounted after async operation
+      if (!mounted) {
+        Logger().w('Widget not mounted after save');
+        return;
+      }
+
+      setState(() => _isLoading = false);
+
+      if (widget.isEditMode) {
+        context.pop();
+      } else {
+        Logger().i('Calling proceedToPinSetup()');
+        ref.read(authProvider.notifier).proceedToPinSetup();
+        Logger().i('proceedToPinSetup() completed');
       }
     } catch (e) {
       if (mounted) {
         final message = e is NetworkException ? e.message : e.toString();
+        Logger().e('Error saving store configuration - $message');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -120,9 +147,6 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
             backgroundColor: AppColors.error,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
         setState(() => _isLoading = false);
       }
     }

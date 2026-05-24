@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logger/logger.dart';
 import 'package:pinput/pinput.dart';
 
-import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -101,6 +101,7 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
   }
 
   Future<void> _confirmPin() async {
+    Logger().i('_confirmPin() called');
     final pin = _pinController.text;
     final confirmPin = _confirmPinController.text;
 
@@ -112,25 +113,29 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
     }
 
     if (_confirmPinError == null) {
+      Logger().i('Validation passed, calling setupPin()');
       try {
         final authNotifier = ref.read(authProvider.notifier);
+        Logger().i('Awaiting setupPin()...');
         await authNotifier.setupPin(pin);
+        Logger().i('setupPin() completed, router should redirect');
         // Router redirect automatically navigates to home when auth state becomes Authenticated
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            final message = e is NetworkException ? e.message : e.toString();
-            _confirmPinError = 'Erreur: $message';
-          });
-        }
+      } catch (_) {
+        // Error state already displayed via systemError (from authValue.asError)
+        // Page title "Confirmer le PIN" shows error context
       }
     } else {
+      Logger().w('Validation failed: $_confirmPinError');
       setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch auth to display system errors (network, server errors, etc.)
+    final authValue = ref.watch(authProvider);
+    final systemError = authValue.asError?.error.toString();
+
     final padding = responsiveValue(
       context,
       small: AppSpacing.md,
@@ -279,11 +284,12 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                     onChanged: (_) => setState(() => _confirmPinError = null),
                   ),
                 ),
-                if (_confirmPinError != null) ...[
+                // Show either local validation error or system error (network, server, etc.)
+                if (_confirmPinError != null || systemError != null) ...[
                   const SizedBox(height: AppSpacing.md),
                   Center(
                     child: Text(
-                      _confirmPinError!,
+                      _confirmPinError ?? systemError!,
                       style: AppTypography.errorText,
                       textAlign: TextAlign.center,
                     ),

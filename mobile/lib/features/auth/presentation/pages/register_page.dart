@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/network/api_exception.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -134,28 +133,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         _phoneController.text.trim(),
       );
       // Router redirect automatically handles navigation based on new auth state
-      // (AuthStatePinRequired → /pin-setup, etc.)
-    } catch (e) {
-      if (mounted) {
-        final message = e is NetworkException ? e.message : e.toString();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              message,
-              style: const TextStyle(color: AppColors.textOnPrimary),
-            ),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      // (AuthStateStoreSetupRequired → /store-setup)
+    } catch (_) {
+      // Error state already handled by authProvider state display above
+      // No additional error handling needed here
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final isLoading = authState is AuthStateLoading;
-    final errorMessage = authState is AuthStateError ? authState.message : null;
+    final authValue = ref.watch(authProvider);
+    final isLoading = authValue.isLoading;
+    final errorMessage = authValue.asError?.error.toString();
+    // Router handles redirect automatically when state becomes AuthStoreSetupRequired
 
     return Scaffold(
       backgroundColor: AppColors.background,
