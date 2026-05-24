@@ -5,6 +5,7 @@ export 'app_scaffold.dart';
 export 'app_text_field.dart';
 export 'confirm_dialog.dart';
 export 'empty_state.dart';
+export 'empty_state_illustrated.dart';
 export 'loading_indicator.dart';
 export 'primary_button.dart';
 export 'secondary_button.dart';

@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/catalog_providers.dart';
 
@@ -90,28 +92,17 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
           Expanded(
             child: catalogState.when(
               loading: () => const AppLoadingScreen(),
-              error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Erreur: $error',
-                      style: AppTypography.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              error: (error, stack) => EmptyStateIllustrated(
+                illustration: Illustrations.errorState,
+                title: 'Erreur',
+                message: 'Impossible de charger le catalogue',
+                actionLabel: 'Réessayer',
+                onAction: _onRefresh,
               ),
               data: (products) {
                 if (products.isEmpty) {
-                  return EmptyState(
-                    icon: Icons.shopping_bag_outlined,
+                  return EmptyStateIllustrated(
+                    illustration: Illustrations.emptyCatalog,
                     title: 'Aucun produit',
                     message: 'Commencez par ajouter votre premier produit',
                     actionLabel: 'Ajouter un produit',

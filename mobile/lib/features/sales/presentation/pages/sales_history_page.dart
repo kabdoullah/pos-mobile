@@ -8,6 +8,7 @@ import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../domain/entities/sale.dart';
 import '../providers/sales_providers.dart';
@@ -66,16 +67,16 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
           // Sales list
           Expanded(
             child: salesAsync.when(
-              loading: () => const AppLoadingIndicator(),
-              error: (err, stack) => EmptyState(
-                icon: Icons.error_outline,
+              loading: () => const AppLoadingScreen(),
+              error: (err, stack) => EmptyStateIllustrated(
+                illustration: Illustrations.errorState,
                 title: 'Erreur',
-                message: err.toString(),
+                message: 'Impossible de charger l\'historique',
               ),
               data: (sales) {
                 if (sales.isEmpty) {
-                  return const EmptyState(
-                    icon: Icons.receipt_long_outlined,
+                  return EmptyStateIllustrated(
+                    illustration: Illustrations.emptySales,
                     title: 'Aucune vente',
                     message: 'Pas de vente enregistrée ce jour.',
                   );
