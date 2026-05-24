@@ -149,7 +149,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Créer un compte'), elevation: 0),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(
           responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),

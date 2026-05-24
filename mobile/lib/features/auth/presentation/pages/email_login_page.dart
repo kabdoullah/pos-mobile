@@ -102,7 +102,6 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Connexion'), elevation: 0),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(
           responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),

@@ -141,7 +141,7 @@ class Auth extends _$Auth {
       } catch (e) {
         final msg = _toUserFacingException(e);
         _logger.e('[Auth.login] Failed: $msg');
-        throw Exception(msg);
+        throw msg;
       }
     });
   }
@@ -172,7 +172,7 @@ class Auth extends _$Auth {
       } catch (e) {
         final msg = _toUserFacingException(e);
         _logger.e('[Auth.register] Failed: $msg');
-        throw Exception(msg);
+        throw msg;
       }
     });
   }
@@ -193,7 +193,7 @@ class Auth extends _$Auth {
         final isCorrect = await repo.verifyPin(pin);
 
         if (!isCorrect) {
-          throw Exception('PIN incorrect');
+          throw 'PIN incorrect';
         }
 
         _logger.i('[Auth.verifyPin] PIN verified, fetching user');
@@ -217,7 +217,7 @@ class Auth extends _$Auth {
         }
         final msg = _toUserFacingException(e);
         _logger.e('[Auth.verifyPin] Failed: $msg');
-        throw Exception(msg);
+        throw msg;
       }
     });
   }
@@ -263,7 +263,7 @@ class Auth extends _$Auth {
       } catch (e) {
         final msg = _toUserFacingException(e);
         _logger.e('[Auth.setupPin] Failed: $msg');
-        throw Exception(msg);
+        throw msg;
       }
     });
   }
@@ -294,8 +294,9 @@ class Auth extends _$Auth {
     }
     if (message.toLowerCase().contains('connection')) return 'Pas de connexion';
     if (message.toLowerCase().contains('timeout')) return 'Délai dépassé';
-    if (message.toLowerCase().contains('verrouillé'))
+    if (message.toLowerCase().contains('verrouillé')) {
       return message; // PIN lockout
+    }
     return message;
   }
 }
