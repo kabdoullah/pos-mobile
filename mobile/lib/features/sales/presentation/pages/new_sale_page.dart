@@ -11,6 +11,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../domain/entities/cart_item.dart';
 import '../providers/cart_provider.dart';
@@ -449,9 +450,9 @@ class _CartPanel extends StatelessWidget {
           const Divider(height: 1, color: AppColors.divider),
           Expanded(
             child: cartState.isEmpty
-                ? const EmptyState(
-                    icon: Icons.shopping_cart_outlined,
-                    title: 'Votre panier est vide',
+                ? EmptyStateIllustrated(
+                    illustration: Illustrations.emptyCart,
+                    title: 'Panier vide',
                     message:
                         'Scannez un produit avec la caméra ci-dessus pour commencer',
                   )
@@ -526,40 +527,61 @@ class _CartItemRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.productName,
-                  style: AppTypography.titleMedium,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                AmountDisplay(amount: item.unitPrice, size: AmountSize.small),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          // Product name + unit price
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AmountDisplay(amount: item.lineTotal, size: AmountSize.large),
-              const SizedBox(height: AppSpacing.xs),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.productName,
+                      style: AppTypography.titleMedium,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text('Unitaire: ', style: AppTypography.captionText),
+                    AmountDisplay(
+                      amount: item.unitPrice,
+                      size: AmountSize.small,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              // Line total (prominent)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('Sous-total', style: AppTypography.labelSmall),
+                  const SizedBox(height: AppSpacing.xs),
+                  AmountDisplay(amount: item.lineTotal, size: AmountSize.large),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+
+          // Quantity stepper
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Quantité', style: AppTypography.labelMedium),
               Row(
                 children: [
                   _QuantityButton(icon: Icons.remove, onTap: onDecrease),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                    ),
+                  Container(
+                    width: 56,
+                    alignment: Alignment.center,
                     child: Text(
                       '${item.quantity}',
                       style: AppTypography.titleMedium,
+                      textAlign: TextAlign.center,
                     ),
                   ),
                   _QuantityButton(icon: Icons.add, onTap: onIncrease),
@@ -573,23 +595,57 @@ class _CartItemRow extends StatelessWidget {
   }
 }
 
-class _QuantityButton extends StatelessWidget {
+/// Quantity increment/decrement button with haptic feedback.
+class _QuantityButton extends StatefulWidget {
+  /// Creates a quantity button.
   const _QuantityButton({required this.icon, required this.onTap});
+
+  /// Button icon (add or remove).
   final IconData icon;
+
+  /// On tap callback.
   final VoidCallback onTap;
+
+  @override
+  State<_QuantityButton> createState() => _QuantityButtonState();
+}
+
+class _QuantityButtonState extends State<_QuantityButton> {
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+        unawaited(HapticFeedback.lightImpact());
+      },
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: AppColors.primaryContainer,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+          color: _isPressed ? AppColors.primary : AppColors.primaryContainer,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
+          boxShadow: _isPressed
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                  ),
+                ]
+              : null,
         ),
-        child: Icon(icon, size: 16, color: AppColors.primary),
+        child: Icon(
+          widget.icon,
+          size: 20,
+          color: _isPressed ? AppColors.textOnPrimary : AppColors.primary,
+        ),
       ),
     );
   }
