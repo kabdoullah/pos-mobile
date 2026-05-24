@@ -109,33 +109,70 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AmountDisplay(amount: summary.totalAmount, size: AmountSize.hero),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _SummaryItem(label: 'Nombre', value: '${summary.saleCount}'),
-              _SummaryItem(
-                label: 'Espèces',
-                value: AmountDisplay(
-                  amount: summary.cashTotal,
-                  size: AmountSize.medium,
-                ),
-              ),
-              _SummaryItem(
-                label: 'Mobile',
-                value: AmountDisplay(
-                  amount: summary.mobileMoneyTotal,
-                  size: AmountSize.medium,
-                ),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primary, AppColors.primaryLight],
+        ),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.2),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Text(
+              'Total du jour',
+              style: AppTypography.labelMedium.copyWith(
+                color: AppColors.textOnPrimary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+
+            // Hero amount
+            AmountDisplay(amount: summary.totalAmount, size: AmountSize.hero),
+            // Override text color for gradient card
+            const SizedBox(height: AppSpacing.lg),
+
+            // Breakdown row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _SummaryItem(
+                  label: 'Nombre',
+                  value: '${summary.saleCount}',
+                  isDark: true,
+                ),
+                _SummaryItem(
+                  label: 'Espèces',
+                  value: AmountDisplay(
+                    amount: summary.cashTotal,
+                    size: AmountSize.medium,
+                  ),
+                  isDark: true,
+                ),
+                _SummaryItem(
+                  label: 'Mobile',
+                  value: AmountDisplay(
+                    amount: summary.mobileMoneyTotal,
+                    size: AmountSize.medium,
+                  ),
+                  isDark: true,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -144,7 +181,11 @@ class _SummaryCard extends StatelessWidget {
 /// Private summary item widget — shows a label and value.
 class _SummaryItem extends StatelessWidget {
   /// Creates a [_SummaryItem].
-  const _SummaryItem({required this.label, required this.value});
+  const _SummaryItem({
+    required this.label,
+    required this.value,
+    this.isDark = false,
+  });
 
   /// Item label.
   final String label;
@@ -152,20 +193,24 @@ class _SummaryItem extends StatelessWidget {
   /// Item value (string or widget).
   final dynamic value;
 
+  /// Whether to use light text (on dark background).
+  final bool isDark;
+
   @override
   Widget build(BuildContext context) {
+    final textColor = isDark ? AppColors.textOnPrimary : null;
     return Column(
       children: [
         Text(
           label,
-          style: AppTypography.captionText,
+          style: AppTypography.captionText.copyWith(color: textColor),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: AppSpacing.xs),
         if (value is String)
           Text(
             value as String,
-            style: AppTypography.bodyLarge,
+            style: AppTypography.bodyLarge.copyWith(color: textColor),
             textAlign: TextAlign.center,
           )
         else
@@ -176,7 +221,7 @@ class _SummaryItem extends StatelessWidget {
 }
 
 /// Private quick access card widget.
-class _QuickCard extends StatelessWidget {
+class _QuickCard extends StatefulWidget {
   /// Creates a [_QuickCard].
   const _QuickCard({
     required this.icon,
@@ -194,21 +239,40 @@ class _QuickCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_QuickCard> createState() => _QuickCardState();
+}
+
+class _QuickCardState extends State<_QuickCard> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      padding: AppSpacing.md,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 32, color: AppColors.primary),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            label,
-            style: AppTypography.labelMedium,
-            textAlign: TextAlign.center,
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AppCard(
+          onTap: widget.onTap,
+          padding: AppSpacing.md,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(widget.icon, size: 36, color: AppColors.primary),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                widget.label,
+                style: AppTypography.labelMedium,
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

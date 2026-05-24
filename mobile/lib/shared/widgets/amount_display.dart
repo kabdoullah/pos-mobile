@@ -28,6 +28,7 @@ class AmountDisplay extends StatelessWidget {
   const AmountDisplay({
     required this.amount,
     this.size = AmountSize.medium,
+    this.color,
     super.key,
   });
 
@@ -36,6 +37,9 @@ class AmountDisplay extends StatelessWidget {
 
   /// Size variant for the display.
   final AmountSize size;
+
+  /// Optional text color override.
+  final Color? color;
 
   TextStyle _getTextStyle() {
     return switch (size) {
@@ -53,7 +57,10 @@ class AmountDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = _getTextStyle();
+    var textStyle = _getTextStyle();
+    if (color != null) {
+      textStyle = textStyle.copyWith(color: color);
+    }
     final formattedAmount = _formatAmount();
 
     return RichText(
