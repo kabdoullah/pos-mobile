@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,11 +25,13 @@ class ProductFormPage extends ConsumerStatefulWidget {
   ConsumerState<ProductFormPage> createState() => _ProductFormPageState();
 }
 
-class _ProductFormPageState extends ConsumerState<ProductFormPage> {
+class _ProductFormPageState extends ConsumerState<ProductFormPage>
+    with TickerProviderStateMixin {
   late TextEditingController _nameController;
   late TextEditingController _priceController;
   late TextEditingController _barcodeController;
   late TextEditingController _stockController;
+  late AnimationController _formAnimationController;
   String? _nameError;
   String? _priceError;
   bool _isLoading = false;
@@ -39,6 +43,11 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     _priceController = TextEditingController();
     _barcodeController = TextEditingController();
     _stockController = TextEditingController();
+    _formAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    unawaited(_formAnimationController.forward());
   }
 
   @override
@@ -47,6 +56,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
     _priceController.dispose();
     _barcodeController.dispose();
     _stockController.dispose();
+    _formAnimationController.dispose();
     super.dispose();
   }
 
@@ -212,91 +222,115 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppTextField(
-                label: 'Nom du produit',
-                hint: 'ex: Riz blanc',
-                controller: _nameController,
-                errorText: _nameError,
+              _AnimatedFormField(
+                animation: _formAnimationController,
+                delay: 0.0,
+                child: AppTextField(
+                  label: 'Nom du produit',
+                  hint: 'ex: Riz blanc',
+                  controller: _nameController,
+                  errorText: _nameError,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                label: 'Prix unitaire (FCFA)',
-                hint: '0',
-                controller: _priceController,
-                keyboardType: TextInputType.number,
-                errorText: _priceError,
-                prefixIcon: Icons.attach_money,
+              _AnimatedFormField(
+                animation: _formAnimationController,
+                delay: 0.1,
+                child: AppTextField(
+                  label: 'Prix unitaire (FCFA)',
+                  hint: '0',
+                  controller: _priceController,
+                  keyboardType: TextInputType.number,
+                  errorText: _priceError,
+                  prefixIcon: Icons.attach_money,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Code-barres',
-                      hint: 'Optionnel',
-                      controller: _barcodeController,
+              _AnimatedFormField(
+                animation: _formAnimationController,
+                delay: 0.2,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: AppTextField(
+                        label: 'Code-barres',
+                        hint: 'Optionnel',
+                        controller: _barcodeController,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Column(
-                    children: [
-                      const SizedBox(
-                        height: AppSpacing.md,
-                      ), // Align button to label baseline
-                      GestureDetector(
-                        onTap: _openScanner,
-                        child: Container(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryContainer,
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
+                    const SizedBox(width: AppSpacing.md),
+                    Column(
+                      children: [
+                        const SizedBox(height: AppSpacing.md),
+                        GestureDetector(
+                          onTap: _openScanner,
+                          child: Container(
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryContainer,
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusMd,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.qr_code_2,
+                              color: AppColors.primary,
+                              size: 28,
                             ),
                           ),
-                          child: const Icon(
-                            Icons.qr_code_2,
-                            color: AppColors.primary,
-                            size: 28,
-                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                label: 'Stock initial',
-                hint: 'Optionnel',
-                controller: _stockController,
-                keyboardType: TextInputType.number,
+              _AnimatedFormField(
+                animation: _formAnimationController,
+                delay: 0.3,
+                child: AppTextField(
+                  label: 'Stock initial',
+                  hint: 'Optionnel',
+                  controller: _stockController,
+                  keyboardType: TextInputType.number,
+                ),
               ),
               const SizedBox(height: AppSpacing.xl),
-              PrimaryButton(
-                label: isEditMode ? 'Modifier' : 'Enregistrer',
-                onPressed: _isLoading ? null : _submit,
-                isLoading: _isLoading,
+              _AnimatedFormField(
+                animation: _formAnimationController,
+                delay: 0.4,
+                child: PrimaryButton(
+                  label: isEditMode ? 'Modifier' : 'Enregistrer',
+                  onPressed: _isLoading ? null : _submit,
+                  isLoading: _isLoading,
+                ),
               ),
               if (isEditMode) ...[
                 const SizedBox(height: AppSpacing.md),
-                GestureDetector(
-                  onTap: _isLoading ? null : _delete,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: AppSpacing.md,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.errorContainer,
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                      border: Border.all(color: AppColors.error, width: 1),
-                    ),
-                    child: Text(
-                      'Supprimer',
-                      style: AppTypography.labelLarge.copyWith(
-                        color: AppColors.error,
+                _AnimatedFormField(
+                  animation: _formAnimationController,
+                  delay: 0.5,
+                  child: GestureDetector(
+                    onTap: _isLoading ? null : _delete,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpacing.md,
                       ),
-                      textAlign: TextAlign.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.errorContainer,
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
+                        border: Border.all(color: AppColors.error, width: 1),
+                      ),
+                      child: Text(
+                        'Supprimer',
+                        style: AppTypography.labelLarge.copyWith(
+                          color: AppColors.error,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
                 ),
@@ -304,6 +338,43 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Private animated form field wrapper — fades and slides in on load.
+class _AnimatedFormField extends StatelessWidget {
+  const _AnimatedFormField({
+    required this.animation,
+    required this.delay,
+    required this.child,
+  });
+
+  final AnimationController animation;
+  final double delay;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final delayedAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: animation,
+        curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
+      ),
+    );
+
+    return FadeTransition(
+      opacity: delayedAnimation,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
+              ),
+            ),
+        child: child,
       ),
     );
   }

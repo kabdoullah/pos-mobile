@@ -36,47 +36,63 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDisabled = onPressed == null;
+    final borderRadius = BorderRadius.circular(AppSpacing.radiusMd);
 
     return SizedBox(
       height: 56,
       width: double.infinity,
-      child: Material(
-        color: isDisabled ? AppColors.inactive : AppColors.primary,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        child: InkWell(
-          onTap: isLoading || isDisabled
-              ? null
-              : () {
-                  unawaited(HapticFeedback.lightImpact());
-                  onPressed?.call();
-                },
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-          child: Center(
-            child: isLoading
-                ? const SizedBox.square(
-                    dimension: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppColors.textOnPrimary,
-                      ),
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (icon != null) ...[
-                        Icon(icon, color: AppColors.textOnPrimary, size: 20),
-                        const SizedBox(width: AppSpacing.sm),
-                      ],
-                      Text(
-                        label,
-                        style: AppTypography.labelLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: borderRadius,
+          boxShadow: isDisabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 0,
                   ),
+                ],
+        ),
+        child: Material(
+          color: isDisabled ? AppColors.inactive : AppColors.primary,
+          borderRadius: borderRadius,
+          child: InkWell(
+            onTap: isLoading || isDisabled
+                ? null
+                : () {
+                    unawaited(HapticFeedback.lightImpact());
+                    onPressed?.call();
+                  },
+            borderRadius: borderRadius,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox.square(
+                      dimension: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppColors.textOnPrimary,
+                        ),
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (icon != null) ...[
+                          Icon(icon, color: AppColors.textOnPrimary, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                        ],
+                        Text(
+                          label,
+                          style: AppTypography.labelLarge,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),

@@ -80,12 +80,24 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                 medium: AppSpacing.lg,
               ),
             ),
-            child: AppTextField(
-              label: 'Rechercher',
-              hint: 'Nom du produit...',
-              controller: _searchController,
-              prefixIcon: Icons.search,
-              onChanged: _onSearchChanged,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: AppTextField(
+                label: 'Rechercher',
+                hint: 'Nom du produit...',
+                controller: _searchController,
+                prefixIcon: Icons.search,
+                onChanged: _onSearchChanged,
+              ),
             ),
           ),
           // Product list
@@ -113,6 +125,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                 return RefreshIndicator(
                   onRefresh: _onRefresh,
                   color: AppColors.primary,
+                  backgroundColor: AppColors.primaryContainer,
+                  strokeWidth: 3,
                   child: ListView.builder(
                     padding: EdgeInsets.symmetric(
                       horizontal: responsiveValue(
@@ -127,9 +141,12 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                       final product = products[index];
                       // Load more on scroll near end
                       if (index == products.length - 5) {
-                        Future.microtask(
-                          () =>
-                              ref.read(catalogListProvider.notifier).loadMore(),
+                        unawaited(
+                          Future.microtask(
+                            () => ref
+                                .read(catalogListProvider.notifier)
+                                .loadMore(),
+                          ),
                         );
                       }
 

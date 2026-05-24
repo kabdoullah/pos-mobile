@@ -94,7 +94,26 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final sale = sales[index];
-                    return _SaleCard(sale: sale);
+                    return Dismissible(
+                      key: ValueKey(sale.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: AppSpacing.lg),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusMd,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                      ),
+                      onDismissed: (_) {},
+                      child: _SaleCard(sale: sale),
+                    );
                   },
                 );
               },
