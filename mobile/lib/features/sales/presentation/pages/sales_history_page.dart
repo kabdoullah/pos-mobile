@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/sync/sync_orchestrator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/illustrations.dart';
@@ -46,6 +47,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final salesAsync = ref.watch(salesHistoryProvider(date: _selectedDate));
+    final syncStatus = ref.watch(syncOrchestratorProvider);
     final dateLabel = DateFormat('dd MMMM yyyy', 'fr_FR').format(_selectedDate);
 
     return AppScaffold(
@@ -59,6 +61,45 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
       ],
       body: Column(
         children: [
+          // Sync status indicator
+          if (syncStatus is SyncStatusError)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              color: Colors.red.withValues(alpha: 0.1),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      syncStatus.message,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else if (syncStatus is SyncStatusSyncing)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              color: Colors.blue.withValues(alpha: 0.1),
+              child: const Row(
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: AppSpacing.sm),
+                  Text(
+                    'Synchronisation en cours...',
+                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
           // Date filter header
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),

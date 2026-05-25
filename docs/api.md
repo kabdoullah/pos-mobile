@@ -113,8 +113,8 @@ GET    /api/v1/auth/me                   Profil de l'utilisateur connecté
 ### Boutique
 
 ```
-GET    /api/v1/store                     Récupérer ma boutique
-PATCH  /api/v1/store                     Mettre à jour ma boutique
+GET    /api/v1/stores                     Récupérer ma boutique
+PATCH  /api/v1/stores                     Mettre à jour ma boutique
 ```
 
 ### Catalogue

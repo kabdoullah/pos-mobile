@@ -31,4 +31,9 @@ abstract class AuthRemoteDataSource {
   /// Endpoint: POST /api/v1/auth/reset-password
   @POST('/api/v1/auth/reset-password')
   Future<void> resetPassword(@Body() ResetPasswordRequestDto request);
+
+  /// Refreshes the access token using the refresh token.
+  /// Endpoint: POST /api/v1/auth/refresh
+  @POST('/api/v1/auth/refresh')
+  Future<TokenResponseDto> refresh(@Body() RefreshRequestDto request);
 }

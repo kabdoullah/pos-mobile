@@ -21,7 +21,11 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(timeout 30 flutter devices)",
-      "Bash(pkill -f \"flutter run\")"
+      "Bash(pkill -f \"flutter run\")",
+      "Bash(docker compose *)",
+      "Bash(flutter devices *)",
+      "Bash(flutter run *)",
+      "Bash(adb shell *)"
     ]
   }
 }

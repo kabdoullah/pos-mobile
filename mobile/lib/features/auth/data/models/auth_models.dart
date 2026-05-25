@@ -82,3 +82,15 @@ sealed class ResetPasswordRequestDto with _$ResetPasswordRequestDto {
   factory ResetPasswordRequestDto.fromJson(Map<String, dynamic> json) =>
       _$ResetPasswordRequestDtoFromJson(json);
 }
+
+/// Request payload for token refresh.
+@freezed
+sealed class RefreshRequestDto with _$RefreshRequestDto {
+  /// Creates a RefreshRequestDto.
+  const factory RefreshRequestDto({
+    @JsonKey(name: 'refresh_token') required String refreshToken,
+  }) = _RefreshRequestDto;
+
+  factory RefreshRequestDto.fromJson(Map<String, dynamic> json) =>
+      _$RefreshRequestDtoFromJson(json);
+}

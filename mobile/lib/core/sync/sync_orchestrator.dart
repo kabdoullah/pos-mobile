@@ -62,6 +62,16 @@ class SyncOrchestrator extends _$SyncOrchestrator {
 
     _startPeriodicSync();
 
+    // Initial sync on app startup (after 3s delay for app stabilization).
+    Timer(const Duration(seconds: 3), () {
+      final isOnlineAsync = ref.read(isOnlineProvider);
+      final isOnline = isOnlineAsync.value ?? false;
+      if (isOnline && !_isSyncing) {
+        _logger.d('Initial sync triggered on app startup');
+        unawaited(syncNow());
+      }
+    });
+
     ref.onDispose(() {
       _periodicTimer?.cancel();
       _debounceTimer?.cancel();
