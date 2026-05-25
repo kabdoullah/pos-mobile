@@ -29,8 +29,10 @@ Future<sale_entity.Sale> submitSale(
     mobileMoneyAmount: mobileMoneyAmount,
   );
 
-  // Clear cart after successful submission
-  ref.read(cartProvider.notifier).clear();
+  // Clear cart only if provider still mounted after async gap
+  if (ref.mounted) {
+    ref.read(cartProvider.notifier).clear();
+  }
 
   return sale;
 }

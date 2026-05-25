@@ -43,6 +43,8 @@ class ScanController extends _$ScanController {
     final product = await repo.getByBarcode(barcode);
     if (product == null) return ScanResult.notFound;
 
+    if (!ref.mounted) return ScanResult.notFound;
+
     final cartState = ref.read(cartProvider);
     final alreadyInCart = cartState.items.any(
       (CartItem item) => item.productId == product.id,
