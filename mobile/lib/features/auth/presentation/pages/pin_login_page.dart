@@ -13,7 +13,7 @@ import '../providers/auth_providers.dart';
 /// Daily PIN login screen.
 ///
 /// Quick access with just the PIN. Shows store name and welcome message.
-/// Handles PIN attempt limits with 5-minute lockout.
+/// Handles PIN attempt limits with 5-minute lockout (4 max attempts).
 class PinLoginPage extends ConsumerStatefulWidget {
   /// Creates a PIN login page.
   const PinLoginPage({super.key});

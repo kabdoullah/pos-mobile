@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../config.dart';
+
 /// Storage keys for PIN data.
 abstract class _PinStorageKeys {
   /// PIN hash (SHA-256 hex).
@@ -35,7 +37,7 @@ class PinStorage {
   final Duration _lockoutDuration;
 
   /// Max PIN attempts before lockout.
-  static const int maxAttempts = 5;
+  static int get maxAttempts => AppConfig.maxPinAttempts;
 
   /// Saves the PIN as a SHA-256 hash with a random salt.
   Future<void> savePinHash(String pin) async {

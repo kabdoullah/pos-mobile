@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logger/logger.dart';
 
+import '../../../../core/config.dart';
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/error_mapper.dart';
 import '../../../../core/network/network_providers.dart';
@@ -186,7 +187,7 @@ class Auth extends _$Auth {
   /// Checks PIN against bcrypt hash in local secure storage.
   /// On success: fetches current user from token → `Authenticated`.
   /// On PIN mismatch: throws "PIN incorrect".
-  /// On 5th attempt: local storage auto-lockout for 5 minutes.
+  /// On 4th failed attempt: local storage auto-lockout for 5 minutes.
   Future<void> verifyPin(String pin) async {
     _logger.i('[Auth.verifyPin] Attempt with PIN length=${pin.length}');
     state = const AsyncLoading<AuthStatus>();
@@ -197,7 +198,13 @@ class Auth extends _$Auth {
         final isCorrect = await repo.verifyPin(pin);
 
         if (!isCorrect) {
-          throw 'PIN incorrect';
+          final attempts = await repo.getPinAttempts();
+          final remaining = AppConfig.maxPinAttempts - attempts;
+          if (remaining <= 0) {
+            throw 'PIN incorrect. Compte verrouillé pour ${AppConfig.pinLockoutMinutes} min.';
+          }
+          final s = remaining > 1 ? 's' : '';
+          throw 'PIN incorrect. $remaining tentative$s restante$s.';
         }
 
         _logger.i('[Auth.verifyPin] PIN verified, fetching user');
@@ -318,7 +325,9 @@ class Auth extends _$Auth {
   String _toUserFacingException(Object e) {
     if (e is! NetworkException) {
       final msg = e.toString();
-      if (msg.contains('verrouillé')) return msg; // PIN lockout passthrough
+      if (msg.startsWith('PIN incorrect') || msg.contains('verrouillé')) {
+        return msg;
+      }
     }
     return errorToFrench(e);
   }

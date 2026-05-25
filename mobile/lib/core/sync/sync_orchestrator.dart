@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../shared/providers/connectivity_provider.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
+import '../../features/catalog/presentation/providers/catalog_providers.dart';
 import '../../features/sales/presentation/providers/sales_providers.dart';
 import '../../features/sync/presentation/providers/sync_providers.dart';
 
@@ -144,8 +145,9 @@ class SyncOrchestrator extends _$SyncOrchestrator {
       _logger.d('Sync step: pull changes');
       await pullService.pullChanges();
 
-      // Invalidate sales history cache so UI refreshes with updated receipt numbers
+      // Invalidate UI caches so screens refresh after pull writes to drift.
       ref.invalidate(salesHistoryProvider);
+      ref.invalidate(catalogListProvider);
 
       _logger.d('Sync completed successfully');
       state = SyncStatusIdle(lastSyncAt: DateTime.now());

@@ -127,7 +127,10 @@ GoRouter appRouter(Ref ref) {
           return null;
         },
         error: (_, _) {
+          // PIN pages display inline error messages — don't redirect on error.
+          final pinRoutes = {Routes.pinLogin, Routes.pinSetup};
           if (publicRoutes.contains(state.fullPath)) return null;
+          if (pinRoutes.contains(state.fullPath)) return null;
           logger.i(
             '[Router.redirect] Auth error, redirecting to ${Routes.emailLogin}',
           );
