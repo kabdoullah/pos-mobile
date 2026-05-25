@@ -21,6 +21,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY app ./app
 COPY alembic.ini ./
 COPY alembic ./alembic
+COPY scripts/entrypoint.sh ./scripts/entrypoint.sh
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
@@ -39,6 +40,9 @@ WORKDIR /app
 # Copier l'environnement Python depuis le builder
 COPY --from=builder --chown=app:app /app /app
 
+# Ensure entrypoint is executable
+RUN chmod +x /app/scripts/entrypoint.sh
+
 # Mettre l'environnement uv dans le PATH
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
@@ -52,4 +56,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()" || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["bash", "./scripts/entrypoint.sh"]
