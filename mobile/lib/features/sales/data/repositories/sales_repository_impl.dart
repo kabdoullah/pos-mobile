@@ -32,9 +32,34 @@ class SalesRepositoryImpl implements SalesRepository {
   }) async {
     const uuid = Uuid();
     final saleId = uuid.v4();
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
 
-    // Transaction: insert sale + items atomically
+    // Build sync payload with items (before transaction)
+    final itemPayloads = items
+        .map(
+          (item) => {
+            'product_id': item.productId,
+            'product_name_at_sale': item.productName,
+            'unit_price_at_sale': item.unitPrice.toString(),
+            'quantity': item.quantity,
+            'line_total': item.lineTotal.toString(),
+          },
+        )
+        .toList();
+
+    final salePayload = {
+      'id': saleId,
+      'items': itemPayloads,
+      'total_amount': totalAmount.toString(),
+      'vat_amount': vatAmount.toString(),
+      'payment_method': _paymentMethodToDtoString(paymentMethod),
+      if (cashAmount != null) 'cash_amount': cashAmount.toString(),
+      if (mobileMoneyAmount != null)
+        'mobile_money_amount': mobileMoneyAmount.toString(),
+      'created_at': now.toIso8601String(),
+    };
+
+    // Transaction: insert sale + items + queue entry atomically
     await db.transaction(() async {
       // Create sale record
       await db
@@ -67,34 +92,10 @@ class SalesRepositoryImpl implements SalesRepository {
               ),
             );
       }
+
+      // Enqueue for sync within same transaction (ensures atomicity)
+      await syncQueue.enqueueSale(saleId: saleId, salePayload: salePayload);
     });
-
-    // Build sync payload with items
-    final itemPayloads = items
-        .map(
-          (item) => {
-            'product_id': item.productId,
-            'product_name': item.productName,
-            'unit_price': item.unitPrice.toString(),
-            'quantity': item.quantity,
-            'line_total': item.lineTotal.toString(),
-          },
-        )
-        .toList();
-
-    final salePayload = {
-      'id': saleId,
-      'items': itemPayloads,
-      'total_amount': totalAmount.toString(),
-      'vat_amount': vatAmount.toString(),
-      'payment_method': _paymentMethodToDtoString(paymentMethod),
-      if (cashAmount != null) 'cash_amount': cashAmount.toString(),
-      if (mobileMoneyAmount != null)
-        'mobile_money_amount': mobileMoneyAmount.toString(),
-      'created_at': now.toIso8601String(),
-    };
-
-    await syncQueue.enqueueSale(saleId: saleId, salePayload: salePayload);
 
     return sale_entity.Sale(
       id: saleId,

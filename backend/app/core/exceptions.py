@@ -1,7 +1,11 @@
 """Exceptions métier et handlers FastAPI."""
 
+import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError as PydanticValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class AppError(Exception):
@@ -62,5 +66,22 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "detail": exc.message,
                 "code": exc.code,
                 "field": exc.field,
+            },
+        )
+
+    @app.exception_handler(PydanticValidationError)
+    async def handle_pydantic_validation(_request: Request, exc: PydanticValidationError) -> JSONResponse:
+        errors = exc.errors()
+        logger.error(f"Pydantic validation error: {errors}")
+        # Format first error message for mobile client
+        detail = errors[0]["msg"] if errors else "Validation error"
+        # Extract field name if available
+        field = errors[0]["loc"][0] if errors and errors[0].get("loc") else None
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content={
+                "detail": detail,
+                "code": "VALIDATION_ERROR",
+                "field": str(field) if field else None,
             },
         )

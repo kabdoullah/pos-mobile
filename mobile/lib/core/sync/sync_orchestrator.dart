@@ -4,6 +4,7 @@ import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../shared/providers/connectivity_provider.dart';
+import '../../features/sales/presentation/providers/sales_providers.dart';
 import '../../features/sync/presentation/providers/sync_providers.dart';
 
 part 'sync_orchestrator.g.dart';
@@ -62,6 +63,9 @@ class SyncOrchestrator extends _$SyncOrchestrator {
 
     _startPeriodicSync();
 
+    // Reset failed entries on startup to retry them (for recoverable errors like timezone bugs).
+    _resetFailedEntries();
+
     // Initial sync on app startup (after 3s delay for app stabilization).
     Timer(const Duration(seconds: 3), () {
       final isOnlineAsync = ref.read(isOnlineProvider);
@@ -78,6 +82,22 @@ class SyncOrchestrator extends _$SyncOrchestrator {
     });
 
     return const SyncStatusIdle();
+  }
+
+  /// Reset failed sync queue entries to pending so they can be retried.
+  /// This helps recover from transient errors like timezone bugs that were fixed in code.
+  void _resetFailedEntries() {
+    unawaited(() async {
+      try {
+        final syncQueue = ref.read(syncQueueRepositoryProvider);
+        final resetCount = await syncQueue.resetFailedEntries();
+        if (resetCount > 0) {
+          _logger.i('Reset $resetCount failed sync entries to pending');
+        }
+      } catch (e) {
+        _logger.w('Failed to reset sync queue: $e');
+      }
+    }());
   }
 
   /// Starts 5-minute periodic sync timer when online.
@@ -116,6 +136,9 @@ class SyncOrchestrator extends _$SyncOrchestrator {
 
       _logger.d('Sync step: pull changes');
       await pullService.pullChanges();
+
+      // Invalidate sales history cache so UI refreshes with updated receipt numbers
+      ref.invalidate(salesHistoryProvider);
 
       _logger.d('Sync completed successfully');
       state = SyncStatusIdle(lastSyncAt: DateTime.now());

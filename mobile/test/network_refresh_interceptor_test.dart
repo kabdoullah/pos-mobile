@@ -10,7 +10,15 @@ import 'package:mocktail/mocktail.dart';
 // ignore: unnecessary_lambdas
 class MockTokenStorage extends Mock implements TokenStorage {}
 
+// ignore: unnecessary_lambdas
+class MockDio extends Mock implements Dio {}
+
 void main() {
+  setUpAll(() {
+    registerFallbackValue(
+      RequestOptions(path: ''),
+    );
+  });
   group('RefreshInterceptor', () {
     test('single 401 → calls refreshCall once, new tokens saved', () async {
       final tokenStorage = MockTokenStorage();
@@ -35,10 +43,19 @@ void main() {
 
       var onAuthExpiredCalled = false;
 
+      final mockDio = MockDio();
+      when(() => mockDio.fetch<dynamic>(any())).thenAnswer((_) async =>
+          Response(
+            data: {'id': 1},
+            statusCode: 200,
+            requestOptions: RequestOptions(path: '/api/v1/products'),
+          ));
+
       final interceptor = RefreshInterceptor(
         tokenStorage: tokenStorage,
         refreshCall: refreshCall,
         onAuthExpired: () => onAuthExpiredCalled = true,
+        dio: mockDio,
       );
 
       // Simulate a 401 response.
@@ -101,6 +118,7 @@ void main() {
         tokenStorage: tokenStorage,
         refreshCall: refreshCall,
         onAuthExpired: () => onAuthExpiredCalled = true,
+        dio: MockDio(),
       );
 
       final errorResponse = Response(
@@ -154,10 +172,19 @@ void main() {
 
       var onAuthExpiredCallCount = 0;
 
+      final mockDio = MockDio();
+      when(() => mockDio.fetch<dynamic>(any())).thenAnswer((_) async =>
+          Response(
+            data: {'id': 1},
+            statusCode: 200,
+            requestOptions: RequestOptions(path: '/api/v1/products'),
+          ));
+
       final interceptor = RefreshInterceptor(
         tokenStorage: tokenStorage,
         refreshCall: refreshCall,
         onAuthExpired: () => onAuthExpiredCallCount++,
+        dio: mockDio,
       );
 
       // Create 3 concurrent 401 errors.
@@ -226,6 +253,7 @@ void main() {
           tokenStorage: tokenStorage,
           refreshCall: (_) async => throw Exception('should not be called'),
           onAuthExpired: () => onAuthExpiredCalled = true,
+          dio: MockDio(),
         );
 
         final errorResponse = Response(
@@ -259,6 +287,7 @@ void main() {
         tokenStorage: tokenStorage,
         refreshCall: (_) async => throw Exception('should not be called'),
         onAuthExpired: () => onAuthExpiredCalled = true,
+        dio: MockDio(),
       );
 
       final errorResponse = Response(

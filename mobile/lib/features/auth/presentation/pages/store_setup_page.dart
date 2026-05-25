@@ -155,7 +155,6 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Configuration'), elevation: 0),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(
           responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),

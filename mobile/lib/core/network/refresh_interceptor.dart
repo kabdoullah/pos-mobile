@@ -14,6 +14,7 @@ class RefreshInterceptor extends Interceptor {
     required this.tokenStorage,
     required this.refreshCall,
     required this.onAuthExpired,
+    required this.dio,
   });
 
   /// Handles secure token persistence.
@@ -28,6 +29,9 @@ class RefreshInterceptor extends Interceptor {
 
   /// Called when refresh fails (token expired). Triggers logout redirect.
   final void Function() onAuthExpired;
+
+  /// Dio instance for retrying the original request after token refresh.
+  final Dio dio;
 
   static final _logger = Logger();
 
@@ -101,16 +105,9 @@ class RefreshInterceptor extends Interceptor {
       );
 
       _refreshCompleter!.complete(true);
-      // Note: In a real app, the retry would go through the normal Dio flow
-      // which re-enters onRequest with the new token. For now, resolve with
-      // a placeholder response indicating success.
-      handler.resolve(
-        Response(
-          data: null,
-          statusCode: 200,
-          requestOptions: err.requestOptions,
-        ),
-      );
+      // Retry the original request with the new token.
+      // The request re-enters onRequest() which adds the new token to headers.
+      handler.resolve(await dio.fetch(err.requestOptions));
     } catch (e) {
       _logger.e('Token refresh failed: $e');
       _refreshCompleter!.complete(false);

@@ -148,6 +148,18 @@ class SyncQueueRepository {
     return (_db.delete(_db.syncQueue)).go();
   }
 
+  /// Reset failed entries to pending (for retries after code fixes).
+  Future<int> resetFailedEntries() async {
+    return (_db.update(
+      _db.syncQueue,
+    )..where((t) => t.status.equals('failed'))).write(
+      SyncQueueCompanion(
+        status: const drift.Value('pending'),
+        retryCount: const drift.Value(0),
+      ),
+    );
+  }
+
   /// Get all pending/failed entries by entity type.
   Future<List<SyncQueueData>> getEntriesByType(String entityType) async {
     return (_db.select(_db.syncQueue)

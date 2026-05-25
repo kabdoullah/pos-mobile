@@ -77,6 +77,7 @@ Dio buildDio({
       tokenStorage: tokenStorage,
       refreshCall: refreshCall,
       onAuthExpired: onAuthExpired,
+      dio: dio,
     ),
   );
 
