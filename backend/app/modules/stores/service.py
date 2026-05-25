@@ -1,7 +1,8 @@
 """Logique métier du module stores."""
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
@@ -37,7 +38,8 @@ class StoreService:
 
     async def create_default_for_user(self, user_id: UUID) -> Store:
         """Crée une boutique vide avec les valeurs par défaut. Appelé à l'inscription."""
-        store = Store(owner_id=user_id, name=_DEFAULT_STORE_NAME)
+        store = Store(owner_id=user_id, name=_DEFAULT_STORE_NAME, id=uuid4())
+        await self.db.execute(text(f"SET LOCAL app.current_store_id = '{store.id}'"))
         return await self.repo.create(store)
 
     async def get_for_user(self, user_id: UUID) -> Store:
