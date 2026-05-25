@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 
-import '../../../../core/network/api_exception.dart';
+import '../../../../core/network/error_mapper.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -136,12 +136,11 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
       }
     } catch (e) {
       if (mounted) {
-        final message = e is NetworkException ? e.message : e.toString();
-        Logger().e('Error saving store configuration - $message');
+        Logger().e('Error saving store configuration - $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Erreur: $message',
+              errorToFrench(e),
               style: const TextStyle(color: AppColors.textOnPrimary),
             ),
             backgroundColor: AppColors.error,

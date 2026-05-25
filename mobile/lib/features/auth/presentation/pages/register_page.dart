@@ -45,6 +45,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     _phoneController = TextEditingController();
     _obscurePassword = true;
     _obscureConfirmPassword = true;
+    // Clear any stale auth error from previous login attempt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(authProvider.notifier).clearError();
+    });
   }
 
   @override

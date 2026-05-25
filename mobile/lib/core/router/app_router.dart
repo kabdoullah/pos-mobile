@@ -127,6 +127,7 @@ GoRouter appRouter(Ref ref) {
           return null;
         },
         error: (_, _) {
+          if (publicRoutes.contains(state.fullPath)) return null;
           logger.i(
             '[Router.redirect] Auth error, redirecting to ${Routes.emailLogin}',
           );

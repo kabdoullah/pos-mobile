@@ -38,6 +38,10 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
     super.initState();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
+    // Clear any stale auth error from previous login attempt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(authProvider.notifier).clearError();
+    });
   }
 
   @override

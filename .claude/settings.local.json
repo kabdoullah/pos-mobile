@@ -19,7 +19,9 @@
       "Bash(grep -E \"Table\\\\$|get.*Table\" /home/kemogoha/Documents/Development/pos-mobile/mobile/lib/database/app_database.g.dart)",
       "Skill(caveman:caveman-commit)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(timeout 30 flutter devices)",
+      "Bash(pkill -f \"flutter run\")"
     ]
   }
 }

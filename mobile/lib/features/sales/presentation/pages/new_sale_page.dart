@@ -14,6 +14,7 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../domain/entities/cart_item.dart';
+import '../pages/add_product_to_cart_sheet.dart';
 import '../providers/cart_provider.dart';
 import '../providers/scan_provider.dart';
 
@@ -86,6 +87,20 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
     }
     if (!mounted) return;
     await context.push(Routes.payment);
+    if (wasActive && mounted && _isPermissionGranted) {
+      setState(() => _isCameraActive = true);
+    }
+  }
+
+  Future<void> _openAddManuallySheet() async {
+    final wasActive = _isCameraActive;
+    if (wasActive) setState(() => _isCameraActive = false);
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const AddProductToCartSheet(),
+    );
     if (wasActive && mounted && _isPermissionGranted) {
       setState(() => _isCameraActive = true);
     }
@@ -172,6 +187,7 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
                     onUpdateQuantity: _updateQuantity,
                     onRemoveItem: _removeItem,
                     onCheckout: _checkout,
+                    onAddManually: _openAddManuallySheet,
                   ),
                 ),
               ],
@@ -377,11 +393,13 @@ class _CartPanel extends StatelessWidget {
     required this.onUpdateQuantity,
     required this.onRemoveItem,
     required this.onCheckout,
+    required this.onAddManually,
   });
   final CartState cartState;
   final void Function(String productId, int qty) onUpdateQuantity;
   final void Function(String productId) onRemoveItem;
   final VoidCallback onCheckout;
+  final VoidCallback onAddManually;
 
   @override
   Widget build(BuildContext context) {
@@ -422,10 +440,7 @@ class _CartPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Articles scannés',
-                        style: AppTypography.labelMedium,
-                      ),
+                      const Text('Panier', style: AppTypography.labelMedium),
                       Text(
                         '${cartState.itemCount} article${cartState.itemCount > 1 ? 's' : ''}',
                         style: AppTypography.bodySmall,
@@ -433,28 +448,32 @@ class _CartPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text('TOTAL', style: AppTypography.labelSmall),
-                    AmountDisplay(
-                      amount: cartState.total,
-                      size: AmountSize.hero,
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
           const Divider(height: 1, color: AppColors.divider),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              AppSpacing.sm,
+              AppSpacing.md,
+              AppSpacing.sm,
+            ),
+            child: SecondaryButton(
+              label: 'Ajouter manuellement',
+              onPressed: onAddManually,
+              icon: Icons.search,
+            ),
+            // onAddManually prevents const
+          ),
           Expanded(
             child: cartState.isEmpty
-                ? EmptyStateIllustrated(
+                ? const EmptyStateIllustrated(
                     illustration: Illustrations.emptyCart,
                     title: 'Panier vide',
                     message:
-                        'Scannez un produit avec la caméra ci-dessus pour commencer',
+                        'Scannez un code-barres ou ajoutez un produit manuellement',
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(
@@ -465,7 +484,7 @@ class _CartPanel extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final item = cartState.items[index];
                       return Dismissible(
-                        key: ValueKey(item.productId),
+                        key: Key(item.productId),
                         direction: DismissDirection.endToStart,
                         onDismissed: (_) => onRemoveItem(item.productId),
                         background: Container(
@@ -494,6 +513,30 @@ class _CartPanel extends StatelessWidget {
                       );
                     },
                   ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [Text('TOTAL', style: AppTypography.labelSmall)],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            child: AmountDisplay(
+              amount: cartState.total,
+              size: AmountSize.hero,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(

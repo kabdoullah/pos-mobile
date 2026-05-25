@@ -11,7 +11,6 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
-import '../../../sales/presentation/providers/cart_provider.dart';
 import '../providers/catalog_providers.dart';
 
 class CatalogPage extends ConsumerStatefulWidget {
@@ -58,7 +57,6 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   Widget build(BuildContext context) {
     ref.watch(debouncedSearchProvider);
     final catalogState = ref.watch(catalogListProvider);
-    final cartState = ref.watch(cartProvider);
 
     return AppScaffold(
       title: 'Catalogue',
@@ -67,12 +65,10 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
         onPressed: _openProductForm,
         child: const Icon(Icons.add, color: AppColors.textOnPrimary),
       ),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              // Search bar
-              Padding(
+          // Search bar
+          Padding(
             padding: EdgeInsets.all(
               responsiveValue(
                 context,
@@ -150,10 +146,6 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                         );
                       }
 
-                      final isOutOfStock =
-                          product.currentStock != null &&
-                          product.currentStock! <= 0;
-
                       return Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.md),
                         child: AppCard(
@@ -193,33 +185,6 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                                   style: AppTypography.bodySmall,
                                 ),
                               ],
-                              const SizedBox(height: AppSpacing.md),
-                              ElevatedButton(
-                                onPressed: isOutOfStock
-                                    ? null
-                                    : () {
-                                        ref
-                                            .read(cartProvider.notifier)
-                                            .addItem(product);
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              '${product.name} ajouté au panier',
-                                            ),
-                                            duration: const Duration(
-                                              milliseconds: 1500,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                child: Text(
-                                  isOutOfStock
-                                      ? 'Rupture'
-                                      : 'Ajouter au panier',
-                                ),
-                              ),
                             ],
                           ),
                         ),
@@ -230,29 +195,6 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
               },
             ),
           ),
-            ],
-          ),
-          // Cart floating button (bottom-right)
-          if (!cartState.isEmpty)
-            Positioned(
-              bottom: AppSpacing.lg,
-              right: AppSpacing.lg,
-              child: FloatingActionButton.extended(
-                backgroundColor: const Color(0xFF6B8E6F),
-                onPressed: () => context.push(Routes.newSale),
-                icon: const Icon(
-                  Icons.shopping_cart,
-                  color: AppColors.textOnPrimary,
-                ),
-                label: Text(
-                  'Panier (${cartState.itemCount})',
-                  style: const TextStyle(
-                    color: AppColors.textOnPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );

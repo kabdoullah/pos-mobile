@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logger/logger.dart';
 
 import '../../../../core/network/api_exception.dart';
+import '../../../../core/network/error_mapper.dart';
 import '../../../../core/network/network_providers.dart';
 import '../../domain/entities/user.dart';
 import '../../../auth/providers/auth_di_providers.dart';
@@ -283,20 +284,21 @@ class Auth extends _$Auth {
     }
   }
 
+  /// Clears any error state, resetting to Unauthenticated.
+  /// Called by login/register pages on mount to avoid stale errors.
+  void clearError() {
+    if (state is AsyncError) {
+      state = const AsyncData(AuthUnauthenticated());
+    }
+  }
+
   /// Convert exceptions to user-friendly French messages.
   /// Used inside [AsyncValue.guard] to store meaningful errors.
   String _toUserFacingException(Object e) {
-    final message = e is NetworkException ? e.message : e.toString();
-
-    if (message.toLowerCase().contains('email')) return 'Email déjà utilisé';
-    if (message.toLowerCase().contains('password')) {
-      return 'Email ou mot de passe incorrect';
+    if (e is! NetworkException) {
+      final msg = e.toString();
+      if (msg.contains('verrouillé')) return msg; // PIN lockout passthrough
     }
-    if (message.toLowerCase().contains('connection')) return 'Pas de connexion';
-    if (message.toLowerCase().contains('timeout')) return 'Délai dépassé';
-    if (message.toLowerCase().contains('verrouillé')) {
-      return message; // PIN lockout
-    }
-    return message;
+    return errorToFrench(e);
   }
 }
