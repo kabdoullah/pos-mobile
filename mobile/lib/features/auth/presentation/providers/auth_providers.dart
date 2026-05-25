@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logger/logger.dart';
 
 import '../../../../core/network/api_exception.dart';
 import '../../../../core/network/error_mapper.dart';
 import '../../../../core/network/network_providers.dart';
+import '../../../../core/sync/sync_orchestrator.dart';
 import '../../domain/entities/user.dart';
 import '../../../auth/providers/auth_di_providers.dart';
 
@@ -221,6 +224,15 @@ class Auth extends _$Auth {
         throw msg;
       }
     });
+
+    // Trigger sync when user becomes fully authenticated.
+    if (state is AsyncData<AuthStatus>) {
+      final status = (state as AsyncData<AuthStatus>).value;
+      if (status is AuthAuthenticated) {
+        _logger.i('[Auth.verifyPin] Triggering sync');
+        unawaited(ref.read(syncOrchestratorProvider.notifier).syncNow());
+      }
+    }
   }
 
   /// User has navigated past store setup (from store_setup_page.dart).
@@ -267,6 +279,15 @@ class Auth extends _$Auth {
         throw msg;
       }
     });
+
+    // Trigger sync when user becomes fully authenticated.
+    if (state is AsyncData<AuthStatus>) {
+      final status = (state as AsyncData<AuthStatus>).value;
+      if (status is AuthAuthenticated) {
+        _logger.i('[Auth.setupPin] Triggering sync');
+        unawaited(ref.read(syncOrchestratorProvider.notifier).syncNow());
+      }
+    }
   }
 
   /// Log out the current user.

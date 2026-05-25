@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'sync/sync_orchestrator.dart';
 import 'theme.dart';
 import 'router/app_router.dart';
 
@@ -11,6 +12,9 @@ class PosMobileApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize sync orchestrator (monitors connectivity, triggers periodic syncs).
+    ref.watch(syncOrchestratorProvider);
+
     final router = ref.watch(appRouterProvider);
 
     return MaterialApp.router(
