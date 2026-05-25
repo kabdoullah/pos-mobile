@@ -31,8 +31,8 @@ app = FastAPI(
     description="API for the POS Mobile mobile app",
     version="0.1.0",
     lifespan=lifespan,
-    docs_url="/docs" if settings.environment != "production" else None,
-    redoc_url="/redoc" if settings.environment != "production" else None,
+    docs_url="/docs",
+    redoc_url="/redoc",
 )
 
 # Middlewares (ordre important : du plus externe au plus interne)
@@ -92,5 +92,5 @@ async def root() -> dict[str, str]:
     return {
         "name": "POS Mobile API",
         "version": app.version,
-        "docs": "/docs" if settings.environment != "production" else "disabled",
+        "docs": "/docs",
     }
