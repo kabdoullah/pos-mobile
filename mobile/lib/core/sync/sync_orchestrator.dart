@@ -4,6 +4,7 @@ import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../shared/providers/connectivity_provider.dart';
+import '../../features/auth/presentation/providers/auth_providers.dart';
 import '../../features/sales/presentation/providers/sales_providers.dart';
 import '../../features/sync/presentation/providers/sync_providers.dart';
 
@@ -116,6 +117,12 @@ class SyncOrchestrator extends _$SyncOrchestrator {
   /// Guarded against concurrent syncs (only one can run at a time).
   /// Push happens first to ensure local unsent changes are uploaded before pull.
   Future<void> syncNow() async {
+    final authState = ref.read(authProvider);
+    if (authState.value is! AuthAuthenticated) {
+      _logger.d('Sync skipped: not authenticated');
+      return;
+    }
+
     if (_isSyncing) {
       _logger.d('Sync already in progress, ignoring concurrent request');
       return;
