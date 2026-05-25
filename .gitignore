@@ -39,8 +39,7 @@ venv/
 env/
 ENV/
 
-# uv
-uv.lock
+# uv (tracked for reproducible builds)
 
 # Tests / Coverage
 .pytest_cache/
