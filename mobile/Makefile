@@ -15,7 +15,7 @@ gen-watch: ## Lance la génération de code en mode watch
 	dart run build_runner watch --delete-conflicting-outputs
 
 run: ## Lance l'app sur l'appareil ou émulateur connecté
-	flutter run --dart-define=API_URL=https://pos-mobile-vkuh.onrender.com
+	flutter run --dart-define=API_URL=http://10.0.2.2:8000
 
 run-prod: ## Lance avec l'URL de production
 	flutter run --release --dart-define=API_URL=https://api.pos-mobile-ci.com

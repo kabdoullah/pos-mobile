@@ -144,7 +144,6 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Configurez votre PIN'), elevation: 0),
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
