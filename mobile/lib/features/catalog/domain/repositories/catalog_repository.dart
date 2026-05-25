@@ -1,9 +1,11 @@
 import '../entities/product.dart';
+import '../entities/product_page.dart';
 
 /// Abstract repository for catalog operations.
 abstract class CatalogRepository {
   /// Get products, optionally filtered by search query and paginated by cursor.
-  Future<List<Product>> getProducts({
+  /// Returns a page with pagination metadata.
+  Future<ProductPage> getProducts({
     String? query,
     String? cursor,
     int limit = 50,

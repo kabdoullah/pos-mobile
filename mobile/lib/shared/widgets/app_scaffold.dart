@@ -7,6 +7,7 @@ import 'sync_status_indicator.dart';
 ///
 /// Displays a yellow warning banner when offline to notify users
 /// that their actions will be synced when connectivity returns.
+/// Bottom navigation is handled by MainShell for authenticated routes.
 class AppScaffold extends ConsumerWidget {
   /// Creates an app scaffold.
   const AppScaffold({

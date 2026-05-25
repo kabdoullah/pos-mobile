@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/sync/sync_queue_repository.dart';
 import '../../../../database/app_database.dart' hide Product;
 import '../../domain/entities/product.dart' as product_domain;
+import '../../domain/entities/product_page.dart';
 import '../../domain/repositories/catalog_repository.dart';
 import '../models/product_mappers.dart';
 
@@ -21,7 +22,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
   final SyncQueueRepository syncQueue;
 
   @override
-  Future<List<product_domain.Product>> getProducts({
+  Future<ProductPage> getProducts({
     String? query,
     String? cursor,
     int limit = 50,
@@ -47,13 +48,20 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final startIndex = cursor == null
         ? 0
         : records.indexWhere((r) => r.id == cursor) + 1;
-    if (startIndex < 0) return <product_domain.Product>[];
+    if (startIndex < 0) {
+      return const ProductPage(items: [], nextCursor: null, hasMore: false);
+    }
 
-    return records
-        .skip(startIndex)
-        .take(limit)
-        .map((r) => r.toDomain())
-        .toList();
+    final remaining = records.skip(startIndex).toList();
+    final items = remaining.take(limit).map((r) => r.toDomain()).toList();
+
+    // Calculate next cursor and has_more
+    final nextCursor = items.isNotEmpty && remaining.length > limit
+        ? items.last.id
+        : null;
+    final hasMore = remaining.length > limit;
+
+    return ProductPage(items: items, nextCursor: nextCursor, hasMore: hasMore);
   }
 
   @override

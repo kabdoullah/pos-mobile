@@ -12,7 +12,6 @@ import '../../features/auth/presentation/pages/email_login_page.dart';
 import '../../features/auth/presentation/pages/store_setup_page.dart';
 import '../../features/onboarding/presentation/pages/tutorial_page.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
-import '../../features/catalog/presentation/pages/catalog_page.dart';
 import '../../features/catalog/presentation/pages/product_form_page.dart';
 import '../../features/catalog/presentation/pages/barcode_scanner_page.dart';
 import '../../features/sales/presentation/pages/new_sale_page.dart';
@@ -22,9 +21,8 @@ import '../../features/sales/presentation/pages/sales_history_page.dart';
 import '../../features/sales/presentation/pages/sale_detail_page.dart';
 import '../../features/sales/domain/entities/sale.dart';
 import '../../features/sales/domain/entities/cart_item.dart';
-import '../../features/home/presentation/pages/home_page.dart';
-import '../../features/settings/presentation/pages/settings_page.dart';
 import '../../features/printing/presentation/pages/bluetooth_setup_page.dart';
+import 'main_shell.dart';
 
 part 'app_router.g.dart';
 
@@ -202,12 +200,33 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: Routes.home,
         pageBuilder: (context, state) =>
-            PageTransitions.slideRight(context, state, const HomePage()),
+            PageTransitions.slideRight(context, state, const MainShell()),
+      ),
+      GoRoute(path: Routes.catalog, redirect: (context, state) => Routes.home),
+      GoRoute(
+        path: Routes.salesHistory,
+        redirect: (context, state) => Routes.home,
+      ),
+      GoRoute(path: Routes.settings, redirect: (context, state) => Routes.home),
+      GoRoute(
+        path: Routes.newSale,
+        pageBuilder: (context, state) =>
+            PageTransitions.slideRight(context, state, const NewSalePage()),
       ),
       GoRoute(
-        path: Routes.catalog,
+        path: Routes.payment,
         pageBuilder: (context, state) =>
-            PageTransitions.slideRight(context, state, const CatalogPage()),
+            PageTransitions.scale(context, state, const PaymentPage()),
+      ),
+      GoRoute(
+        path: Routes.saleSuccess,
+        pageBuilder: (context, state) {
+          final extra = state.extra as ({Sale sale, List<CartItem> items})?;
+          final child = extra == null
+              ? const SalesHistoryPage()
+              : SaleSuccessPage(sale: extra.sale, items: extra.items);
+          return PageTransitions.fadeScale(context, state, child);
+        },
       ),
       GoRoute(
         path: Routes.productNew,
@@ -231,34 +250,6 @@ GoRouter appRouter(Ref ref) {
             PageTransitions.scale(context, state, const BarcodeScannerPage()),
       ),
       GoRoute(
-        path: Routes.newSale,
-        pageBuilder: (context, state) =>
-            PageTransitions.slideRight(context, state, const NewSalePage()),
-      ),
-      GoRoute(
-        path: Routes.payment,
-        pageBuilder: (context, state) =>
-            PageTransitions.scale(context, state, const PaymentPage()),
-      ),
-      GoRoute(
-        path: Routes.saleSuccess,
-        pageBuilder: (context, state) {
-          final extra = state.extra as ({Sale sale, List<CartItem> items})?;
-          final child = extra == null
-              ? const SalesHistoryPage()
-              : SaleSuccessPage(sale: extra.sale, items: extra.items);
-          return PageTransitions.fadeScale(context, state, child);
-        },
-      ),
-      GoRoute(
-        path: Routes.salesHistory,
-        pageBuilder: (context, state) => PageTransitions.slideRight(
-          context,
-          state,
-          const SalesHistoryPage(),
-        ),
-      ),
-      GoRoute(
         path: Routes.saleDetail,
         pageBuilder: (context, state) {
           final sale = state.extra as Sale?;
@@ -267,11 +258,6 @@ GoRouter appRouter(Ref ref) {
               : SaleDetailPage(sale: sale);
           return PageTransitions.scale(context, state, child);
         },
-      ),
-      GoRoute(
-        path: Routes.settings,
-        pageBuilder: (context, state) =>
-            PageTransitions.fade(context, state, const SettingsPage()),
       ),
       GoRoute(
         path: Routes.bluetoothSetup,

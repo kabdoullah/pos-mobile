@@ -5,42 +5,79 @@ import '../../domain/entities/product.dart';
 
 part 'catalog_providers.g.dart';
 
+/// Current search query state - managed internally by the notifier.
+@riverpod
+class SearchQuery extends _$SearchQuery {
+  @override
+  String build() => '';
+
+  void updateQuery(String query) => state = query;
+}
+
+/// Debounced search - automatically triggered when search query changes.
+/// Riverpod's cancellation mechanism handles debouncing when query updates arrive within 300ms.
+@riverpod
+Future<void> debouncedSearch(Ref ref) async {
+  final query = ref.watch(searchQueryProvider);
+
+  // Debounce: delay before executing search
+  await Future<void>.delayed(const Duration(milliseconds: 300));
+
+  // Trigger the catalog list search
+  await ref.read(catalogListProvider.notifier).search(query);
+}
+
 /// CatalogListNotifier manages product list with pagination and search.
 @riverpod
 class CatalogList extends _$CatalogList {
   String _searchQuery = '';
   String? _nextCursor;
   bool _hasMore = true;
+  int _lastLoadMoreListLength = 0;
 
   @override
   Future<List<Product>> build() async {
     final repo = ref.watch(catalogRepositoryProvider);
-    return repo.getProducts();
+    final page = await repo.getProducts();
+    _nextCursor = page.nextCursor;
+    _hasMore = page.hasMore;
+    return page.items;
   }
 
-  /// Search products by name (debounced by caller).
+  /// Search products by name.
   Future<void> search(String query) async {
     _searchQuery = query;
     _nextCursor = null;
     _hasMore = true;
+    _lastLoadMoreListLength = 0;
     final repo = ref.read(catalogRepositoryProvider);
-    state = await AsyncValue.guard(() => repo.getProducts(query: query));
+    final page = await repo.getProducts(query: query);
+    _nextCursor = page.nextCursor;
+    _hasMore = page.hasMore;
+    state = AsyncData(page.items);
   }
 
   /// Load next page of products.
+  /// Prevents duplicate requests via threshold tracking - only triggers once per new list size.
   Future<void> loadMore() async {
     if (!_hasMore || state.isLoading) return;
 
-    final repo = ref.read(catalogRepositoryProvider);
     final currentList = state.whenData((list) => list).value ?? [];
 
+    // Only trigger loadMore once per list size increment
+    if (currentList.length <= _lastLoadMoreListLength) return;
+    _lastLoadMoreListLength = currentList.length;
+
+    final repo = ref.read(catalogRepositoryProvider);
+
     state = await AsyncValue.guard(() async {
-      final next = await repo.getProducts(
+      final page = await repo.getProducts(
         query: _searchQuery.isEmpty ? null : _searchQuery,
         cursor: _nextCursor,
       );
-      if (next.isEmpty) _hasMore = false;
-      return [...currentList, ...next];
+      _nextCursor = page.nextCursor;
+      _hasMore = page.hasMore;
+      return [...currentList, ...page.items];
     });
   }
 
@@ -48,10 +85,16 @@ class CatalogList extends _$CatalogList {
   Future<void> refresh() async {
     _nextCursor = null;
     _hasMore = true;
+    _lastLoadMoreListLength = 0;
     final repo = ref.read(catalogRepositoryProvider);
-    state = await AsyncValue.guard(
-      () => repo.getProducts(query: _searchQuery.isEmpty ? null : _searchQuery),
-    );
+    state = await AsyncValue.guard(() async {
+      final page = await repo.getProducts(
+        query: _searchQuery.isEmpty ? null : _searchQuery,
+      );
+      _nextCursor = page.nextCursor;
+      _hasMore = page.hasMore;
+      return page.items;
+    });
   }
 
   /// Create a new product.

@@ -149,100 +149,107 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(
-          responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Bienvenue !', style: AppTypography.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Créons votre compte POS Mobile',
-              style: AppTypography.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
-              ),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(
+            responsiveValue(
+              context,
+              small: AppSpacing.md,
+              medium: AppSpacing.lg,
             ),
-            const SizedBox(height: AppSpacing.lg),
-            if (errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  border: Border.all(color: AppColors.error),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  errorMessage,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.error,
-                  ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('Bienvenue !', style: AppTypography.titleLarge),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Créons votre compte POS Mobile',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-            ],
-            AppTextField(
-              label: 'Email',
-              hint: 'vous@example.com',
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              errorText: _emailError,
-              prefixIcon: Icons.email_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Mot de passe',
-              hint: 'Au moins 8 caractères',
-              controller: _passwordController,
-              obscureText: _obscurePassword,
-              errorText: _passwordError,
-              prefixIcon: Icons.lock_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Confirmer le mot de passe',
-              controller: _confirmPasswordController,
-              obscureText: _obscureConfirmPassword,
-              errorText: _confirmPasswordError,
-              prefixIcon: Icons.lock_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Téléphone',
-              hint: '+225 0123456789',
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              errorText: _phoneError,
-              prefixIcon: Icons.phone_outlined,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(
-              label: 'Créer mon compte',
-              onPressed: isLoading ? null : _register,
-              isLoading: isLoading,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Vous avez un compte ? ',
-                  style: AppTypography.bodyMedium,
-                ),
-                GestureDetector(
-                  onTap: () => context.go(Routes.emailLogin),
+              if (errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    border: Border.all(color: AppColors.error),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Text(
-                    'Connectez-vous',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.primary,
-                      decoration: TextDecoration.underline,
+                    errorMessage,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.error,
                     ),
                   ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
               ],
-            ),
-          ],
+              AppTextField(
+                label: 'Email',
+                hint: 'vous@example.com',
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                errorText: _emailError,
+                prefixIcon: Icons.email_outlined,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Mot de passe',
+                hint: 'Au moins 8 caractères',
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                errorText: _passwordError,
+                prefixIcon: Icons.lock_outlined,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Confirmer le mot de passe',
+                controller: _confirmPasswordController,
+                obscureText: _obscureConfirmPassword,
+                errorText: _confirmPasswordError,
+                prefixIcon: Icons.lock_outlined,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Téléphone',
+                hint: '+225 0123456789',
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                errorText: _phoneError,
+                prefixIcon: Icons.phone_outlined,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                label: 'Créer mon compte',
+                onPressed: isLoading ? null : _register,
+                isLoading: isLoading,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Vous avez un compte ? ',
+                    style: AppTypography.bodyMedium,
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go(Routes.emailLogin),
+                    child: Text(
+                      'Connectez-vous',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

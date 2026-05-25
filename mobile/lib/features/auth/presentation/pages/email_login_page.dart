@@ -102,100 +102,110 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(
-          responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Se connecter', style: AppTypography.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            const Text(
-              'Accédez à votre compte POS',
-              style: AppTypography.bodyMedium,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(
+            responsiveValue(
+              context,
+              small: AppSpacing.md,
+              medium: AppSpacing.lg,
             ),
-            const SizedBox(height: AppSpacing.lg),
-            if (errorMessage != null) ...[
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  border: Border.all(color: AppColors.error),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  errorMessage,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.error,
-                  ),
-                ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('Se connecter', style: AppTypography.titleLarge),
+              const SizedBox(height: AppSpacing.xs),
+              const Text(
+                'Accédez à votre compte POS',
+                style: AppTypography.bodyMedium,
               ),
               const SizedBox(height: AppSpacing.lg),
-            ],
-            AppTextField(
-              label: 'Email',
-              hint: 'vous@example.com',
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              errorText: _emailError,
-              prefixIcon: Icons.email_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Mot de passe',
-              controller: _passwordController,
-              obscureText: _obscurePassword,
-              errorText: _passwordError,
-              prefixIcon: Icons.lock_outlined,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () {
-                  // TODO: Implement password reset flow.
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Réinitialisation de mot de passe (à venir)',
-                      ),
+              if (errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    border: Border.all(color: AppColors.error),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    errorMessage,
+                    style: AppTypography.bodyMedium.copyWith(
+                      color: AppColors.error,
                     ),
-                  );
-                },
-                child: Text(
-                  'Mot de passe oublié ?',
-                  style: AppTypography.labelMedium.copyWith(
-                    color: AppColors.primary,
-                    decoration: TextDecoration.underline,
                   ),
                 ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
+              AppTextField(
+                label: 'Email',
+                hint: 'vous@example.com',
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                errorText: _emailError,
+                prefixIcon: Icons.email_outlined,
               ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            PrimaryButton(
-              label: 'Se connecter',
-              onPressed: isLoading ? null : _login,
-              isLoading: isLoading,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Pas de compte ? ', style: AppTypography.bodyMedium),
-                GestureDetector(
-                  onTap: () => context.go(Routes.register),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Mot de passe',
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                errorText: _passwordError,
+                prefixIcon: Icons.lock_outlined,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {
+                    // TODO: Implement password reset flow.
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Réinitialisation de mot de passe (à venir)',
+                        ),
+                      ),
+                    );
+                  },
                   child: Text(
-                    'Inscrivez-vous',
+                    'Mot de passe oublié ?',
                     style: AppTypography.labelMedium.copyWith(
                       color: AppColors.primary,
                       decoration: TextDecoration.underline,
                     ),
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              PrimaryButton(
+                label: 'Se connecter',
+                onPressed: isLoading ? null : _login,
+                isLoading: isLoading,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Pas de compte ? ',
+                    style: AppTypography.bodyMedium,
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go(Routes.register),
+                    child: Text(
+                      'Inscrivez-vous',
+                      style: AppTypography.labelMedium.copyWith(
+                        color: AppColors.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

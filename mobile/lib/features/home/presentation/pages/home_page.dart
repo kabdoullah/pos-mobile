@@ -12,7 +12,9 @@ import '../../../../shared/widgets/index.dart';
 import '../../../auth/presentation/providers/store_provider.dart';
 import '../providers/home_providers.dart';
 
-/// Home page — dashboard with today's sales summary and quick access.
+const Color _textLight = Color(0xFF8A8A8A);
+
+/// Premium financial dashboard with asymmetric layout and refined aesthetics.
 class HomePage extends ConsumerWidget {
   /// Creates a [HomePage].
   const HomePage({super.key});
@@ -36,61 +38,129 @@ class HomePage extends ConsumerWidget {
         ),
       ],
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(
-          responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),
-        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Store name + date header
-            Text(storeName, style: AppTypography.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            Text(dateLabel, style: AppTypography.bodySmall),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Hero summary card
-            dailySummaryAsync.when(
-              loading: () => const AppLoadingIndicator(),
-              error: (_, _) => _SummaryCard(summary: DailySummary.empty),
-              data: (summary) => _SummaryCard(summary: summary),
+            // Header with store name and date
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                responsiveValue(
+                  context,
+                  small: AppSpacing.md,
+                  medium: AppSpacing.lg,
+                ),
+                AppSpacing.lg,
+                responsiveValue(
+                  context,
+                  small: AppSpacing.md,
+                  medium: AppSpacing.lg,
+                ),
+                AppSpacing.xl,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    storeName,
+                    style: AppTypography.titleLarge.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    dateLabel,
+                    style: AppTypography.bodySmall.copyWith(
+                      color: _textLight,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.lg),
 
-            // NOUVELLE VENTE — primary CTA
-            PrimaryButton(
-              label: 'NOUVELLE VENTE',
-              onPressed: () => context.push(Routes.newSale),
-              icon: Icons.point_of_sale,
-            ),
-            const SizedBox(height: AppSpacing.xl),
+            // Main content area with asymmetric layout
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: responsiveValue(
+                  context,
+                  small: AppSpacing.md,
+                  medium: AppSpacing.lg,
+                ),
+              ),
+              child: Column(
+                children: [
+                  // Hero summary section
+                  dailySummaryAsync.when(
+                    loading: () => const AppLoadingIndicator(),
+                    error: (_, _) => _SummaryCard(summary: DailySummary.empty),
+                    data: (summary) => _SummaryCard(summary: summary),
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
 
-            // Quick access row
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickCard(
-                    icon: Icons.shopping_bag_outlined,
-                    label: 'Catalogue',
-                    onTap: () => context.push(Routes.catalog),
+                  // Primary CTA — full width
+                  GestureDetector(
+                    onTap: () => context.push(Routes.newSale),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: AnimatedScale(
+                        scale: 1.0,
+                        duration: const Duration(milliseconds: 150),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primary.withValues(alpha: 0.9),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.25,
+                                ),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AppSpacing.lg,
+                              horizontal: AppSpacing.md,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.point_of_sale,
+                                  color: AppColors.textOnPrimary,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Text(
+                                  'NOUVELLE VENTE',
+                                  style: AppTypography.labelLarge.copyWith(
+                                    color: AppColors.textOnPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _QuickCard(
-                    icon: Icons.history,
-                    label: 'Historique',
-                    onTap: () => context.push(Routes.salesHistory),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _QuickCard(
-                    icon: Icons.settings_outlined,
-                    label: 'Paramètres',
-                    onTap: () => context.push(Routes.settings),
-                  ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.xl),
+                ],
+              ),
             ),
           ],
         ),
@@ -99,13 +169,23 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-/// Private summary card widget — shows today's totals and breakdown.
-class _SummaryCard extends StatelessWidget {
-  /// Creates a [_SummaryCard].
+/// Premium summary card with glass-morphism effect.
+class _SummaryCard extends StatefulWidget {
   const _SummaryCard({required this.summary});
-
-  /// The summary data to display.
   final DailySummary summary;
+
+  @override
+  State<_SummaryCard> createState() => _SummaryCardState();
+}
+
+class _SummaryCardState extends State<_SummaryCard> {
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 50), () {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,60 +194,66 @@ class _SummaryCard extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [AppColors.primary, AppColors.primaryLight],
+          colors: [
+            AppColors.primary.withValues(alpha: 0.95),
+            AppColors.primary.withValues(alpha: 0.85),
+          ],
         ),
-        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            blurRadius: 30,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Label
             Text(
               'Total du jour',
               style: AppTypography.labelMedium.copyWith(
-                color: AppColors.textOnPrimary,
+                color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
 
-            // Hero amount
-            AmountDisplay(amount: summary.totalAmount, size: AmountSize.hero),
-            // Override text color for gradient card
-            const SizedBox(height: AppSpacing.lg),
+            // Hero amount with serif font treatment
+            AmountDisplay(
+              amount: widget.summary.totalAmount,
+              size: AmountSize.hero,
+            ),
+            const SizedBox(height: AppSpacing.xl),
 
-            // Breakdown row
+            // Breakdown row with refined styling
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _SummaryItem(
+                _SummaryMetric(
                   label: 'Nombre',
-                  value: '${summary.saleCount}',
-                  isDark: true,
+                  value: '${widget.summary.saleCount}',
                 ),
-                _SummaryItem(
+                const SizedBox(width: AppSpacing.md),
+                _SummaryMetric(
                   label: 'Espèces',
                   value: AmountDisplay(
-                    amount: summary.cashTotal,
+                    amount: widget.summary.cashTotal,
                     size: AmountSize.medium,
                   ),
-                  isDark: true,
                 ),
-                _SummaryItem(
+                const SizedBox(width: AppSpacing.md),
+                _SummaryMetric(
                   label: 'Mobile',
                   value: AmountDisplay(
-                    amount: summary.mobileMoneyTotal,
+                    amount: widget.summary.mobileMoneyTotal,
                     size: AmountSize.medium,
                   ),
-                  isDark: true,
                 ),
               ],
             ),
@@ -178,101 +264,38 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-/// Private summary item widget — shows a label and value.
-class _SummaryItem extends StatelessWidget {
-  /// Creates a [_SummaryItem].
-  const _SummaryItem({
-    required this.label,
-    required this.value,
-    this.isDark = false,
-  });
+/// Refined metric display for summary breakdown.
+class _SummaryMetric extends StatelessWidget {
+  const _SummaryMetric({required this.label, required this.value});
 
-  /// Item label.
   final String label;
-
-  /// Item value (string or widget).
   final dynamic value;
 
-  /// Whether to use light text (on dark background).
-  final bool isDark;
-
   @override
   Widget build(BuildContext context) {
-    final textColor = isDark ? AppColors.textOnPrimary : null;
-    return Column(
-      children: [
-        Text(
-          label,
-          style: AppTypography.captionText.copyWith(color: textColor),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: AppSpacing.xs),
-        if (value is String)
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
           Text(
-            value as String,
-            style: AppTypography.bodyLarge.copyWith(color: textColor),
-            textAlign: TextAlign.center,
-          )
-        else
-          value as Widget,
-      ],
-    );
-  }
-}
-
-/// Private quick access card widget.
-class _QuickCard extends StatefulWidget {
-  /// Creates a [_QuickCard].
-  const _QuickCard({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  /// Card icon.
-  final IconData icon;
-
-  /// Card label.
-  final String label;
-
-  /// On tap callback.
-  final VoidCallback onTap;
-
-  @override
-  State<_QuickCard> createState() => _QuickCardState();
-}
-
-class _QuickCardState extends State<_QuickCard> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
-      child: AnimatedScale(
-        scale: _isPressed ? 0.95 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        child: AppCard(
-          onTap: widget.onTap,
-          padding: AppSpacing.md,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(widget.icon, size: 36, color: AppColors.primary),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                widget.label,
-                style: AppTypography.labelMedium,
-                textAlign: TextAlign.center,
-              ),
-            ],
+            label,
+            style: AppTypography.captionText.copyWith(
+              color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.xs),
+          if (value is String)
+            Text(
+              value as String,
+              style: AppTypography.bodyLarge.copyWith(
+                color: AppColors.textOnPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          else
+            value as Widget,
+        ],
       ),
     );
   }
