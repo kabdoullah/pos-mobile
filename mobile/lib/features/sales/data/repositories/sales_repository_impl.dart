@@ -135,6 +135,25 @@ class SalesRepositoryImpl implements SalesRepository {
     return sale?.toDomain();
   }
 
+  @override
+  Future<List<sale_entity.Sale>> getTodaySales() async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+
+    final sales =
+        await (db.select(db.sales)
+              ..where((t) => t.createdAt.isBiggerOrEqualValue(todayStart))
+              ..orderBy([
+                (t) => drift.OrderingTerm(
+                  expression: t.createdAt,
+                  mode: drift.OrderingMode.desc,
+                ),
+              ]))
+            .get();
+
+    return sales.map((s) => s.toDomain()).toList();
+  }
+
   /// Converts domain PaymentMethod to drift string format.
   String _paymentMethodToString(sale_entity.PaymentMethod method) {
     return switch (method) {

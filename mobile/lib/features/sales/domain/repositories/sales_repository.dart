@@ -20,4 +20,7 @@ abstract class SalesRepository {
 
   /// Get a single sale by ID.
   Future<Sale?> getSale(String id);
+
+  /// Returns all sales created today (local device timezone).
+  Future<List<Sale>> getTodaySales();
 }

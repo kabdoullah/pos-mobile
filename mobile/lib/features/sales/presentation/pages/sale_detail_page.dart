@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/network/error_mapper.dart';
+import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -159,9 +161,7 @@ class SaleDetailPage extends ConsumerWidget {
               content: const Text('Aucune imprimante configurée'),
               action: SnackBarAction(
                 label: 'Configurer',
-                onPressed: () {
-                  // TODO: Navigate to bluetooth setup
-                },
+                onPressed: () => context.push(Routes.bluetoothSetup),
               ),
             ),
           );

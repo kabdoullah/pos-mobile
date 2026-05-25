@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/sync/sync_orchestrator.dart';
@@ -15,6 +18,8 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/presentation/providers/store_provider.dart';
 import '../../../auth/presentation/pages/store_setup_page.dart';
 import '../../../printing/presentation/providers/printer_provider.dart';
+import '../../../sales/domain/entities/sale.dart';
+import '../../../sales/providers/sales_di_providers.dart';
 import '../../../sync/presentation/providers/sync_providers.dart';
 
 /// Settings page — store info, printer config, account management.
@@ -88,12 +93,7 @@ class SettingsPage extends ConsumerWidget {
                   title: const Text('Exporter CSV'),
                   subtitle: const Text('Télécharger les ventes'),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () {
-                    // TODO: Implement CSV export from Drift
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Bientôt disponible')),
-                    );
-                  },
+                  onTap: () => _exportCsv(context, ref),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
                     vertical: AppSpacing.sm,
@@ -122,24 +122,6 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: 'SUPPORT',
               children: [
-                ListTile(
-                  leading: const Icon(Icons.message_outlined),
-                  title: const Text('Support WhatsApp'),
-                  subtitle: const Text('Contacter l\'équipe'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () async {
-                    // TODO: Replace with actual support number
-                    final uri = Uri.parse('https://wa.me/225XXXXXXXXXX');
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    }
-                  },
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                ),
-                const Divider(indent: AppSpacing.md, endIndent: AppSpacing.md),
                 ListTile(
                   leading: const Icon(Icons.help_outline),
                   title: const Text('Relancer le tutoriel'),
@@ -256,6 +238,73 @@ class SettingsPage extends ConsumerWidget {
             ? 'Jamais synchronisé'
             : 'Dernière: ${lastSyncAt.hour}:${lastSyncAt.minute.toString().padLeft(2, '0')}',
       ),
+    };
+  }
+
+  static Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('Préparation de l\'export...'),
+        duration: Duration(seconds: 30),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+
+    try {
+      final sales = await ref
+          .read(salesRepositoryProvider)
+          .getSales(limit: 10000);
+
+      final buffer = StringBuffer();
+      buffer.writeln('Date,Reçu N°,Total (FCFA),TVA (FCFA),Mode de paiement');
+      for (final sale in sales) {
+        buffer.writeln(
+          [
+            sale.createdAt.toIso8601String(),
+            sale.receiptNumber,
+            sale.totalAmount,
+            sale.vatAmount,
+            _paymentMethodLabel(sale.paymentMethod),
+          ].join(','),
+        );
+      }
+
+      final dir = await getTemporaryDirectory();
+      final filename =
+          'ventes_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
+      final file = File('${dir.path}/$filename');
+      await file.writeAsString(buffer.toString());
+
+      messenger.hideCurrentSnackBar();
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/csv')],
+          subject: 'Export ventes POS',
+        ),
+      );
+    } catch (e) {
+      messenger.hideCurrentSnackBar();
+      if (context.mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Erreur export: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  static String _paymentMethodLabel(PaymentMethod method) {
+    return switch (method) {
+      PaymentMethod.cash => 'Espèces',
+      PaymentMethod.orangeMoney => 'Orange Money',
+      PaymentMethod.mtn => 'MTN',
+      PaymentMethod.wave => 'Wave',
+      PaymentMethod.mixed => 'Mixte',
     };
   }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +11,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
+import '../../../../core/network/error_mapper.dart';
+import '../../../auth/providers/auth_di_providers.dart';
 import '../providers/auth_providers.dart';
 
 /// Email login screen.
@@ -79,6 +83,69 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
 
   bool _isValidEmail(String email) {
     return email.contains('@') && email.contains('.');
+  }
+
+  void _showForgotPasswordDialog(BuildContext context) {
+    final emailController = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+
+    unawaited(
+      showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Mot de passe oublié'),
+          content: TextField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Adresse email',
+              hintText: 'votre@email.com',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final email = emailController.text.trim();
+                if (email.isEmpty) return;
+                Navigator.of(dialogContext).pop();
+                try {
+                  await ref
+                      .read(authRepositoryProvider)
+                      .sendPasswordReset(email);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Email envoyé. Vérifiez votre boîte mail.',
+                        ),
+                        backgroundColor: AppColors.secondary,
+                        duration: Duration(seconds: 4),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(errorToFrench(e)),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Envoyer'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _login() async {
@@ -163,16 +230,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
               Align(
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
-                  onTap: () {
-                    // TODO: Implement password reset flow.
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Réinitialisation de mot de passe (à venir)',
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => _showForgotPasswordDialog(context),
                   child: Text(
                     'Mot de passe oublié ?',
                     style: AppTypography.labelMedium.copyWith(

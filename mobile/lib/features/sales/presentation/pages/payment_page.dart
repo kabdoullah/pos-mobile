@@ -146,7 +146,8 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
 
       final method = _selectedMethod!;
       final total = _getCartTotal();
-      final vat = Decimal.zero; // TODO: Calculate VAT from cart
+      final vat =
+          Decimal.zero; // TVA non appliquée au MVP (pas de taux par produit)
 
       Decimal? cashAmount;
       Decimal? mobileMoneyAmount;

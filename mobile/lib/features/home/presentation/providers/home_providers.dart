@@ -1,6 +1,9 @@
 import 'package:decimal/decimal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../sales/domain/entities/sale.dart';
+import '../../../sales/providers/sales_di_providers.dart';
+
 part 'home_providers.g.dart';
 
 /// Summarizes today's sales totals by payment method.
@@ -22,7 +25,7 @@ class DailySummary {
   /// Cash portion of total.
   final Decimal cashTotal;
 
-  /// Mobile money portion (all types combined).
+  /// Mobile money portion (all non-cash types combined).
   final Decimal mobileMoneyTotal;
 
   /// Empty summary for loading/error states.
@@ -35,11 +38,28 @@ class DailySummary {
 }
 
 /// Loads daily summary from local Drift Sales table.
-///
-/// TODO: Query Drift DB: SELECT * FROM Sales WHERE date(createdAt) >= today_start
-/// TODO: Group by paymentMethod and sum amounts
-/// TODO: Implement after SalesRepository Drift data layer is complete
 @riverpod
 Future<DailySummary> dailySummary(Ref ref) async {
-  return DailySummary.empty;
+  final repo = ref.watch(salesRepositoryProvider);
+  final sales = await repo.getTodaySales();
+
+  var total = Decimal.zero;
+  var cash = Decimal.zero;
+  var mobileMoney = Decimal.zero;
+
+  for (final sale in sales) {
+    total += sale.totalAmount;
+    if (sale.paymentMethod == PaymentMethod.cash) {
+      cash += sale.totalAmount;
+    } else {
+      mobileMoney += sale.totalAmount;
+    }
+  }
+
+  return DailySummary(
+    totalAmount: total,
+    saleCount: sales.length,
+    cashTotal: cash,
+    mobileMoneyTotal: mobileMoney,
+  );
 }
