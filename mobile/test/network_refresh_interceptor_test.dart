@@ -15,9 +15,7 @@ class MockDio extends Mock implements Dio {}
 
 void main() {
   setUpAll(() {
-    registerFallbackValue(
-      RequestOptions(path: ''),
-    );
+    registerFallbackValue(RequestOptions(path: ''));
   });
   group('RefreshInterceptor', () {
     test('single 401 → calls refreshCall once, new tokens saved', () async {
@@ -44,12 +42,13 @@ void main() {
       var onAuthExpiredCalled = false;
 
       final mockDio = MockDio();
-      when(() => mockDio.fetch<dynamic>(any())).thenAnswer((_) async =>
-          Response(
-            data: {'id': 1},
-            statusCode: 200,
-            requestOptions: RequestOptions(path: '/api/v1/products'),
-          ));
+      when(() => mockDio.fetch<dynamic>(any())).thenAnswer(
+        (_) async => Response(
+          data: {'id': 1},
+          statusCode: 200,
+          requestOptions: RequestOptions(path: '/api/v1/products'),
+        ),
+      );
 
       final interceptor = RefreshInterceptor(
         tokenStorage: tokenStorage,
@@ -173,12 +172,13 @@ void main() {
       var onAuthExpiredCallCount = 0;
 
       final mockDio = MockDio();
-      when(() => mockDio.fetch<dynamic>(any())).thenAnswer((_) async =>
-          Response(
-            data: {'id': 1},
-            statusCode: 200,
-            requestOptions: RequestOptions(path: '/api/v1/products'),
-          ));
+      when(() => mockDio.fetch<dynamic>(any())).thenAnswer(
+        (_) async => Response(
+          data: {'id': 1},
+          statusCode: 200,
+          requestOptions: RequestOptions(path: '/api/v1/products'),
+        ),
+      );
 
       final interceptor = RefreshInterceptor(
         tokenStorage: tokenStorage,
