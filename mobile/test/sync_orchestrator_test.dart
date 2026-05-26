@@ -47,9 +47,9 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      when(
-        () => mockPushService.pushPendingSales(),
-      ).thenAnswer((_) => Future<void>.delayed(const Duration(milliseconds: 100)));
+      when(() => mockPushService.pushPendingSales()).thenAnswer(
+        (_) => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
 
       final orchestrator = container.read(syncOrchestratorProvider.notifier);
 
@@ -108,9 +108,9 @@ void main() {
       'syncNow updates state to SyncStatusSyncing then SyncStatusIdle',
       () async {
         // Override mocks with delay to ensure we see the syncing state
-        when(
-          () => mockPushService.pushPendingSales(),
-        ).thenAnswer((_) => Future<void>.delayed(const Duration(milliseconds: 300)));
+        when(() => mockPushService.pushPendingSales()).thenAnswer(
+          (_) => Future<void>.delayed(const Duration(milliseconds: 300)),
+        );
 
         final container = ProviderContainer(
           overrides: [
@@ -150,8 +150,12 @@ void main() {
 
     test('syncNow on error sets SyncStatusError', () async {
       final errorMockPushService = MockPushService();
-      when(errorMockPushService.pushPendingSales).thenThrow(Exception('Network error'));
-      when(errorMockPushService.pushPendingProductChanges).thenAnswer((_) async => {});
+      when(
+        errorMockPushService.pushPendingSales,
+      ).thenThrow(Exception('Network error'));
+      when(
+        errorMockPushService.pushPendingProductChanges,
+      ).thenAnswer((_) async => {});
 
       final container = ProviderContainer(
         overrides: [

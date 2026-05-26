@@ -153,7 +153,11 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg);
+    final spacing = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,

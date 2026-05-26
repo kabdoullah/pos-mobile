@@ -198,7 +198,11 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     final total = _getCartTotal();
     final change = _getChangeAmount();
 
-    final spacing = responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg);
+    final spacing = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
@@ -216,97 +220,106 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-            // Total to pay
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Total à payer', style: AppTypography.bodySmall),
-                  const SizedBox(height: AppSpacing.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(''),
-                      AmountDisplay(amount: total, size: AmountSize.hero),
-                    ],
+                  // Total to pay
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Total à payer',
+                          style: AppTypography.bodySmall,
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(''),
+                            AmountDisplay(amount: total, size: AmountSize.hero),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            // Payment methods
-            const Text('Mode de paiement', style: AppTypography.titleMedium),
-            const SizedBox(height: AppSpacing.md),
-            _buildPaymentMethodButton(
-              PaymentMethod.cash,
-              'Espèces',
-              Icons.payments,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _buildPaymentMethodButton(
-              PaymentMethod.orangeMoney,
-              'Orange Money',
-              Icons.phone_android,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _buildPaymentMethodButton(
-              PaymentMethod.mtn,
-              'MTN',
-              Icons.phone_android,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _buildPaymentMethodButton(
-              PaymentMethod.wave,
-              'Wave',
-              Icons.phone_android,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _buildPaymentMethodButton(
-              PaymentMethod.mixed,
-              'Mixte',
-              Icons.multiple_stop,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            // Dynamic fields based on payment method
-            if (_selectedMethod == PaymentMethod.cash) ...[
-              AppTextField(
-                label: 'Montant reçu (FCFA)',
-                controller: _cashReceivedController,
-                keyboardType: TextInputType.number,
-                errorText: _cashReceivedError,
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              if (change > Decimal.zero)
-                AppCard(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Monnaie à rendre',
-                        style: AppTypography.titleMedium,
+                  const SizedBox(height: AppSpacing.xl),
+                  // Payment methods
+                  const Text(
+                    'Mode de paiement',
+                    style: AppTypography.titleMedium,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildPaymentMethodButton(
+                    PaymentMethod.cash,
+                    'Espèces',
+                    Icons.payments,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildPaymentMethodButton(
+                    PaymentMethod.orangeMoney,
+                    'Orange Money',
+                    Icons.phone_android,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildPaymentMethodButton(
+                    PaymentMethod.mtn,
+                    'MTN',
+                    Icons.phone_android,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildPaymentMethodButton(
+                    PaymentMethod.wave,
+                    'Wave',
+                    Icons.phone_android,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildPaymentMethodButton(
+                    PaymentMethod.mixed,
+                    'Mixte',
+                    Icons.multiple_stop,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  // Dynamic fields based on payment method
+                  if (_selectedMethod == PaymentMethod.cash) ...[
+                    AppTextField(
+                      label: 'Montant reçu (FCFA)',
+                      controller: _cashReceivedController,
+                      keyboardType: TextInputType.number,
+                      errorText: _cashReceivedError,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    if (change > Decimal.zero)
+                      AppCard(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Monnaie à rendre',
+                              style: AppTypography.titleMedium,
+                            ),
+                            AmountDisplay(
+                              amount: change,
+                              size: AmountSize.large,
+                            ),
+                          ],
+                        ),
                       ),
-                      AmountDisplay(amount: change, size: AmountSize.large),
-                    ],
-                  ),
-                ),
-            ] else if (_selectedMethod == PaymentMethod.mixed) ...[
-              AppTextField(
-                label: 'Espèces (FCFA)',
-                controller: _cashReceivedController,
-                keyboardType: TextInputType.number,
-                errorText: _cashReceivedError,
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                label: 'Mobile Money (FCFA)',
-                controller: _mobileMoneyController,
-                keyboardType: TextInputType.number,
-                errorText: _mobileMoneyError,
-                onChanged: (_) => setState(() {}),
-              ),
-            ],
+                  ] else if (_selectedMethod == PaymentMethod.mixed) ...[
+                    AppTextField(
+                      label: 'Espèces (FCFA)',
+                      controller: _cashReceivedController,
+                      keyboardType: TextInputType.number,
+                      errorText: _cashReceivedError,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'Mobile Money (FCFA)',
+                      controller: _mobileMoneyController,
+                      keyboardType: TextInputType.number,
+                      errorText: _mobileMoneyError,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                  ],
                 ],
               ),
             ),

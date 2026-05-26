@@ -42,7 +42,6 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (mounted) {
-    
         await ref.read(catalogListProvider.notifier).search(query);
       }
     });
@@ -56,7 +55,11 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
   @override
   Widget build(BuildContext context) {
     final catalogState = ref.watch(catalogListProvider);
-    final spacing = responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg);
+    final spacing = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
 
     return DraggableScrollableSheet(
       initialChildSize: 0.9,

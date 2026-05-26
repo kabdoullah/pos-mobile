@@ -203,10 +203,9 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                   final isConnecting = printerState is PrinterConnecting;
 
                   return AppCard(
-                    onTap:
-                        (isConnected || isConnecting)
-                            ? null
-                            : () => _connectToDevice(device),
+                    onTap: (isConnected || isConnecting)
+                        ? null
+                        : () => _connectToDevice(device),
                     child: ListTile(
                       leading: Icon(
                         isConnected ? Icons.check_circle : Icons.bluetooth,

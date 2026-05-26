@@ -142,11 +142,14 @@ class PushService {
         productItem = ProductSyncItemDto.fromJson(payload);
       } catch (_) {
         // Legacy payload used camelCase keys — repair from current drift state.
-        final product = await (_db.select(_db.products)
-              ..where((p) => p.id.equals(entry.entityId)))
-            .getSingleOrNull();
+        final product = await (_db.select(
+          _db.products,
+        )..where((p) => p.id.equals(entry.entityId))).getSingleOrNull();
         if (product == null) {
-          await _queueRepository.markFailed(entry.id, 'Legacy payload: product not found locally');
+          await _queueRepository.markFailed(
+            entry.id,
+            'Legacy payload: product not found locally',
+          );
           return;
         }
         productItem = ProductSyncItemDto(

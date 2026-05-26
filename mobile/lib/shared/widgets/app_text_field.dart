@@ -122,8 +122,11 @@ class _AppTextFieldState extends State<AppTextField> {
                           setState(() => _isObscured = !_isObscured),
                     )
                   : (widget.suffixIcon != null
-                      ? Icon(widget.suffixIcon, color: AppColors.textSecondary)
-                      : null),
+                        ? Icon(
+                            widget.suffixIcon,
+                            color: AppColors.textSecondary,
+                          )
+                        : null),
               filled: true,
               fillColor: AppColors.surface,
               border: OutlineInputBorder(

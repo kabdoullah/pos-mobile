@@ -160,6 +160,7 @@ class PrimaryButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
   });
+
   /// The text displayed within the button.
   final String label;
 
