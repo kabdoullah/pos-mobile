@@ -203,16 +203,19 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('Paiement'), elevation: 0),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: spacing,
-          right: spacing,
-          top: spacing,
-          bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.only(
+                left: spacing,
+                right: spacing,
+                top: spacing,
+                bottom: spacing,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             // Total to pay
             AppCard(
               child: Column(
@@ -304,14 +307,24 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                 onChanged: (_) => setState(() {}),
               ),
             ],
-            const SizedBox(height: AppSpacing.xl),
-            PrimaryButton(
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(
+              left: spacing,
+              right: spacing,
+              bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
+              top: spacing,
+            ),
+            child: PrimaryButton(
               label: 'Valider la vente',
               onPressed: _isSubmitting ? null : _submit,
               isLoading: _isSubmitting,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
