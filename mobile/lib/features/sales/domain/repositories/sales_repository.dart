@@ -23,4 +23,7 @@ abstract class SalesRepository {
 
   /// Returns all sales created today (local device timezone).
   Future<List<Sale>> getTodaySales();
+
+  /// Returns all sales created on the given date (local device timezone).
+  Future<List<Sale>> getSalesByDate(DateTime date);
 }

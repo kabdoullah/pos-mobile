@@ -11,13 +11,13 @@ part 'sales_di_providers.g.dart';
 @riverpod
 SalesRepository salesRepository(Ref ref) {
   return SalesRepositoryImpl(
-    db: ref.watch(databaseProvider),
-    syncQueue: ref.watch(syncQueueRepositoryProvider),
+    db: ref.read(databaseProvider),
+    syncQueue: ref.read(syncQueueRepositoryProvider),
   );
 }
 
 /// Provides the create sale use case (business logic).
 @riverpod
 CreateSaleUseCase createSaleUseCase(Ref ref) {
-  return CreateSaleUseCase(repository: ref.watch(salesRepositoryProvider));
+  return CreateSaleUseCase(repository: ref.read(salesRepositoryProvider));
 }

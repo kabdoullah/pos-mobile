@@ -29,10 +29,8 @@ class CatalogRepositoryImpl implements CatalogRepository {
   }) async {
     final dbQuery = db.select(db.products);
 
-    // Filter deleted
     dbQuery.where((p) => p.deletedAt.isNull());
 
-    // Search by name or barcode
     if (query != null && query.isNotEmpty) {
       final searchTerm = '%$query%';
       dbQuery.where(
@@ -40,26 +38,21 @@ class CatalogRepositoryImpl implements CatalogRepository {
       );
     }
 
+    // Keyset pagination: cursor is the last item's id from previous page.
+    // ORDER BY id is stable and consistent with UUID string comparison.
+    if (cursor != null) {
+      dbQuery.where((p) => p.id.isBiggerThanValue(cursor));
+    }
+
     dbQuery.orderBy([(p) => drift.OrderingTerm(expression: p.id)]);
+    // Fetch limit+1 to determine if more pages exist — no full table scan.
+    dbQuery.limit(limit + 1);
 
     final records = await dbQuery.get();
 
-    // Client-side pagination: skip to cursor, then take limit
-    final startIndex = cursor == null
-        ? 0
-        : records.indexWhere((r) => r.id == cursor) + 1;
-    if (startIndex < 0) {
-      return const ProductPage(items: [], nextCursor: null, hasMore: false);
-    }
-
-    final remaining = records.skip(startIndex).toList();
-    final items = remaining.take(limit).map((r) => r.toDomain()).toList();
-
-    // Calculate next cursor and has_more
-    final nextCursor = items.isNotEmpty && remaining.length > limit
-        ? items.last.id
-        : null;
-    final hasMore = remaining.length > limit;
+    final hasMore = records.length > limit;
+    final items = records.take(limit).map((r) => r.toDomain()).toList();
+    final nextCursor = hasMore ? items.last.id : null;
 
     return ProductPage(items: items, nextCursor: nextCursor, hasMore: hasMore);
   }

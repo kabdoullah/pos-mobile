@@ -52,10 +52,8 @@ class PushService {
 
   /// Push a batch of sales.
   Future<void> _pushSalesBatch(List<SyncQueueData> entries) async {
-    // Mark all as syncing
-    for (final entry in entries) {
-      await _queueRepository.markSyncing(entry.id);
-    }
+    // Mark all as syncing in one batch DB operation
+    await _queueRepository.markSyncingBatch(entries.map((e) => e.id).toList());
 
     try {
       // Build request

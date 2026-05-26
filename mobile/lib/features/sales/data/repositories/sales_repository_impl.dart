@@ -112,15 +112,42 @@ class SalesRepositoryImpl implements SalesRepository {
     String? cursor,
     int limit = 50,
   }) async {
+    final query = db.select(db.sales);
+    // Keyset pagination: cursor is the createdAt ISO string of the last item.
+    if (cursor != null) {
+      final cursorDate = DateTime.parse(cursor);
+      query.where((t) => t.createdAt.isSmallerThanValue(cursorDate));
+    }
+    query.orderBy([
+      (t) => drift.OrderingTerm(
+        expression: t.createdAt,
+        mode: drift.OrderingMode.desc,
+      ),
+    ]);
+    query.limit(limit);
+
+    final sales = await query.get();
+    return sales.map((s) => s.toDomain()).toList();
+  }
+
+  @override
+  Future<List<sale_entity.Sale>> getSalesByDate(DateTime date) async {
+    final dayStart = DateTime(date.year, date.month, date.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+
     final sales =
         await (db.select(db.sales)
+              ..where(
+                (t) =>
+                    t.createdAt.isBiggerOrEqualValue(dayStart) &
+                    t.createdAt.isSmallerThanValue(dayEnd),
+              )
               ..orderBy([
                 (t) => drift.OrderingTerm(
                   expression: t.createdAt,
                   mode: drift.OrderingMode.desc,
                 ),
-              ])
-              ..limit(limit))
+              ]))
             .get();
 
     return sales.map((s) => s.toDomain()).toList();

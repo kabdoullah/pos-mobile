@@ -252,29 +252,39 @@ class SettingsPage extends ConsumerWidget {
     );
 
     try {
-      final sales = await ref
-          .read(salesRepositoryProvider)
-          .getSales(limit: 10000);
-
-      final buffer = StringBuffer();
-      buffer.writeln('Date,Reçu N°,Total (FCFA),TVA (FCFA),Mode de paiement');
-      for (final sale in sales) {
-        buffer.writeln(
-          [
-            sale.createdAt.toIso8601String(),
-            sale.receiptNumber,
-            sale.totalAmount,
-            sale.vatAmount,
-            _paymentMethodLabel(sale.paymentMethod),
-          ].join(','),
-        );
-      }
-
       final dir = await getTemporaryDirectory();
       final filename =
           'ventes_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv';
       final file = File('${dir.path}/$filename');
-      await file.writeAsString(buffer.toString());
+      final sink = file.openWrite();
+
+      sink.writeln('Date,Reçu N°,Total (FCFA),TVA (FCFA),Mode de paiement');
+
+      // Paginate in chunks of 200 to avoid OOM on low-end devices.
+      const chunkSize = 200;
+      String? cursor;
+      while (true) {
+        final chunk = await ref
+            .read(salesRepositoryProvider)
+            .getSales(limit: chunkSize, cursor: cursor);
+
+        for (final sale in chunk) {
+          sink.writeln(
+            [
+              sale.createdAt.toIso8601String(),
+              sale.receiptNumber,
+              sale.totalAmount,
+              sale.vatAmount,
+              _paymentMethodLabel(sale.paymentMethod),
+            ].join(','),
+          );
+        }
+
+        if (chunk.length < chunkSize) break;
+        cursor = chunk.last.createdAt.toIso8601String();
+      }
+
+      await sink.close();
 
       messenger.hideCurrentSnackBar();
 

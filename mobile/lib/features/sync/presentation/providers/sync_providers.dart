@@ -1,4 +1,3 @@
-import 'package:decimal/decimal.dart';
 import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -7,8 +6,6 @@ import '../../../../core/sync/pull_service.dart';
 import '../../../../core/sync/push_service.dart';
 import '../../../../core/sync/sync_queue_repository.dart';
 import '../../../../database/app_database.dart';
-import '../../../catalog/domain/entities/product.dart' as product_entity;
-import '../../../sales/domain/entities/sale.dart' as sale_entity;
 
 part 'sync_providers.g.dart';
 
@@ -21,100 +18,33 @@ AppDatabase database(Ref ref) {
 /// Provides the pull service for syncing changes.
 @riverpod
 PullService pullService(Ref ref) {
-  final remoteDataSource = ref.watch(syncRemoteDataSourceProvider);
-  final db = ref.watch(databaseProvider);
-
   return PullService(
-    remoteDataSource: remoteDataSource,
-    db: db,
+    remoteDataSource: ref.read(syncRemoteDataSourceProvider),
+    db: ref.read(databaseProvider),
     logger: Logger(),
   );
-}
-
-/// Watches products from local drift database and auto-updates.
-@riverpod
-Stream<List<product_entity.Product>> productsStream(Ref ref) async* {
-  final db = ref.watch(databaseProvider);
-
-  yield* db.select(db.products).watch().map((records) {
-    return records
-        .where((r) => r.deletedAt == null)
-        .map(
-          (r) => product_entity.Product(
-            id: r.id,
-            name: r.name,
-            barcode: r.barcode,
-            unitPrice: Decimal.parse(r.unitPrice),
-            currentStock: r.currentStock,
-            updatedAt: r.updatedAt,
-            deletedAt: r.deletedAt,
-          ),
-        )
-        .toList();
-  });
-}
-
-/// Watches sales from local drift database and auto-updates.
-@riverpod
-Stream<List<sale_entity.Sale>> salesStream(Ref ref) async* {
-  final db = ref.watch(databaseProvider);
-
-  yield* db.select(db.sales).watch().map((records) {
-    return records
-        .map(
-          (r) => sale_entity.Sale(
-            id: r.id,
-            receiptNumber: r.receiptNumber,
-            totalAmount: Decimal.parse(r.totalAmount),
-            vatAmount: Decimal.parse(r.vatAmount),
-            paymentMethod: _parsePaymentMethod(r.paymentMethod),
-            createdAt: r.createdAt,
-          ),
-        )
-        .toList();
-  });
-}
-
-/// Converts string payment method from DB to enum.
-sale_entity.PaymentMethod _parsePaymentMethod(String method) {
-  return switch (method) {
-    'cash' => sale_entity.PaymentMethod.cash,
-    'orangeMoney' => sale_entity.PaymentMethod.orangeMoney,
-    'mtn' => sale_entity.PaymentMethod.mtn,
-    'wave' => sale_entity.PaymentMethod.wave,
-    'mixed' => sale_entity.PaymentMethod.mixed,
-    _ => sale_entity.PaymentMethod.cash,
-  };
 }
 
 /// Pulls changes from server and updates local drift.
 @riverpod
 Future<bool> pullChanges(Ref ref) async {
-  final service = ref.watch(pullServiceProvider);
-  final result = await service.pullChanges();
-
-  if (result) {
-    // Invalidate streams to trigger refresh
-    ref.invalidate(productsStreamProvider);
-    ref.invalidate(salesStreamProvider);
-  }
-
-  return result;
+  final service = ref.read(pullServiceProvider);
+  return service.pullChanges();
 }
 
 /// Provides the sync queue repository for managing pending syncs.
 @riverpod
 SyncQueueRepository syncQueueRepository(Ref ref) {
-  return SyncQueueRepository(db: ref.watch(databaseProvider));
+  return SyncQueueRepository(db: ref.read(databaseProvider));
 }
 
 /// Provides the push service for syncing local changes to server.
 @riverpod
 PushService pushService(Ref ref) {
   return PushService(
-    remoteDataSource: ref.watch(syncRemoteDataSourceProvider),
-    queueRepository: ref.watch(syncQueueRepositoryProvider),
-    db: ref.watch(databaseProvider),
+    remoteDataSource: ref.read(syncRemoteDataSourceProvider),
+    queueRepository: ref.read(syncQueueRepositoryProvider),
+    db: ref.read(databaseProvider),
     logger: Logger(),
   );
 }

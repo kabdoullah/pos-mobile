@@ -103,56 +103,50 @@ class HomePage extends ConsumerWidget {
                     onTap: () => context.push(Routes.newSale),
                     child: MouseRegion(
                       cursor: SystemMouseCursors.click,
-                      child: AnimatedScale(
-                        scale: 1.0,
-                        duration: const Duration(milliseconds: 150),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                AppColors.primary,
-                                AppColors.primary.withValues(alpha: 0.9),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.25,
-                                ),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primary.withValues(alpha: 0.9),
                             ],
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AppSpacing.lg,
-                              horizontal: AppSpacing.md,
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusMd,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.point_of_sale,
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.lg,
+                            horizontal: AppSpacing.md,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.point_of_sale,
+                                color: AppColors.textOnPrimary,
+                                size: 22,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Text(
+                                'NOUVELLE VENTE',
+                                style: AppTypography.labelLarge.copyWith(
                                   color: AppColors.textOnPrimary,
-                                  size: 22,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.8,
                                 ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Text(
-                                  'NOUVELLE VENTE',
-                                  style: AppTypography.labelLarge.copyWith(
-                                    color: AppColors.textOnPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.8,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -170,22 +164,9 @@ class HomePage extends ConsumerWidget {
 }
 
 /// Premium summary card with glass-morphism effect.
-class _SummaryCard extends StatefulWidget {
+class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.summary});
   final DailySummary summary;
-
-  @override
-  State<_SummaryCard> createState() => _SummaryCardState();
-}
-
-class _SummaryCardState extends State<_SummaryCard> {
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 50), () {
-      if (mounted) setState(() {});
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +194,6 @@ class _SummaryCardState extends State<_SummaryCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Label
             Text(
               'Total du jour',
               style: AppTypography.labelMedium.copyWith(
@@ -223,27 +203,17 @@ class _SummaryCardState extends State<_SummaryCard> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-
-            // Hero amount with serif font treatment
-            AmountDisplay(
-              amount: widget.summary.totalAmount,
-              size: AmountSize.hero,
-            ),
+            AmountDisplay(amount: summary.totalAmount, size: AmountSize.hero),
             const SizedBox(height: AppSpacing.xl),
-
-            // Breakdown row with refined styling
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _SummaryMetric(
-                  label: 'Nombre',
-                  value: '${widget.summary.saleCount}',
-                ),
+                _SummaryMetric(label: 'Nombre', value: '${summary.saleCount}'),
                 const SizedBox(width: AppSpacing.md),
                 _SummaryMetric(
                   label: 'Espèces',
                   value: AmountDisplay(
-                    amount: widget.summary.cashTotal,
+                    amount: summary.cashTotal,
                     size: AmountSize.medium,
                   ),
                 ),
@@ -251,7 +221,7 @@ class _SummaryCardState extends State<_SummaryCard> {
                 _SummaryMetric(
                   label: 'Mobile',
                   value: AmountDisplay(
-                    amount: widget.summary.mobileMoneyTotal,
+                    amount: summary.mobileMoneyTotal,
                     size: AmountSize.medium,
                   ),
                 ),

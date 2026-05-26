@@ -49,43 +49,52 @@ class PullService {
 
         serverTime = response.serverTime;
 
-        // Upsert products (idempotent).
-        for (final productDto in response.products) {
-          final deletedAt = productDto.deletedAt != null
-              ? DateTime.parse(productDto.deletedAt!)
-              : null;
-
-          await _db
-              .into(_db.products)
-              .insertOnConflictUpdate(
-                ProductsCompanion(
-                  id: drift.Value(productDto.id),
-                  name: drift.Value(productDto.name),
-                  barcode: drift.Value(productDto.barcode),
-                  unitPrice: drift.Value(productDto.unitPrice),
-                  currentStock: drift.Value(productDto.currentStock),
-                  dirty: const drift.Value(false),
-                  updatedAt: drift.Value(DateTime.parse(productDto.updatedAt)),
-                  deletedAt: drift.Value(deletedAt),
-                ),
+        // Upsert products (idempotent) — single batch transaction.
+        if (response.products.isNotEmpty) {
+          await _db.batch((batch) {
+            for (final productDto in response.products) {
+              final deletedAt = productDto.deletedAt != null
+                  ? DateTime.parse(productDto.deletedAt!)
+                  : null;
+              final companion = ProductsCompanion(
+                id: drift.Value(productDto.id),
+                name: drift.Value(productDto.name),
+                barcode: drift.Value(productDto.barcode),
+                unitPrice: drift.Value(productDto.unitPrice),
+                currentStock: drift.Value(productDto.currentStock),
+                dirty: const drift.Value(false),
+                updatedAt: drift.Value(DateTime.parse(productDto.updatedAt)),
+                deletedAt: drift.Value(deletedAt),
               );
+              batch.insert(
+                _db.products,
+                companion,
+                onConflict: drift.DoUpdate((_) => companion),
+              );
+            }
+          });
         }
 
-        // Upsert sales (idempotent, append-only).
-        for (final saleDto in response.sales) {
-          final createdAt = DateTime.parse(saleDto.createdAt);
-          await _db
-              .into(_db.sales)
-              .insertOnConflictUpdate(
-                SalesCompanion(
-                  id: drift.Value(saleDto.id),
-                  receiptNumber: drift.Value(saleDto.receiptNumber ?? 0),
-                  totalAmount: drift.Value(saleDto.totalAmount),
-                  vatAmount: drift.Value(saleDto.vatAmount),
-                  paymentMethod: drift.Value(saleDto.paymentMethod),
-                  createdAt: drift.Value(createdAt),
-                ),
+        // Upsert sales (idempotent, append-only) — single batch transaction.
+        // Uses DoUpdate to avoid triggering the delete-prevention trigger.
+        if (response.sales.isNotEmpty) {
+          await _db.batch((batch) {
+            for (final saleDto in response.sales) {
+              final companion = SalesCompanion(
+                id: drift.Value(saleDto.id),
+                receiptNumber: drift.Value(saleDto.receiptNumber ?? 0),
+                totalAmount: drift.Value(saleDto.totalAmount),
+                vatAmount: drift.Value(saleDto.vatAmount),
+                paymentMethod: drift.Value(saleDto.paymentMethod),
+                createdAt: drift.Value(DateTime.parse(saleDto.createdAt)),
               );
+              batch.insert(
+                _db.sales,
+                companion,
+                onConflict: drift.DoUpdate((_) => companion),
+              );
+            }
+          });
         }
 
         // Pagination check.

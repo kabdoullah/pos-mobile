@@ -17,8 +17,8 @@ Future<sale_entity.Sale> submitSale(
   Decimal? cashAmount,
   Decimal? mobileMoneyAmount,
 }) async {
-  final useCase = ref.watch(createSaleUseCaseProvider);
-  final cartState = ref.watch(cartProvider);
+  final useCase = ref.read(createSaleUseCaseProvider);
+  final cartState = ref.read(cartProvider);
 
   final sale = await useCase(
     items: cartState.items,
@@ -43,15 +43,5 @@ Future<List<sale_entity.Sale>> salesHistory(
   Ref ref, {
   required DateTime date,
 }) async {
-  final repo = ref.watch(salesRepositoryProvider);
-  final allSales = await repo.getSales(limit: 500);
-
-  return allSales
-      .where(
-        (s) =>
-            s.createdAt.year == date.year &&
-            s.createdAt.month == date.month &&
-            s.createdAt.day == date.day,
-      )
-      .toList();
+  return ref.read(salesRepositoryProvider).getSalesByDate(date);
 }

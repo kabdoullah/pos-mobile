@@ -10,20 +10,15 @@ part 'auth_di_providers.g.dart';
 /// Provides the remote data source for auth API calls.
 @riverpod
 AuthRemoteDataSource authRemoteDataSource(Ref ref) {
-  final dio = ref.watch(dioProvider);
-  return AuthRemoteDataSource(dio);
+  return AuthRemoteDataSource(ref.read(dioProvider));
 }
 
 /// Provides the auth repository implementation.
 @riverpod
 AuthRepository authRepository(Ref ref) {
-  final dataSource = ref.watch(authRemoteDataSourceProvider);
-  final tokenStorage = ref.watch(secureTokenStorageProvider);
-  final pinStorage = ref.watch(pinStorageProvider);
-
   return AuthRepositoryImpl(
-    dataSource: dataSource,
-    tokenStorage: tokenStorage,
-    pinStorage: pinStorage,
+    dataSource: ref.read(authRemoteDataSourceProvider),
+    tokenStorage: ref.read(secureTokenStorageProvider),
+    pinStorage: ref.read(pinStorageProvider),
   );
 }

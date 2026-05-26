@@ -68,6 +68,18 @@ class SyncQueueRepository {
     return entries;
   }
 
+  /// Mark multiple queue entries as syncing in one DB operation.
+  Future<void> markSyncingBatch(List<int> ids) async {
+    if (ids.isEmpty) return;
+    final now = DateTime.now();
+    await (_db.update(_db.syncQueue)..where((t) => t.id.isIn(ids))).write(
+      SyncQueueCompanion(
+        status: const drift.Value('syncing'),
+        lastAttemptAt: drift.Value(now),
+      ),
+    );
+  }
+
   /// Mark a queue entry as syncing.
   Future<bool> markSyncing(int id) async {
     final rowsAffected =
