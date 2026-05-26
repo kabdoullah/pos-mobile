@@ -20,6 +20,7 @@ import '../providers/scan_provider.dart';
 
 /// NewSalePage — permanent scanner with cart bottom sheet overlay.
 class NewSalePage extends ConsumerStatefulWidget {
+  /// Creates a new sale page.
   const NewSalePage({super.key});
 
   @override
@@ -514,12 +515,12 @@ class _CartPanel extends StatelessWidget {
                     },
                   ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(
+          const Padding(
+            padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
               vertical: AppSpacing.sm,
             ),
-            child: const Row(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
@@ -588,7 +589,7 @@ class _CartItemRow extends StatelessWidget {
                       maxLines: 1,
                     ),
                     const SizedBox(height: AppSpacing.xs),
-                    Text('Unitaire: ', style: AppTypography.captionText),
+                    const Text('Unitaire: ', style: AppTypography.captionText),
                     AmountDisplay(
                       amount: item.unitPrice,
                       size: AmountSize.small,
@@ -601,7 +602,7 @@ class _CartItemRow extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('Sous-total', style: AppTypography.labelSmall),
+                  const Text('Sous-total', style: AppTypography.labelSmall),
                   const SizedBox(height: AppSpacing.xs),
                   AmountDisplay(amount: item.lineTotal, size: AmountSize.large),
                 ],
@@ -614,7 +615,7 @@ class _CartItemRow extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Quantité', style: AppTypography.labelMedium),
+              const Text('Quantité', style: AppTypography.labelMedium),
               Row(
                 children: [
                   _QuantityButton(icon: Icons.remove, onTap: onDecrease),

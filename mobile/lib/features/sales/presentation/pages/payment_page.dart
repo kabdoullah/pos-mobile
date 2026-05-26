@@ -17,6 +17,7 @@ import '../providers/sales_providers.dart';
 
 /// PaymentPage — payment method selection and change calculation.
 class PaymentPage extends ConsumerStatefulWidget {
+  /// Creates a [PaymentPage].
   const PaymentPage({super.key});
 
   @override

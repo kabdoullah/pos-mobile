@@ -11,6 +11,7 @@ class SearchQuery extends _$SearchQuery {
   @override
   String build() => '';
 
+  /// Update the current search query state.
   void updateQuery(String query) => state = query;
 }
 

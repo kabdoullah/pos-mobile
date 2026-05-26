@@ -49,7 +49,7 @@ void main() {
 
       when(
         () => mockPushService.pushPendingSales(),
-      ).thenAnswer((_) => Future.delayed(const Duration(milliseconds: 100)));
+      ).thenAnswer((_) => Future<void>.delayed(const Duration(milliseconds: 100)));
 
       final orchestrator = container.read(syncOrchestratorProvider.notifier);
 
@@ -58,7 +58,7 @@ void main() {
       unawaited(orchestrator.syncNow());
 
       // Wait for first sync to complete
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
       // Verify pushPendingSales was called only once (second call was ignored)
       verify(() => mockPushService.pushPendingSales()).called(1);
@@ -110,7 +110,7 @@ void main() {
         // Override mocks with delay to ensure we see the syncing state
         when(
           () => mockPushService.pushPendingSales(),
-        ).thenAnswer((_) => Future.delayed(const Duration(milliseconds: 300)));
+        ).thenAnswer((_) => Future<void>.delayed(const Duration(milliseconds: 300)));
 
         final container = ProviderContainer(
           overrides: [
@@ -130,7 +130,7 @@ void main() {
 
         // Call syncNow (but don't await immediately)
         final syncFuture = orchestrator.syncNow();
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
         // Should be syncing
         expect(

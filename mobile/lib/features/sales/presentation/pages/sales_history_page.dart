@@ -109,14 +109,14 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
           Expanded(
             child: salesAsync.when(
               loading: () => const AppLoadingScreen(),
-              error: (err, stack) => EmptyStateIllustrated(
+              error: (err, stack) => const EmptyStateIllustrated(
                 illustration: Illustrations.errorState,
                 title: 'Erreur',
                 message: 'Impossible de charger l\'historique',
               ),
               data: (sales) {
                 if (sales.isEmpty) {
-                  return EmptyStateIllustrated(
+                  return const EmptyStateIllustrated(
                     illustration: Illustrations.emptySales,
                     title: 'Aucune vente',
                     message: 'Pas de vente enregistrée ce jour.',

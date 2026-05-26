@@ -13,7 +13,10 @@ import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/catalog_providers.dart';
 
+/// Displays the product catalogue with search, refresh, and navigation
+/// to product creation or editing screens.
 class CatalogPage extends ConsumerStatefulWidget {
+  /// Creates a [CatalogPage].
   const CatalogPage({super.key});
 
   @override

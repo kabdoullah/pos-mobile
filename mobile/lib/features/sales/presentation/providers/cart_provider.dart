@@ -7,7 +7,10 @@ part 'cart_provider.g.dart';
 
 /// CartState holds the current shopping cart items.
 class CartState {
+  /// Creates a new CartState with the given list of cart items.
   const CartState({required this.items});
+
+  /// Current items in the cart.
   final List<CartItem> items;
 
   /// Total amount in FCFA (sum of all line totals).
@@ -20,6 +23,7 @@ class CartState {
   /// Whether cart is empty.
   bool get isEmpty => items.isEmpty;
 
+  /// Returns a copy of this state with updated values.
   CartState copyWith({List<CartItem>? items}) {
     return CartState(items: items ?? this.items);
   }

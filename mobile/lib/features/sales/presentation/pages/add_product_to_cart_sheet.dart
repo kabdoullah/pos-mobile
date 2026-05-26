@@ -13,6 +13,7 @@ import '../providers/cart_provider.dart';
 
 /// AddProductToCartSheet — bottom sheet for searching and adding products.
 class AddProductToCartSheet extends ConsumerStatefulWidget {
+  /// Creates an [AddProductToCartSheet].
   const AddProductToCartSheet({super.key});
 
   @override
@@ -41,6 +42,7 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () {
       if (mounted) {
+    
         ref.read(catalogListProvider.notifier).search(query);
       }
     });
