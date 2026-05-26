@@ -150,12 +150,8 @@ void main() {
 
     test('syncNow on error sets SyncStatusError', () async {
       final errorMockPushService = MockPushService();
-      when(
-        () => errorMockPushService.pushPendingSales(),
-      ).thenThrow(Exception('Network error'));
-      when(
-        () => errorMockPushService.pushPendingProductChanges(),
-      ).thenAnswer((_) async => {});
+      when(errorMockPushService.pushPendingSales).thenThrow(Exception('Network error'));
+      when(errorMockPushService.pushPendingProductChanges).thenAnswer((_) async => {});
 
       final container = ProviderContainer(
         overrides: [

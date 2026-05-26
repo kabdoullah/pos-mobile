@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -7,7 +9,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 
+/// Page that displays a barcode scanner and handles camera permission.
 class BarcodeScannerPage extends StatefulWidget {
+  /// Creates a page for scanning barcodes using the device camera.
   const BarcodeScannerPage({super.key});
 
   @override
@@ -27,12 +31,12 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
       facing: CameraFacing.back,
       torchEnabled: false,
     );
-    _checkPermission();
+    unawaited(_checkPermission());
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    unawaited(_controller.dispose());
     super.dispose();
   }
 
@@ -44,8 +48,8 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     });
   }
 
-  void _openSettings() {
-    openAppSettings();
+  Future<void> _openSettings() async {
+    await openAppSettings();
   }
 
   @override
@@ -148,13 +152,18 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   }
 }
 
+/// A primary action button used throughout the app.
 class PrimaryButton extends StatelessWidget {
+  /// Creates a primary button with a label and tap callback.
   const PrimaryButton({
     super.key,
     required this.label,
     required this.onPressed,
   });
+  /// The text displayed within the button.
   final String label;
+
+  /// Callback invoked when the button is pressed.
   final VoidCallback? onPressed;
 
   @override

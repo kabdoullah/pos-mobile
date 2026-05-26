@@ -10,8 +10,6 @@ import '../../sales/domain/entities/sale.dart';
 /// Formats receipt data into ESC/POS byte sequences for 58mm thermal paper.
 ///
 /// Receipt width: 32 monospaced characters.
-/// TODO: Validate fiscal compliance with expert-comptable ivoirien before production.
-/// TODO: DGI fiscal receipt_number only assigned server-side after sync.
 class ReceiptFormatter {
   /// Logger instance.
   static final _log = Logger();

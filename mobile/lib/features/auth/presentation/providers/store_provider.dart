@@ -26,7 +26,7 @@ abstract class _StoreKeys {
 /// Provides access to the current store configuration.
 ///
 /// Reads from and writes to flutter_secure_storage.
-/// TODO: Replace with backend persistence after Store API endpoint lands.
+
 @riverpod
 class StoreConfig extends _$StoreConfig {
   static const _storage = FlutterSecureStorage();
