@@ -1,3 +1,4 @@
+import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -56,7 +57,6 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
       if (mounted) setState(() => _hasPermission = true);
       await _loadDevices();
     } else if (result.isDenied) {
-      // Try again
       if (mounted) setState(() => _checkingPermission = false);
     } else if (result.isPermanentlyDenied) {
       if (mounted) {
@@ -68,7 +68,7 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
             duration: Duration(seconds: 3),
           ),
         );
-        await openAppSettings();
+        await AppSettings.openAppSettings();
       }
     }
   }
@@ -96,38 +96,39 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
   }
 
   Future<void> _connectToDevice(BluetoothInfo device) async {
+    // Fix #1: guard against double-tap while connecting
+    if (ref.read(printerProvider) is PrinterConnecting) return;
+
     // Note: BluetoothInfo.macAdress (single 'd')
     await ref
         .read(printerProvider.notifier)
         .connect(device.macAdress, device.name);
 
-    if (mounted && ref.read(printerProvider) is PrinterConnected) {
-      await _showSuccessDialog();
-    } else if (mounted) {
-      final errorState = ref.read(printerProvider);
-      if (errorState is PrinterError) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${errorState.message}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+    if (!mounted) return;
+
+    final newState = ref.read(printerProvider);
+    if (newState is PrinterConnected) {
+      _onConnectSuccess();
+    } else if (newState is PrinterError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: ${newState.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
-  Future<void> _showSuccessDialog() async {
-    final confirm = await showConfirmDialog(
-      context,
-      title: 'Imprimante connectée',
-      message: 'Voulez-vous tester l\'impression ?',
-      confirmLabel: 'Tester',
-      cancelLabel: 'Plus tard',
-      isDangerous: false,
+  // Fix #2: show snackbar + pop instead of broken test-print dialog
+  void _onConnectSuccess() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Imprimante connectée avec succès'),
+        backgroundColor: AppColors.secondary,
+        duration: Duration(seconds: 2),
+      ),
     );
-    if (confirm && mounted) {
-      Navigator.of(context).pop();
-    }
+    Navigator.of(context).pop();
   }
 
   @override
@@ -172,15 +173,10 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                 message:
                     'Appairez d\'abord votre imprimante Bluetooth dans les réglages Android.',
                 actionLabel: 'Ouvrir les réglages Bluetooth',
-                onAction: () async {
-                  try {
-                    // Try to open Bluetooth settings via intent URI
-                    // Fallback to app settings if URI not supported
-                    await openAppSettings();
-                  } catch (e) {
-                    // Silently fail if URI not supported
-                  }
-                },
+                // Fix #3: open Bluetooth settings directly via app_settings
+                onAction: () => AppSettings.openAppSettings(
+                  type: AppSettingsType.bluetooth,
+                ),
               ),
             ] else ...[
               Text(
@@ -203,9 +199,14 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                   final isConnected =
                       printerState is PrinterConnected &&
                       printerState.mac == device.macAdress;
+                  // Fix #4: track connecting state per device
+                  final isConnecting = printerState is PrinterConnecting;
 
                   return AppCard(
-                    onTap: isConnected ? null : () => _connectToDevice(device),
+                    onTap:
+                        (isConnected || isConnecting)
+                            ? null
+                            : () => _connectToDevice(device),
                     child: ListTile(
                       leading: Icon(
                         isConnected ? Icons.check_circle : Icons.bluetooth,
@@ -225,6 +226,13 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                                 color: AppColors.secondary,
                                 fontWeight: FontWeight.w500,
                               ),
+                            )
+                          : isConnecting
+                          // Fix #4: spinner during connection attempt
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.arrow_forward_ios, size: 16),
                       contentPadding: const EdgeInsets.symmetric(
