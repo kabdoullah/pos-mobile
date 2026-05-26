@@ -74,93 +74,110 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: spacing,
-            right: spacing,
-            top: spacing,
-            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: context.screenHeight * 0.1),
-              const Icon(
-                Icons.storefront_rounded,
-                size: 48,
-                color: AppColors.primary,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const Text('Bonjour !', style: AppTypography.titleLarge),
-              const SizedBox(height: AppSpacing.xs),
-              const Text(
-                'Votre PIN pour commencer',
-                style: AppTypography.bodyMedium,
-              ),
-              SizedBox(height: context.screenHeight * 0.08),
-              Center(
-                child: Pinput(
-                  controller: _pinController,
-                  length: 4,
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  obscureText: true,
-                  defaultPinTheme: PinTheme(
-                    width: 70,
-                    height: 70,
-                    textStyle: AppTypography.amountDisplay,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                      border: Border.all(color: AppColors.border, width: 2),
-                    ),
-                  ),
-                  focusedPinTheme: PinTheme(
-                    width: 70,
-                    height: 70,
-                    textStyle: AppTypography.amountDisplay,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                      border: Border.all(color: AppColors.primary, width: 2),
-                    ),
-                  ),
-                  errorPinTheme: PinTheme(
-                    width: 70,
-                    height: 70,
-                    textStyle: AppTypography.amountDisplay,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                      border: Border.all(color: AppColors.error, width: 2),
-                    ),
-                  ),
-                  onCompleted: (_) => _verifyPin(),
-                  onChanged: (_) => setState(() => _error = null),
-                ),
-              ),
-              // Show either local validation error or system error (lockout, network, etc.)
-              if (_error != null || systemError != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                Center(
-                  child: Text(
-                    _error ?? systemError!,
-                    style: AppTypography.errorText,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-              SizedBox(height: context.screenHeight * 0.12),
-              Center(
-                child: GestureDetector(
-                  onTap: () => context.go(Routes.emailLogin),
-                  child: Text(
-                    'J\'ai oublié mon PIN',
-                    style: AppTypography.bodyMedium.copyWith(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: spacing),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.storefront_rounded,
+                      size: 48,
                       color: AppColors.primary,
-                      decoration: TextDecoration.underline,
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.md),
+                    const Text('Bonjour !', style: AppTypography.titleLarge),
+                    const SizedBox(height: AppSpacing.xs),
+                    const Text(
+                      'Votre PIN pour commencer',
+                      style: AppTypography.bodyMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xxl),
+                    Center(
+                      child: Pinput(
+                        controller: _pinController,
+                        length: 4,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        obscureText: true,
+                        defaultPinTheme: PinTheme(
+                          width: 70,
+                          height: 70,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        focusedPinTheme: PinTheme(
+                          width: 70,
+                          height: 70,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        errorPinTheme: PinTheme(
+                          width: 70,
+                          height: 70,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.error,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onCompleted: (_) => _verifyPin(),
+                        onChanged: (_) => setState(() => _error = null),
+                      ),
+                    ),
+                    // Show either local validation error or system error (lockout, network, etc.)
+                    if (_error != null || systemError != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Center(
+                        child: Text(
+                          _error ?? systemError!,
+                          style: AppTypography.errorText,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.xxl),
+                    Center(
+                      child: GestureDetector(
+                        onTap: () => context.go(Routes.emailLogin),
+                        child: Text(
+                          'J\'ai oublié mon PIN',
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.primary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

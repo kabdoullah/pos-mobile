@@ -13,6 +13,7 @@ import '../../../../core/sync/sync_orchestrator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../auth/presentation/providers/store_provider.dart';
@@ -149,6 +150,55 @@ class SettingsPage extends ConsumerWidget {
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
                     vertical: AppSpacing.sm,
+                  ),
+                ),
+              ],
+            ),
+
+            // APPARENCE section
+            _SettingsSection(
+              title: 'APPARENCE',
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.palette_outlined),
+                      const SizedBox(width: AppSpacing.md),
+                      const Expanded(child: Text('Thème')),
+                      SegmentedButton<ThemeMode>(
+                        segments: const [
+                          ButtonSegment(
+                            value: ThemeMode.light,
+                            icon: Icon(Icons.light_mode_outlined, size: 18),
+                            tooltip: 'Clair',
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.system,
+                            icon: Icon(
+                              Icons.brightness_auto_outlined,
+                              size: 18,
+                            ),
+                            tooltip: 'Système',
+                          ),
+                          ButtonSegment(
+                            value: ThemeMode.dark,
+                            icon: Icon(Icons.dark_mode_outlined, size: 18),
+                            tooltip: 'Sombre',
+                          ),
+                        ],
+                        selected: {ref.watch(themeModeProvider)},
+                        onSelectionChanged: (modes) => ref
+                            .read(themeModeProvider.notifier)
+                            .setMode(modes.first),
+                        style: SegmentedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

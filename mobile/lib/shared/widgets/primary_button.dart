@@ -87,7 +87,9 @@ class PrimaryButton extends StatelessWidget {
                         ],
                         Text(
                           label,
-                          style: AppTypography.labelLarge,
+                          style: AppTypography.labelLarge.copyWith(
+                            color: AppColors.textOnPrimary,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ],

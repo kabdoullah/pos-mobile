@@ -1,115 +1,101 @@
 import 'package:flutter/material.dart';
 
-/// Complete color palette for POS Mobile CI.
+/// Light-mode color palette for POS Mobile CI.
 ///
-/// All colors are semantic and named for their intended usage context.
-/// Palette prioritizes accessibility (WCAG AA contrast ratios) and cultural
-/// anchoring for West African merchants using the app in bright sunlight.
+/// SaaS-modern palette optimized for stock management: high contrast,
+/// clear semantic status colors (critical/low/ok), distinct from
+/// Orange Money (#FF6600) and MTN (#FFCC00) brand colors.
+///
+/// For dark-mode counterparts and stock status colors, use [AppSemanticColors]
+/// via `Theme.of(context).extension<AppSemanticColors>()!`.
 class AppColors {
-  /// Prevent instantiation
+  /// Prevent instantiation.
   AppColors._();
 
-  // Primary Terracotta (clay-earth tone, culturally anchored)
-  /// Main brand color. Warm terracotta red-brick, WCAG AA 4.5:1 on white.
-  /// Distinct from Orange Money (#FF6600) and MTN (#FFCC00).
-  /// Usage: CTA buttons, active states, important UI elements.
-  static const Color primary = Color(0xFFC1583A);
+  // Primary — Electric Blue (SaaS CTA, scan, validate)
+  /// Main brand color. WCAG AA 4.5:1 on white.
+  static const Color primary = Color(0xFF2563EB);
 
-  /// Darker variant for hover/pressed states, active indicators.
-  static const Color primaryDark = Color(0xFF9E3F25);
+  /// Darker variant for pressed/active states.
+  static const Color primaryDark = Color(0xFF1D4ED8);
 
-  /// Lighter tint for backgrounds, disabled states blending toward neutral.
-  static const Color primaryLight = Color(0xFFE07B5F);
+  /// Lighter tint for hover states.
+  static const Color primaryLight = Color(0xFF3B82F6);
 
-  /// Container background when using primary as main color accent.
-  /// Used for chip backgrounds, tinted cards with primary text.
-  static const Color primaryContainer = Color(0xFFFDEEE9);
+  /// Container background with primary as accent.
+  static const Color primaryContainer = Color(0xFFDBEAFE);
 
-  // Secondary Emerald (success, validation, positive actions)
-  /// Secondary brand color. Deep emerald green, distinct from MTN yellow-green.
-  /// Signals success, validation, positive confirmation, secondary CTA.
-  /// Usage: Success badges, valid/verified states, secondary actions.
-  static const Color secondary = Color(0xFF1A7A5E);
+  // Secondary — Emerald Green (stock OK / success)
+  /// Secondary brand color. Stock available, positive confirmation.
+  static const Color secondary = Color(0xFF16A34A);
 
-  /// Darker variant for secondary hover/pressed states.
-  static const Color secondaryDark = Color(0xFF135C46);
+  /// Darker variant for secondary pressed states.
+  static const Color secondaryDark = Color(0xFF15803D);
 
-  /// Lighter tint for secondary backgrounds or soft highlights.
-  static const Color secondaryLight = Color(0xFF3D9E7D);
+  /// Lighter tint for secondary highlights.
+  static const Color secondaryLight = Color(0xFF22C55E);
 
   /// Container background with secondary as accent.
-  static const Color secondaryContainer = Color(0xFFE6F5F0);
+  static const Color secondaryContainer = Color(0xFFDCFCE7);
 
-  // Neutral Surface Colors (warm grays)
-  /// Main app background. Slightly warm off-white, reduces eye strain
-  /// in bright sunlight and long reading sessions.
-  static const Color background = Color(0xFFFAF8F6);
+  // Neutral Surfaces
+  /// Main app background. Avoids glare in warehouse environments.
+  static const Color background = Color(0xFFF8FAFC);
 
-  /// Default surface color for cards, dialogs, bottom sheets.
-  /// Pure white for maximum contrast and clarity.
+  /// Default surface for cards, dialogs, bottom sheets.
   static const Color surface = Color(0xFFFFFFFF);
 
-  /// Variant surface for inactive or secondary surfaces.
-  /// Used as input fill color, chip backgrounds, disabled state backgrounds.
-  static const Color surfaceVariant = Color(0xFFF2EDE8);
+  /// Variant surface for input fills, chip backgrounds.
+  static const Color surfaceVariant = Color(0xFFF1F5F9);
 
-  /// Border color for inputs, dividers, subtle UI boundaries.
-  /// Warm gray for cohesion with overall palette warmth.
-  static const Color border = Color(0xFFD9D0C9);
+  /// Border color for inputs and UI boundaries.
+  static const Color border = Color(0xFFE2E8F0);
 
-  /// Divider color for separating sections and list items.
-  /// Slightly darker than border for better visibility.
-  static const Color divider = Color(0xFFEDE7E1);
+  /// Divider color for section separators.
+  static const Color divider = Color(0xFFF1F5F9);
 
   // Text Colors
-  /// Primary text color. Warm almost-black for maximum readability
-  /// in bright light conditions. Not pure black (0xFF000000) which can be harsh.
-  static const Color textPrimary = Color(0xFF1A1410);
+  /// Primary text. Maximum readability for stock quantities and amounts.
+  static const Color textPrimary = Color(0xFF0F172A);
 
-  /// Secondary text color for labels, hints, secondary information.
-  /// Warm gray with lower contrast for visual hierarchy.
-  static const Color textSecondary = Color(0xFF6B5E55);
+  /// Secondary text for SKU references, locations, secondary labels.
+  static const Color textSecondary = Color(0xFF475569);
 
-  /// Text color for disabled states or very light content.
-  static const Color textDisabled = Color(0xFFB0A49D);
+  /// Disabled/placeholder text.
+  static const Color textDisabled = Color(0xFF94A3B8);
 
-  /// Text color on primary-colored backgrounds.
-  /// Always white for maximum contrast on terracotta.
+  /// Text on primary-colored backgrounds (always white).
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
-  /// Text color on secondary-colored backgrounds.
-  /// Always white for maximum contrast on emerald green.
+  /// Text on secondary-colored backgrounds (always white).
   static const Color textOnSecondary = Color(0xFFFFFFFF);
 
   // Semantic Colors
-  /// Error/destructive state color. Deep red, distinct from primary terracotta.
-  /// Usage: Error messages, delete actions, invalid states.
-  static const Color error = Color(0xFFC0392B);
+  /// Error / stock rupture. Distinct from primary blue.
+  static const Color error = Color(0xFFDC2626);
 
-  /// Background tint for error state contexts.
-  static const Color errorContainer = Color(0xFFFDECEA);
+  /// Background tint for error state containers.
+  static const Color errorContainer = Color(0xFFFEE2E2);
 
-  /// Success state color. Aligned with secondary emerald.
-  /// Usage: Success confirmations, verified checkmarks, positive feedback.
-  static const Color success = secondary; // Reuse secondary for consistency
+  /// Success state. Aligned with secondary emerald.
+  static const Color success = secondary;
 
-  /// Background tint for success state contexts.
+  /// Background tint for success state containers.
   static const Color successContainer = secondaryContainer;
 
-  /// Warning/caution color. Warm amber, highly visible in sunlight.
-  /// Usage: Warning messages, attention-needed states, time-sensitive info.
+  /// Warning / stock low / reorder needed.
   static const Color warning = Color(0xFFD97706);
 
-  /// Background tint for warning state contexts.
+  /// Background tint for warning state containers.
   static const Color warningContainer = Color(0xFFFEF3C7);
 
-  // Additional Utility Colors
-  /// Overlay color for modals/dialogs. Transparent dark for scrim effect.
-  static const Color scrim = Color(0x991A1410);
+  // Utility
+  /// Scrim for modals and overlays.
+  static const Color scrim = Color(0x990F172A);
 
-  /// Inactive state tint (lighter than disabled text, for outlines).
-  static const Color inactive = Color(0xFFE0D9D2);
+  /// Inactive state outline color.
+  static const Color inactive = Color(0xFFE2E8F0);
 
-  /// Dark neutral background for camera-off state overlay.
-  static const Color cameraBackground = Color(0xFF1C1C1E);
+  /// Dark background for camera-off overlay.
+  static const Color cameraBackground = Color(0xFF0B0F19);
 }

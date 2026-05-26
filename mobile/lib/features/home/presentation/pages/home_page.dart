@@ -5,14 +5,11 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../../auth/presentation/providers/store_provider.dart';
 import '../providers/home_providers.dart';
-
-const Color _textLight = Color(0xFF8A8A8A);
 
 /// Premium financial dashboard with asymmetric layout and refined aesthetics.
 class HomePage extends ConsumerWidget {
@@ -62,7 +59,7 @@ class HomePage extends ConsumerWidget {
                   Text(
                     storeName,
                     style: AppTypography.titleLarge.copyWith(
-                      color: AppColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.5,
                     ),
@@ -71,7 +68,7 @@ class HomePage extends ConsumerWidget {
                   Text(
                     dateLabel,
                     style: AppTypography.bodySmall.copyWith(
-                      color: _textLight,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -109,8 +106,10 @@ class HomePage extends ConsumerWidget {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              AppColors.primary,
-                              AppColors.primary.withValues(alpha: 0.9),
+                              Theme.of(context).colorScheme.primary,
+                              Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.9),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(
@@ -118,7 +117,9 @@ class HomePage extends ConsumerWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.25),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.25),
                               blurRadius: 20,
                               offset: const Offset(0, 8),
                             ),
@@ -132,16 +133,18 @@ class HomePage extends ConsumerWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.point_of_sale,
-                                color: AppColors.textOnPrimary,
+                                color: Theme.of(context).colorScheme.onPrimary,
                                 size: 22,
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Text(
                                 'NOUVELLE VENTE',
                                 style: AppTypography.labelLarge.copyWith(
-                                  color: AppColors.textOnPrimary,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
                                   fontWeight: FontWeight.w600,
                                   letterSpacing: 0.8,
                                 ),
@@ -170,20 +173,22 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final onPrimary = Theme.of(context).colorScheme.onPrimary;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppColors.primary.withValues(alpha: 0.95),
-            AppColors.primary.withValues(alpha: 0.85),
+            primary.withValues(alpha: 0.95),
+            primary.withValues(alpha: 0.85),
           ],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.2),
+            color: primary.withValues(alpha: 0.2),
             blurRadius: 30,
             offset: const Offset(0, 12),
           ),
@@ -197,7 +202,7 @@ class _SummaryCard extends StatelessWidget {
             Text(
               'Total du jour',
               style: AppTypography.labelMedium.copyWith(
-                color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+                color: onPrimary.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
               ),
@@ -250,7 +255,9 @@ class _SummaryMetric extends StatelessWidget {
           Text(
             label,
             style: AppTypography.captionText.copyWith(
-              color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+              color: Theme.of(
+                context,
+              ).colorScheme.onPrimary.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -259,7 +266,7 @@ class _SummaryMetric extends StatelessWidget {
             Text(
               value as String,
               style: AppTypography.bodyLarge.copyWith(
-                color: AppColors.textOnPrimary,
+                color: Theme.of(context).colorScheme.onPrimary,
                 fontWeight: FontWeight.w600,
               ),
             )

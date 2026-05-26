@@ -5,6 +5,7 @@
 library;
 
 export 'theme/app_colors.dart';
+export 'theme/app_semantic_colors.dart';
 export 'theme/app_spacing.dart';
 export 'theme/app_typography.dart';
 export 'theme/app_theme.dart';

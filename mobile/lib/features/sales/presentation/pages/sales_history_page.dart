@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/sync/sync_orchestrator.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_semantic_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
@@ -63,42 +63,55 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
         children: [
           // Sync status indicator
           if (syncStatus is SyncStatusError)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              color: Colors.red.withValues(alpha: 0.1),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline, color: Colors.red, size: 18),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      syncStatus.message,
-                      style: const TextStyle(color: Colors.red, fontSize: 12),
-                    ),
+            Builder(
+              builder: (context) {
+                final cs = Theme.of(context).colorScheme;
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  color: cs.errorContainer,
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: cs.error, size: 18),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          syncStatus.message,
+                          style: TextStyle(color: cs.error, fontSize: 12),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             )
           else if (syncStatus is SyncStatusSyncing)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              color: Colors.blue.withValues(alpha: 0.1),
-              child: const Row(
-                children: [
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+            Builder(
+              builder: (context) {
+                final cs = Theme.of(context).colorScheme;
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  color: cs.primaryContainer,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Synchronisation en cours...',
+                        style: TextStyle(color: cs.primary, fontSize: 12),
+                      ),
+                    ],
                   ),
-                  SizedBox(width: AppSpacing.sm),
-                  Text(
-                    'Synchronisation en cours...',
-                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           // Date filter header
           Container(
@@ -135,6 +148,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final sale = sales[index];
+                    final cs = Theme.of(context).colorScheme;
                     return Dismissible(
                       key: ValueKey(sale.id),
                       direction: DismissDirection.endToStart,
@@ -142,15 +156,12 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                         alignment: Alignment.centerRight,
                         padding: const EdgeInsets.only(right: AppSpacing.lg),
                         decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
+                          color: cs.errorContainer,
                           borderRadius: BorderRadius.circular(
                             AppSpacing.radiusMd,
                           ),
                         ),
-                        child: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                        ),
+                        child: Icon(Icons.delete_outline, color: cs.error),
                       ),
                       onDismissed: (_) {},
                       child: _SaleCard(sale: sale),
@@ -176,17 +187,19 @@ class _SaleCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     final timeLabel = DateFormat('HH:mm', 'fr_FR').format(sale.createdAt);
     final receiptLabel = sale.receiptNumber > 0
         ? '#${sale.receiptNumber}'
         : 'Provisoire';
     final paymentLabel = _paymentMethodLabel(sale.paymentMethod);
-    final paymentColor = _paymentMethodColor(sale.paymentMethod);
+    final paymentColor = _paymentMethodColor(sale.paymentMethod, cs, semantic);
 
     return AppCard(
       onTap: () => context.push(Routes.saleDetail, extra: sale),
       child: ListTile(
-        leading: const Icon(Icons.receipt_outlined, color: AppColors.primary),
+        leading: Icon(Icons.receipt_outlined, color: cs.primary),
         title: Text(receiptLabel),
         subtitle: Text('$timeLabel • $paymentLabel'),
         trailing: Column(
@@ -222,13 +235,17 @@ class _SaleCard extends ConsumerWidget {
     };
   }
 
-  static Color _paymentMethodColor(PaymentMethod method) {
+  static Color _paymentMethodColor(
+    PaymentMethod method,
+    ColorScheme cs,
+    AppSemanticColors semantic,
+  ) {
     return switch (method) {
-      PaymentMethod.cash => AppColors.secondaryContainer,
-      PaymentMethod.orangeMoney => const Color(0xFFFFE5D9),
-      PaymentMethod.mtn => const Color(0xFFFFFDD0),
-      PaymentMethod.wave => const Color(0xFFD6EFFF),
-      PaymentMethod.mixed => AppColors.primaryContainer,
+      PaymentMethod.cash => cs.secondaryContainer,
+      PaymentMethod.orangeMoney => semantic.orangeMoneyBg,
+      PaymentMethod.mtn => semantic.mtnBg,
+      PaymentMethod.wave => semantic.waveBg,
+      PaymentMethod.mixed => cs.primaryContainer,
     };
   }
 

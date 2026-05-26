@@ -150,186 +150,210 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
         physics: const NeverScrollableScrollPhysics(),
         children: [
           // Page 1: Create PIN
-          SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: padding,
-              right: padding,
-              top: padding,
-              bottom: padding + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Créer un PIN', style: AppTypography.titleLarge),
-                const SizedBox(height: AppSpacing.xs),
-                const Text(
-                  'Votre accès quotidien à l\'app',
-                  style: AppTypography.bodyMedium,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                const Text('4 chiffres', style: AppTypography.labelMedium),
-                const SizedBox(height: AppSpacing.md),
-                Center(
-                  child: Pinput(
-                    controller: _pinController,
-                    length: 4,
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    obscureText: true,
-                    defaultPinTheme: PinTheme(
-                      width: 60,
-                      height: 60,
-                      textStyle: AppTypography.amountDisplay,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
+          LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: padding),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Créer un PIN', style: AppTypography.titleLarge),
+                    const SizedBox(height: AppSpacing.xs),
+                    const Text(
+                      'Votre accès quotidien à l\'app',
+                      style: AppTypography.bodyMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const Text('4 chiffres', style: AppTypography.labelMedium),
+                    const SizedBox(height: AppSpacing.md),
+                    Center(
+                      child: Pinput(
+                        controller: _pinController,
+                        length: 4,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        obscureText: true,
+                        defaultPinTheme: PinTheme(
+                          width: 60,
+                          height: 60,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 2,
+                            ),
+                          ),
                         ),
-                        border: Border.all(color: AppColors.border, width: 2),
+                        focusedPinTheme: PinTheme(
+                          width: 60,
+                          height: 60,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        errorPinTheme: PinTheme(
+                          width: 60,
+                          height: 60,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.error,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onChanged: (_) => setState(() => _pinError = null),
                       ),
                     ),
-                    focusedPinTheme: PinTheme(
-                      width: 60,
-                      height: 60,
-                      textStyle: AppTypography.amountDisplay,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
+                    if (_pinError != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Center(
+                        child: Text(
+                          _pinError!,
+                          style: AppTypography.errorText,
+                          textAlign: TextAlign.center,
                         ),
-                        border: Border.all(color: AppColors.primary, width: 2),
                       ),
+                    ],
+                    const SizedBox(height: AppSpacing.lg),
+                    const Text(
+                      'Évitez les PIN simples comme 0000, 1234',
+                      style: AppTypography.captionText,
                     ),
-                    errorPinTheme: PinTheme(
-                      width: 60,
-                      height: 60,
-                      textStyle: AppTypography.amountDisplay,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                        border: Border.all(color: AppColors.error, width: 2),
-                      ),
-                    ),
-                    onChanged: (_) => setState(() => _pinError = null),
-                  ),
+                    const SizedBox(height: AppSpacing.xl),
+                    PrimaryButton(label: 'Suivant', onPressed: _nextPage),
+                  ],
                 ),
-                if (_pinError != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Center(
-                    child: Text(
-                      _pinError!,
-                      style: AppTypography.errorText,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                const Text(
-                  'Évitez les PIN simples comme 0000, 1234',
-                  style: AppTypography.captionText,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                PrimaryButton(label: 'Suivant', onPressed: _nextPage),
-              ],
+              ),
             ),
           ),
 
           // Page 2: Confirm PIN
-          SingleChildScrollView(
-            padding: EdgeInsets.only(
-              left: padding,
-              right: padding,
-              top: padding,
-              bottom: padding + MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Confirmer le PIN', style: AppTypography.titleLarge),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Confirmez votre PIN',
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Center(
-                  child: Pinput(
-                    controller: _confirmPinController,
-                    length: 4,
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    obscureText: true,
-                    defaultPinTheme: PinTheme(
-                      width: 60,
-                      height: 60,
-                      textStyle: AppTypography.amountDisplay,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                        border: Border.all(color: AppColors.border, width: 2),
-                      ),
+          LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: padding),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Confirmer le PIN',
+                      style: AppTypography.titleLarge,
                     ),
-                    focusedPinTheme: PinTheme(
-                      width: 60,
-                      height: 60,
-                      textStyle: AppTypography.amountDisplay,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                        border: Border.all(color: AppColors.primary, width: 2),
-                      ),
-                    ),
-                    errorPinTheme: PinTheme(
-                      width: 60,
-                      height: 60,
-                      textStyle: AppTypography.amountDisplay,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
-                        ),
-                        border: Border.all(color: AppColors.error, width: 2),
-                      ),
-                    ),
-                    onChanged: (_) => setState(() => _confirmPinError = null),
-                  ),
-                ),
-                // Show either local validation error or system error (network, server, etc.)
-                if (_confirmPinError != null || systemError != null) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Center(
-                    child: Text(
-                      _confirmPinError ?? systemError!,
-                      style: AppTypography.errorText,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.xl),
-                PrimaryButton(label: 'Confirmer', onPressed: _confirmPin),
-                const SizedBox(height: AppSpacing.md),
-                Center(
-                  child: GestureDetector(
-                    onTap: () {
-                      _pinController.clear();
-                      _confirmPinController.clear();
-                      unawaited(
-                        _pageController.previousPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        ),
-                      );
-                    },
-                    child: Text(
-                      'Recommencer',
-                      style: AppTypography.labelMedium.copyWith(
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Confirmez votre PIN',
+                      style: AppTypography.bodyMedium.copyWith(
                         color: AppColors.textSecondary,
-                        decoration: TextDecoration.underline,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Center(
+                      child: Pinput(
+                        controller: _confirmPinController,
+                        length: 4,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        obscureText: true,
+                        defaultPinTheme: PinTheme(
+                          width: 60,
+                          height: 60,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.border,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        focusedPinTheme: PinTheme(
+                          width: 60,
+                          height: 60,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.primary,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        errorPinTheme: PinTheme(
+                          width: 60,
+                          height: 60,
+                          textStyle: AppTypography.amountDisplay,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            border: Border.all(
+                              color: AppColors.error,
+                              width: 2,
+                            ),
+                          ),
+                        ),
+                        onChanged: (_) =>
+                            setState(() => _confirmPinError = null),
+                      ),
+                    ),
+                    // Show either local validation error or system error (network, server, etc.)
+                    if (_confirmPinError != null || systemError != null) ...[
+                      const SizedBox(height: AppSpacing.md),
+                      Center(
+                        child: Text(
+                          _confirmPinError ?? systemError!,
+                          style: AppTypography.errorText,
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.xl),
+                    PrimaryButton(label: 'Confirmer', onPressed: _confirmPin),
+                    const SizedBox(height: AppSpacing.md),
+                    Center(
+                      child: GestureDetector(
+                        onTap: () {
+                          _pinController.clear();
+                          _confirmPinController.clear();
+                          unawaited(
+                            _pageController.previousPage(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Recommencer',
+                          style: AppTypography.labelMedium.copyWith(
+                            color: AppColors.textSecondary,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],

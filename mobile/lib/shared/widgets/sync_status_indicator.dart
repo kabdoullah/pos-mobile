@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/sync/sync_orchestrator.dart';
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../providers/connectivity_provider.dart';
@@ -23,23 +23,24 @@ class SyncStatusIndicator extends ConsumerWidget {
     final pendingCount = pendingCountAsync.value ?? 0;
 
     if (!isOnline) {
-      return _buildOfflineBanner();
+      return _buildOfflineBanner(context);
     }
 
     return switch (syncStatus) {
-      SyncStatusSyncing() => _buildSyncingBanner(),
-      SyncStatusError(message: final msg) => _buildErrorBanner(msg),
+      SyncStatusSyncing() => _buildSyncingBanner(context),
+      SyncStatusError(message: final msg) => _buildErrorBanner(context, msg),
       SyncStatusIdle(lastSyncAt: final lastSyncAt) =>
         pendingCount > 0
-            ? _buildPendingBanner(pendingCount)
-            : _buildIdleBanner(lastSyncAt != null),
+            ? _buildPendingBanner(context, pendingCount)
+            : _buildIdleBanner(context, lastSyncAt != null),
     };
   }
 
-  Widget _buildOfflineBanner() {
+  Widget _buildOfflineBanner(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      color: AppColors.warning,
+      color: cs.tertiary,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -49,66 +50,65 @@ class SyncStatusIndicator extends ConsumerWidget {
         children: [
           Text(
             'Hors-ligne',
-            style: AppTypography.labelMedium.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: AppTypography.labelMedium.copyWith(color: cs.onTertiary),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             'Vos ventes seront sauvegardées en ligne dès le retour du réseau',
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: AppTypography.bodySmall.copyWith(color: cs.onTertiary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSyncingBanner() {
+  Widget _buildSyncingBanner(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return Container(
       width: double.infinity,
-      color: const Color(0xFFE3F2FD),
+      color: semantic.syncingContainer,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
       child: Row(
         children: [
-          const SizedBox(
+          SizedBox(
             width: 16,
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor: AlwaysStoppedAnimation<Color>(cs.primary),
             ),
           ),
           const SizedBox(width: AppSpacing.sm),
           Text(
             'Sauvegarde en ligne...',
-            style: AppTypography.bodySmall.copyWith(color: AppColors.primary),
+            style: AppTypography.bodySmall.copyWith(color: cs.primary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildErrorBanner(String message) {
+  Widget _buildErrorBanner(BuildContext context, String message) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
-      color: AppColors.error.withValues(alpha: 0.1),
+      color: cs.errorContainer,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_rounded, color: AppColors.error, size: 18),
+          Icon(Icons.warning_rounded, color: cs.error, size: 18),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               'Erreur de sauvegarde — réessayez plus tard',
-              style: AppTypography.bodySmall.copyWith(color: AppColors.error),
+              style: AppTypography.bodySmall.copyWith(color: cs.error),
             ),
           ),
         ],
@@ -116,56 +116,50 @@ class SyncStatusIndicator extends ConsumerWidget {
     );
   }
 
-  Widget _buildPendingBanner(int count) {
+  Widget _buildPendingBanner(BuildContext context, int count) {
+    final cs = Theme.of(context).colorScheme;
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     final label = count == 1
         ? '1 vente à sauvegarder'
         : '$count ventes à sauvegarder';
     return Container(
       width: double.infinity,
-      color: const Color(0xFFFFF3E0),
+      color: semantic.pendingContainer,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.cloud_upload_outlined,
-            color: AppColors.warning,
-            size: 18,
-          ),
+          Icon(Icons.cloud_upload_outlined, color: cs.tertiary, size: 18),
           const SizedBox(width: AppSpacing.sm),
           Text(
             label,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textPrimary,
-            ),
+            style: AppTypography.bodySmall.copyWith(color: cs.onSurface),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildIdleBanner(bool hasEverSynced) {
-    if (!hasEverSynced) {
-      return const SizedBox.shrink();
-    }
+  Widget _buildIdleBanner(BuildContext context, bool hasEverSynced) {
+    if (!hasEverSynced) return const SizedBox.shrink();
+    final cs = Theme.of(context).colorScheme;
+    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return Container(
       width: double.infinity,
-      color: const Color(0xFFE8F5E9),
+      color: semantic.syncOkContainer,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle, color: AppColors.secondary, size: 16),
+          Icon(Icons.check_circle, color: cs.secondary, size: 16),
           const SizedBox(width: AppSpacing.xs),
           Text(
             'À jour',
-            style: AppTypography.captionText.copyWith(
-              color: AppColors.secondary,
-            ),
+            style: AppTypography.captionText.copyWith(color: cs.secondary),
           ),
         ],
       ),
