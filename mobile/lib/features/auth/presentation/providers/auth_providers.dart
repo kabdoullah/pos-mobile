@@ -79,15 +79,13 @@ class Auth extends _$Auth {
 
     // Listen for token expiry events from Dio refresh interceptor.
     // When interceptor detects 401 + failed refresh, it emits to this stream.
+    // ignore: close_sinks — lifecycle owned by authExpiredControllerProvider
     final expiredController = ref.read(authExpiredControllerProvider);
     final sub = expiredController.stream.listen((_) {
       _logger.w('[Auth] Token expired detected, resetting to Unauthenticated');
       state = const AsyncData(AuthUnauthenticated());
     });
-    ref.onDispose(() {
-      sub.cancel();
-      expiredController.close();
-    });
+    ref.onDispose(sub.cancel);
 
     // Async init (direct — no fire-and-forget hack needed in AsyncNotifier).
     return _resolveInitialStatus();
