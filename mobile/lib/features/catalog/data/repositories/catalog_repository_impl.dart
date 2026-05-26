@@ -2,6 +2,7 @@ import 'package:decimal/decimal.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/network/api_models/sync_changes_dto.dart';
 import '../../../../core/sync/sync_queue_repository.dart';
 import '../../../../database/app_database.dart' hide Product;
 import '../../domain/entities/product.dart' as product_domain;
@@ -98,13 +99,14 @@ class CatalogRepositoryImpl implements CatalogRepository {
     // Enqueue for synchronization
     await syncQueue.enqueueProductChange(
       productId: id,
-      productPayload: {
-        'id': id,
-        'name': name,
-        'barcode': barcode,
-        'unitPrice': unitPrice,
-        'currentStock': currentStock,
-      },
+      productPayload: ProductSyncItemDto(
+        id: id,
+        name: name,
+        barcode: barcode,
+        unitPrice: unitPrice,
+        currentStock: currentStock,
+        clientUpdatedAt: now.toUtc().toIso8601String(),
+      ).toJson(),
     );
 
     return product;
@@ -151,13 +153,14 @@ class CatalogRepositoryImpl implements CatalogRepository {
     // Enqueue for synchronization
     await syncQueue.enqueueProductChange(
       productId: id,
-      productPayload: {
-        'id': id,
-        'name': updatedName,
-        'barcode': updatedBarcode,
-        'unitPrice': updatedPrice,
-        'currentStock': updatedStock,
-      },
+      productPayload: ProductSyncItemDto(
+        id: id,
+        name: updatedName,
+        barcode: updatedBarcode,
+        unitPrice: updatedPrice,
+        currentStock: updatedStock,
+        clientUpdatedAt: now.toUtc().toIso8601String(),
+      ).toJson(),
     );
 
     return product_domain.Product(
@@ -175,6 +178,11 @@ class CatalogRepositoryImpl implements CatalogRepository {
   Future<void> deleteProduct(String id) async {
     final now = DateTime.now();
 
+    final current = await (db.select(
+      db.products,
+    )..where((p) => p.id.equals(id))).getSingleOrNull();
+    if (current == null) return;
+
     // Soft delete in drift
     await (db.update(db.products)..where((p) => p.id.equals(id))).write(
       ProductsCompanion(
@@ -186,7 +194,15 @@ class CatalogRepositoryImpl implements CatalogRepository {
     // Enqueue for synchronization
     await syncQueue.enqueueProductChange(
       productId: id,
-      productPayload: {'id': id, 'deletedAt': now.toIso8601String()},
+      productPayload: ProductSyncItemDto(
+        id: id,
+        name: current.name,
+        barcode: current.barcode,
+        unitPrice: current.unitPrice,
+        currentStock: current.currentStock,
+        clientUpdatedAt: now.toUtc().toIso8601String(),
+        deleted: true,
+      ).toJson(),
     );
   }
 

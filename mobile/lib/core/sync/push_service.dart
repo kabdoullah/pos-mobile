@@ -137,7 +137,29 @@ class PushService {
 
     try {
       final payload = jsonDecode(entry.payload) as Map<String, dynamic>;
-      final productItem = ProductSyncItemDto.fromJson(payload);
+      ProductSyncItemDto productItem;
+      try {
+        productItem = ProductSyncItemDto.fromJson(payload);
+      } catch (_) {
+        // Legacy payload used camelCase keys — repair from current drift state.
+        final product = await (_db.select(_db.products)
+              ..where((p) => p.id.equals(entry.entityId)))
+            .getSingleOrNull();
+        if (product == null) {
+          await _queueRepository.markFailed(entry.id, 'Legacy payload: product not found locally');
+          return;
+        }
+        productItem = ProductSyncItemDto(
+          id: product.id,
+          name: product.name,
+          barcode: product.barcode,
+          unitPrice: product.unitPrice,
+          currentStock: product.currentStock,
+          clientUpdatedAt: product.updatedAt.toUtc().toIso8601String(),
+          deleted: product.deletedAt != null,
+        );
+        _logger?.i('Product ${entry.entityId} payload repaired from drift');
+      }
 
       final response = await _remoteDataSource.pushProduct(productItem);
 

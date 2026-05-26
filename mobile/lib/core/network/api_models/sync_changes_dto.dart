@@ -43,8 +43,8 @@ sealed class ProductSyncItemDto with _$ProductSyncItemDto {
     String? barcode,
     @JsonKey(name: 'unit_price') required String unitPrice,
     @JsonKey(name: 'current_stock') int? currentStock,
-    @JsonKey(name: 'updated_at') required String updatedAt,
-    @JsonKey(name: 'deleted_at') String? deletedAt,
+    @JsonKey(name: 'client_updated_at') required String clientUpdatedAt,
+    @Default(false) bool deleted,
   }) = _ProductSyncItemDto;
 
   factory ProductSyncItemDto.fromJson(Map<String, dynamic> json) =>
