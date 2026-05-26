@@ -65,16 +65,21 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
     final authValue = ref.watch(authProvider);
     final systemError = authValue.asError?.error.toString();
 
+    final spacing = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(
-            responsiveValue(
-              context,
-              small: AppSpacing.md,
-              medium: AppSpacing.lg,
-            ),
+          padding: EdgeInsets.only(
+            left: spacing,
+            right: spacing,
+            top: spacing,
+            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

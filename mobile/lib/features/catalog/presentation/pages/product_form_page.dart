@@ -205,20 +205,25 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
       });
     }
 
+    final spacing = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(isEditMode ? 'Modifier le produit' : 'Nouveau produit'),
         elevation: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(
-            responsiveValue(
-              context,
-              small: AppSpacing.md,
-              medium: AppSpacing.lg,
-            ),
+          padding: EdgeInsets.only(
+            left: spacing,
+            right: spacing,
+            top: spacing,
+            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

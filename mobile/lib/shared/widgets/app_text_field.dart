@@ -64,6 +64,7 @@ class AppTextField extends StatefulWidget {
 
 class _AppTextFieldState extends State<AppTextField> {
   late FocusNode _focusNode;
+  late bool _isObscured;
 
   @override
   void initState() {
@@ -72,6 +73,7 @@ class _AppTextFieldState extends State<AppTextField> {
     _focusNode.addListener(() {
       setState(() {});
     });
+    _isObscured = widget.obscureText;
   }
 
   @override
@@ -96,7 +98,7 @@ class _AppTextFieldState extends State<AppTextField> {
           child: TextField(
             controller: widget.controller,
             focusNode: _focusNode,
-            obscureText: widget.obscureText,
+            obscureText: _isObscured,
             keyboardType: widget.keyboardType,
             maxLines: widget.maxLines,
             minLines: widget.minLines,
@@ -108,9 +110,20 @@ class _AppTextFieldState extends State<AppTextField> {
               prefixIcon: widget.prefixIcon != null
                   ? Icon(widget.prefixIcon, color: AppColors.textSecondary)
                   : null,
-              suffixIcon: widget.suffixIcon != null
-                  ? Icon(widget.suffixIcon, color: AppColors.textSecondary)
-                  : null,
+              suffixIcon: widget.obscureText
+                  ? IconButton(
+                      icon: Icon(
+                        _isObscured
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: AppColors.textSecondary,
+                      ),
+                      onPressed: () =>
+                          setState(() => _isObscured = !_isObscured),
+                    )
+                  : (widget.suffixIcon != null
+                      ? Icon(widget.suffixIcon, color: AppColors.textSecondary)
+                      : null),
               filled: true,
               fillColor: AppColors.surface,
               border: OutlineInputBorder(

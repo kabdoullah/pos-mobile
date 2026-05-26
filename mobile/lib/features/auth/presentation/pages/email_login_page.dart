@@ -33,7 +33,6 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
 
   String? _emailError;
   String? _passwordError;
-  final bool _obscurePassword = true;
 
   static final _logger = Logger();
 
@@ -171,16 +170,21 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
     final isLoading = authValue.isLoading;
     final errorMessage = authValue.asError?.error.toString();
 
+    final spacing = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: Center(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(
-            responsiveValue(
-              context,
-              small: AppSpacing.md,
-              medium: AppSpacing.lg,
-            ),
+          padding: EdgeInsets.only(
+            left: spacing,
+            right: spacing,
+            top: spacing,
+            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -222,7 +226,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
               AppTextField(
                 label: 'Mot de passe',
                 controller: _passwordController,
-                obscureText: _obscurePassword,
+                obscureText: true,
                 errorText: _passwordError,
                 prefixIcon: Icons.lock_outlined,
               ),

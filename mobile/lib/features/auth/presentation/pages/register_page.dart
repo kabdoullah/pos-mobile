@@ -33,9 +33,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   String? _confirmPasswordError;
   String? _phoneError;
 
-  late bool _obscurePassword;
-  late bool _obscureConfirmPassword;
-
   @override
   void initState() {
     super.initState();
@@ -43,8 +40,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     _passwordController = TextEditingController();
     _confirmPasswordController = TextEditingController();
     _phoneController = TextEditingController();
-    _obscurePassword = true;
-    _obscureConfirmPassword = true;
     // Clear any stale auth error from previous login attempt.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(authProvider.notifier).clearError();
@@ -151,16 +146,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final errorMessage = authValue.asError?.error.toString();
     // Router handles redirect automatically when state becomes AuthStoreSetupRequired
 
+    final spacing = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: Center(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(
-            responsiveValue(
-              context,
-              small: AppSpacing.md,
-              medium: AppSpacing.lg,
-            ),
+          padding: EdgeInsets.only(
+            left: spacing,
+            right: spacing,
+            top: spacing,
+            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -205,7 +205,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 label: 'Mot de passe',
                 hint: 'Au moins 8 caractères',
                 controller: _passwordController,
-                obscureText: _obscurePassword,
+                obscureText: true,
                 errorText: _passwordError,
                 prefixIcon: Icons.lock_outlined,
               ),
@@ -213,7 +213,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               AppTextField(
                 label: 'Confirmer le mot de passe',
                 controller: _confirmPasswordController,
-                obscureText: _obscureConfirmPassword,
+                obscureText: true,
                 errorText: _confirmPasswordError,
                 prefixIcon: Icons.lock_outlined,
               ),

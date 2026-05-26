@@ -198,12 +198,17 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     final total = _getCartTotal();
     final change = _getChangeAmount();
 
+    final spacing = responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg);
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(title: const Text('Paiement'), elevation: 0),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(
-          responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),
+        padding: EdgeInsets.only(
+          left: spacing,
+          right: spacing,
+          top: spacing,
+          bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -153,11 +153,16 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
 
   @override
   Widget build(BuildContext context) {
+    final spacing = responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg);
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(
-          responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg),
+        padding: EdgeInsets.only(
+          left: spacing,
+          right: spacing,
+          top: spacing,
+          bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

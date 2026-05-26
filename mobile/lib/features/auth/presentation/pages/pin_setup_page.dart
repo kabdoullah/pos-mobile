@@ -144,13 +144,19 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: false,
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
         children: [
           // Page 1: Create PIN
           SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
+            padding: EdgeInsets.only(
+              left: padding,
+              right: padding,
+              top: padding,
+              bottom: padding + MediaQuery.of(context).viewInsets.bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -228,7 +234,12 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
 
           // Page 2: Confirm PIN
           SingleChildScrollView(
-            padding: EdgeInsets.all(padding),
+            padding: EdgeInsets.only(
+              left: padding,
+              right: padding,
+              top: padding,
+              bottom: padding + MediaQuery.of(context).viewInsets.bottom,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

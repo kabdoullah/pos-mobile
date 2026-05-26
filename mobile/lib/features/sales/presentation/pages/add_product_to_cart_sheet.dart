@@ -40,10 +40,10 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (mounted) {
     
-        ref.read(catalogListProvider.notifier).search(query);
+        await ref.read(catalogListProvider.notifier).search(query);
       }
     });
   }
@@ -56,6 +56,7 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
   @override
   Widget build(BuildContext context) {
     final catalogState = ref.watch(catalogListProvider);
+    final spacing = responsiveValue(context, small: AppSpacing.md, medium: AppSpacing.lg);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
@@ -84,12 +85,11 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                 ),
               ),
               Padding(
-                padding: EdgeInsets.all(
-                  responsiveValue(
-                    context,
-                    small: AppSpacing.md,
-                    medium: AppSpacing.lg,
-                  ),
+                padding: EdgeInsets.only(
+                  left: spacing,
+                  right: spacing,
+                  top: spacing,
+                  bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
