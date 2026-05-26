@@ -165,9 +165,9 @@ class SyncQueueRepository {
     return (_db.update(
       _db.syncQueue,
     )..where((t) => t.status.equals('failed'))).write(
-      SyncQueueCompanion(
-        status: const drift.Value('pending'),
-        retryCount: const drift.Value(0),
+      const SyncQueueCompanion(
+        status: drift.Value('pending'),
+        retryCount: drift.Value(0),
       ),
     );
   }
