@@ -90,6 +90,40 @@ async def test_register_creates_verification_token(db_session: AsyncSession) -> 
 
 
 @pytest.mark.asyncio
+async def test_register_succeeds_when_email_send_fails(db_session: AsyncSession) -> None:
+    """Best-effort : un échec SMTP ne bloque pas l'inscription, le token reste en DB."""
+    payload = schemas.RegisterRequest(
+        email="smtpdown@example.com",
+        password="SecurePass123",
+        phone_number="0700000003",
+    )
+
+    with patch(_PATCH_SEND, new_callable=AsyncMock, side_effect=Exception("SMTP down")):
+        user = await AuthService(db_session).register(payload)
+
+    assert user.id is not None
+
+    stmt = select(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id)
+    token = (await db_session.execute(stmt)).scalar_one_or_none()
+    assert token is not None
+
+
+@pytest.mark.asyncio
+async def test_send_password_reset_succeeds_when_email_send_fails(
+    db_session: AsyncSession,
+) -> None:
+    """Best-effort : échec SMTP ne lève pas, le token reset reste en DB."""
+    user = await _create_user(db_session, "resetdown@example.com")
+
+    with patch(_PATCH_SEND, new_callable=AsyncMock, side_effect=Exception("SMTP down")):
+        await AuthService(db_session).send_password_reset(user.email)  # type: ignore[arg-type]
+
+    stmt = select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+    token = (await db_session.execute(stmt)).scalar_one_or_none()
+    assert token is not None
+
+
+@pytest.mark.asyncio
 async def test_reset_password_success(db_session: AsyncSession) -> None:
     """Flow complet reset : token créé → reset_password → password changé, token marqué utilisé."""
     user = await _create_user(db_session, "reset@example.com")

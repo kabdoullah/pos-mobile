@@ -1,6 +1,7 @@
 """Exceptions métier et handlers FastAPI."""
 
 import logging
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
@@ -70,7 +71,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(PydanticValidationError)
-    async def handle_pydantic_validation(_request: Request, exc: PydanticValidationError) -> JSONResponse:
+    async def handle_pydantic_validation(
+        _request: Request, exc: PydanticValidationError
+    ) -> JSONResponse:
         errors = exc.errors()
         logger.error(f"Pydantic validation error: {errors}")
         # Format first error message for mobile client

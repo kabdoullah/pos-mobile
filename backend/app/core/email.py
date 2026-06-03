@@ -1,18 +1,20 @@
-"""Service d'envoi d'emails transactionnels via l'API REST Brevo."""
+"""Service d'envoi d'emails transactionnels via SMTP (aiosmtplib)."""
 
+from email.message import EmailMessage
+from email.utils import formataddr
 from pathlib import Path
 
-import httpx
+import aiosmtplib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.core.config import settings
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "emails"
-_BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
+_SMTP_SSL_PORT = 465  # SSL direct (implicite) vs 587 STARTTLS
 
 
 class EmailService:
-    """Envoie les emails transactionnels (vérification, reset password) via Brevo API."""
+    """Envoie les emails transactionnels (vérification, reset password) via SMTP."""
 
     def __init__(self) -> None:
         self._env = Environment(
@@ -26,21 +28,24 @@ class EmailService:
     async def _send(self, to_email: str, subject: str, html_body: str, text_body: str) -> None:
         if not settings.email_enabled:
             return
-        payload = {
-            "sender": {"name": settings.smtp_from_name, "email": settings.smtp_from_email},
-            "to": [{"email": to_email}],
-            "subject": subject,
-            "htmlContent": html_body,
-            "textContent": text_body,
-        }
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                _BREVO_SEND_URL,
-                json=payload,
-                headers={"api-key": settings.brevo_api_key.get_secret_value()},
-                timeout=10,
-            )
-            response.raise_for_status()
+
+        message = EmailMessage()
+        message["From"] = formataddr((settings.smtp_from_name, settings.smtp_from_email))
+        message["To"] = to_email
+        message["Subject"] = subject
+        message.set_content(text_body)
+        message.add_alternative(html_body, subtype="html")
+
+        await aiosmtplib.send(
+            message,
+            hostname=settings.smtp_host,
+            port=settings.smtp_port,
+            username=settings.smtp_user or None,
+            password=settings.smtp_password.get_secret_value() or None,
+            start_tls=settings.smtp_use_tls,
+            use_tls=not settings.smtp_use_tls and settings.smtp_port == _SMTP_SSL_PORT,
+            timeout=10,
+        )
 
     async def send_verification_email(self, to_email: str, user_name: str, raw_token: str) -> None:
         """Envoie le lien de vérification d'adresse email (expire 24h)."""

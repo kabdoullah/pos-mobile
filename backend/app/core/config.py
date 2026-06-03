@@ -32,9 +32,13 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60
     jwt_refresh_token_expire_days: int = 30
 
-    # Email
+    # Email (SMTP générique — Gmail, Mailgun, self-host, etc.)
     email_enabled: bool = True
-    brevo_api_key: SecretStr = SecretStr("")
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    smtp_use_tls: bool = True  # STARTTLS sur port 587 (False = SSL direct port 465)
     smtp_from_email: str = "noreply@example.com"
     smtp_from_name: str = "POS Mobile CI"
 

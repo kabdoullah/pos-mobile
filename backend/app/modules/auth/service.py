@@ -5,6 +5,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import structlog
 from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +27,8 @@ from app.modules.auth.repository import (
     UserRepository,
 )
 from app.modules.stores.service import StoreService
+
+logger = structlog.get_logger()
 
 
 class AuthService:
@@ -61,11 +64,16 @@ class AuthService:
             token_hash=token_hash,
             expires_at=expires_at,
         )
-        await self.email_service.send_verification_email(
-            to_email=user.email,
-            user_name=user.email,
-            raw_token=raw_token,
-        )
+        # Best-effort : un échec SMTP ne doit pas bloquer l'inscription.
+        # Le token reste en DB, l'email peut être renvoyé plus tard.
+        try:
+            await self.email_service.send_verification_email(
+                to_email=user.email,
+                user_name=user.email,
+                raw_token=raw_token,
+            )
+        except Exception:
+            logger.exception("verification_email_send_failed", user_id=str(user.id))
 
         return user
 
@@ -130,11 +138,15 @@ class AuthService:
             token_hash=token_hash,
             expires_at=expires_at,
         )
-        await self.email_service.send_password_reset_email(
-            to_email=user.email,
-            user_name=user.email,
-            raw_token=raw_token,
-        )
+        # Best-effort : échec SMTP ne doit pas révéler d'info ni renvoyer 500.
+        try:
+            await self.email_service.send_password_reset_email(
+                to_email=user.email,
+                user_name=user.email,
+                raw_token=raw_token,
+            )
+        except Exception:
+            logger.exception("password_reset_email_send_failed", user_id=str(user.id))
 
     async def reset_password(self, token: str, new_password: str) -> None:
         """Réinitialise le mot de passe via le token reçu par email."""
