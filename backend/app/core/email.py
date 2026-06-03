@@ -1,20 +1,19 @@
-"""Service d'envoi d'emails transactionnels via SMTP (aiosmtplib)."""
+"""Service d'envoi d'emails transactionnels via l'API HTTP Resend."""
 
-from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
 
-import aiosmtplib
+import httpx
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.core.config import settings
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "emails"
-_SMTP_SSL_PORT = 465  # SSL direct (implicite) vs 587 STARTTLS
+_RESEND_SEND_URL = "https://api.resend.com/emails"
 
 
 class EmailService:
-    """Envoie les emails transactionnels (vérification, reset password) via SMTP."""
+    """Envoie les emails transactionnels (vérification, reset password) via Resend."""
 
     def __init__(self) -> None:
         self._env = Environment(
@@ -29,31 +28,29 @@ class EmailService:
         if not settings.email_enabled:
             return
 
-        message = EmailMessage()
-        message["From"] = formataddr((settings.smtp_from_name, settings.smtp_from_email))
-        message["To"] = to_email
-        message["Subject"] = subject
-        message.set_content(text_body)
-        message.add_alternative(html_body, subtype="html")
-
-        await aiosmtplib.send(
-            message,
-            hostname=settings.smtp_host,
-            port=settings.smtp_port,
-            username=settings.smtp_user or None,
-            password=settings.smtp_password.get_secret_value() or None,
-            start_tls=settings.smtp_use_tls,
-            use_tls=not settings.smtp_use_tls and settings.smtp_port == _SMTP_SSL_PORT,
-            timeout=10,
-        )
+        payload = {
+            "from": formataddr((settings.mail_from_name, settings.mail_from_email)),
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body,
+            "text": text_body,
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                _RESEND_SEND_URL,
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.resend_api_key.get_secret_value()}"},
+                timeout=10,
+            )
+            response.raise_for_status()
 
     async def send_verification_email(self, to_email: str, user_name: str, raw_token: str) -> None:
         """Envoie le lien de vérification d'adresse email (expire 24h)."""
         link = f"{settings.app_frontend_url}/auth/verify-email?token={raw_token}"
-        context = {"user_name": user_name, "link": link, "app_name": settings.smtp_from_name}
+        context = {"user_name": user_name, "link": link, "app_name": settings.mail_from_name}
         await self._send(
             to_email=to_email,
-            subject=f"[{settings.smtp_from_name}] Vérifiez votre adresse email",
+            subject=f"[{settings.mail_from_name}] Vérifiez votre adresse email",
             html_body=self._render("verification_email.html", context),
             text_body=self._render("verification_email.txt", context),
         )
@@ -63,10 +60,10 @@ class EmailService:
     ) -> None:
         """Envoie le lien de réinitialisation de mot de passe (expire 1h)."""
         link = f"{settings.app_frontend_url}/auth/reset-password?token={raw_token}"
-        context = {"user_name": user_name, "link": link, "app_name": settings.smtp_from_name}
+        context = {"user_name": user_name, "link": link, "app_name": settings.mail_from_name}
         await self._send(
             to_email=to_email,
-            subject=f"[{settings.smtp_from_name}] Réinitialisez votre mot de passe",
+            subject=f"[{settings.mail_from_name}] Réinitialisez votre mot de passe",
             html_body=self._render("password_reset.html", context),
             text_body=self._render("password_reset.txt", context),
         )
