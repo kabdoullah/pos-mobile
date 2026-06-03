@@ -12,6 +12,15 @@ _TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "emails"
 _RESEND_SEND_URL = "https://api.resend.com/emails"
 
 
+class EmailSendError(Exception):
+    """Échec d'envoi côté provider — porte le status HTTP et le corps de réponse."""
+
+    def __init__(self, status_code: int, body: str) -> None:
+        self.status_code = status_code
+        self.body = body
+        super().__init__(f"Resend send failed: {status_code} — {body}")
+
+
 class EmailService:
     """Envoie les emails transactionnels (vérification, reset password) via Resend."""
 
@@ -42,7 +51,10 @@ class EmailService:
                 headers={"Authorization": f"Bearer {settings.resend_api_key.get_secret_value()}"},
                 timeout=10,
             )
-            response.raise_for_status()
+            if response.is_error:
+                # Le corps Resend explique la cause exacte (domaine non vérifié,
+                # destinataire interdit en mode test, clé invalide…).
+                raise EmailSendError(response.status_code, response.text)
 
     async def send_verification_email(self, to_email: str, user_name: str, raw_token: str) -> None:
         """Envoie le lien de vérification d'adresse email (expire 24h)."""
