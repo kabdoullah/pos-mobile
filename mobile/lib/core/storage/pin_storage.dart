@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -8,7 +9,7 @@ import '../config.dart';
 
 /// Storage keys for PIN data.
 abstract class _PinStorageKeys {
-  /// PIN hash (SHA-256 hex).
+  /// PIN hash (format `pbkdf2_sha256$<iterations>$<hex>`).
   static const String pinHash = 'pin_hash';
 
   /// Salt used for PIN hashing (hex).
@@ -39,9 +40,15 @@ class PinStorage {
   /// Max PIN attempts before lockout.
   static int get maxAttempts => AppConfig.maxPinAttempts;
 
-  /// Saves the PIN as a SHA-256 hash with a random salt.
+  /// PBKDF2 iteration count. Tuned for a slow-enough KDF on a one-shot verify.
+  static const int _pbkdf2Iterations = 150000;
+
+  /// Prefix marking the current hash format. Legacy SHA-256 hashes lack it.
+  static const String _hashPrefix = 'pbkdf2_sha256';
+
+  /// Saves the PIN as a salted PBKDF2-HMAC-SHA256 hash.
   Future<void> savePinHash(String pin) async {
-    // Generate a random salt (64 hex chars = 32 bytes).
+    // Generate a cryptographically random salt (64 hex chars = 32 bytes).
     final salt = _generateRandomHex(32);
     final hash = _hashPin(pin, salt);
 
@@ -69,6 +76,12 @@ class PinStorage {
     final storedSalt = await _storage.read(key: _PinStorageKeys.pinSalt);
 
     if (storedHash == null || storedSalt == null) {
+      return false;
+    }
+
+    // Legacy-format hash — reject without counting an attempt; the user must
+    // re-setup their PIN (handled by hasPinConfigured at routing time).
+    if (!storedHash.startsWith('$_hashPrefix\$')) {
       return false;
     }
 
@@ -101,9 +114,18 @@ class PinStorage {
   }
 
   /// Checks if a PIN has been configured.
+  ///
+  /// A legacy hash from a previous (insecure) format is treated as absent and
+  /// cleared, forcing the user through PIN re-setup.
   Future<bool> hasPinConfigured() async {
     final hash = await _storage.read(key: _PinStorageKeys.pinHash);
-    return hash != null;
+    if (hash == null) return false;
+    if (!hash.startsWith('$_hashPrefix\$')) {
+      // Legacy SHA-256 hash — incompatible, drop it.
+      await clearPin();
+      return false;
+    }
+    return true;
   }
 
   /// Gets the current failed PIN attempt count.
@@ -160,18 +182,68 @@ class PinStorage {
     }
   }
 
-  /// Hashes a PIN with the given salt using SHA-256.
+  /// Hashes a PIN with the given salt using PBKDF2-HMAC-SHA256.
+  ///
+  /// Returns a self-describing string `pbkdf2_sha256$<iterations>$<hex>` so the
+  /// format can be detected and migrated later.
   String _hashPin(String pin, String salt) {
-    final input = '$salt$pin';
-    return sha256.convert(utf8.encode(input)).toString();
+    final derived = _pbkdf2(
+      password: utf8.encode(pin),
+      salt: _hexDecode(salt),
+      iterations: _pbkdf2Iterations,
+      keyLength: 32,
+    );
+    final hex = derived.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '$_hashPrefix\$$_pbkdf2Iterations\$$hex';
   }
 
-  /// Generates a random hex string of [bytes] length (2 chars per byte).
+  /// PBKDF2-HMAC-SHA256 (RFC 8018) over the vetted `crypto` HMAC primitive.
+  List<int> _pbkdf2({
+    required List<int> password,
+    required List<int> salt,
+    required int iterations,
+    required int keyLength,
+  }) {
+    final hmac = Hmac(sha256, password);
+    const hLen = 32;
+    final blockCount = (keyLength / hLen).ceil();
+    final output = <int>[];
+
+    for (var i = 1; i <= blockCount; i++) {
+      // INT(i): block index as a 4-byte big-endian integer.
+      final indexBytes = [
+        (i >> 24) & 0xff,
+        (i >> 16) & 0xff,
+        (i >> 8) & 0xff,
+        i & 0xff,
+      ];
+      var u = hmac.convert([...salt, ...indexBytes]).bytes;
+      final block = List<int>.of(u);
+      for (var j = 1; j < iterations; j++) {
+        u = hmac.convert(u).bytes;
+        for (var k = 0; k < hLen; k++) {
+          block[k] ^= u[k];
+        }
+      }
+      output.addAll(block);
+    }
+
+    return output.sublist(0, keyLength);
+  }
+
+  /// Decodes a hex string into bytes.
+  List<int> _hexDecode(String hex) {
+    final bytes = <int>[];
+    for (var i = 0; i < hex.length; i += 2) {
+      bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
+    }
+    return bytes;
+  }
+
+  /// Generates a cryptographically random hex string of [bytes] length.
   String _generateRandomHex(int bytes) {
-    final random = List<int>.generate(
-      bytes,
-      (i) => DateTime.now().microsecond % 256,
-    );
+    final rng = Random.secure();
+    final random = List<int>.generate(bytes, (_) => rng.nextInt(256));
     return random.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 }

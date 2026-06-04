@@ -88,6 +88,6 @@ Root widget uses GoRouter for navigation and `AppConfig` for theme/constants. Se
 - `core/network/dio_client.dart` — builds Dio with auth/refresh interceptors, error parsing
 - `core/network/token_storage.dart` — interface for JWT persistence (implemented in `secure_token_storage.dart`)
 - `core/sync/` — `SyncOrchestrator`, offline queue management, connectivity listener
-- `core/storage/pin_storage.dart` — bcrypt PIN hashing (never stored plaintext)
+- `core/storage/pin_storage.dart` — PBKDF2-HMAC-SHA256 PIN hashing with random salt (never stored plaintext)
 - `features/auth/domain/` — `Store`, `User` entities, `AuthRepository` interface
 - `features/sales/data/models/sale_mappers.dart` — converts domain `Sale` ↔ API/database models (includes Decimal handling)

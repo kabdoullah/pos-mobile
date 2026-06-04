@@ -94,7 +94,7 @@ Voir `docs/adr/0003-sync-hybride.md`. Règles :
 ## Auth et stockage sécurisé
 
 - JWT (access + refresh) stockés dans `flutter_secure_storage`
-- PIN local hashé bcrypt avant stockage dans `flutter_secure_storage`
+- PIN local hashé PBKDF2-HMAC-SHA256 (sel aléatoire via `Random.secure`) avant stockage dans `flutter_secure_storage`
 - Le PIN n'est JAMAIS envoyé au backend
 - 5 tentatives max de PIN, puis blocage 5 min (voir `core/config.dart`)
 
