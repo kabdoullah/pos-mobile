@@ -39,6 +39,14 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
     super.dispose();
   }
 
+  Future<void> _onForgotPin() async {
+    // Forgot PIN: clear local PIN + tokens so a fresh PIN setup is required
+    // after the user re-authenticates with email + password. logout() moves
+    // auth state to Unauthenticated, which lets the router reach email login.
+    await ref.read(authProvider.notifier).logout();
+    if (mounted) context.go(Routes.emailLogin);
+  }
+
   Future<void> _verifyPin() async {
     final pin = _pinController.text;
     if (pin.length != 4) {
@@ -163,7 +171,7 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
                     const SizedBox(height: AppSpacing.xxl),
                     Center(
                       child: GestureDetector(
-                        onTap: () => context.go(Routes.emailLogin),
+                        onTap: _onForgotPin,
                         child: Text(
                           'J\'ai oublié mon PIN',
                           style: AppTypography.bodyMedium.copyWith(
