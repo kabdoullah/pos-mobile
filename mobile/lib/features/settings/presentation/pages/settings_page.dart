@@ -54,10 +54,11 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    builder: (_) => const StoreSetupPage(isEditMode: true),
+                  onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      fullscreenDialog: true,
+                      builder: (_) => const StoreSetupPage(isEditMode: true),
+                    ),
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,

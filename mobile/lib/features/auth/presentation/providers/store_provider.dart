@@ -27,7 +27,10 @@ abstract class _StoreKeys {
 ///
 /// Reads from and writes to flutter_secure_storage.
 
-@riverpod
+// keepAlive: store config is app-wide and must survive across screens.
+// Without it, the provider auto-disposes during store setup (no widget
+// watches it there) and `save()` throws setting state on a disposed notifier.
+@Riverpod(keepAlive: true)
 class StoreConfig extends _$StoreConfig {
   static const _storage = FlutterSecureStorage();
 

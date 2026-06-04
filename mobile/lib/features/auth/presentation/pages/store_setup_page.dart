@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:logger/logger.dart';
 
 import '../../../../core/network/error_mapper.dart';
@@ -30,6 +29,8 @@ class StoreSetupPage extends ConsumerStatefulWidget {
 }
 
 class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
+  static final _logger = Logger();
+
   late TextEditingController _nameController;
   late TextEditingController _addressController;
   late TextEditingController _nccController;
@@ -38,37 +39,35 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
   bool _isSubjectToVat = true;
   bool _isLoading = false;
 
+  /// True once the edit-mode form has been pre-filled from the existing store.
+  /// Guards against overwriting user edits if the provider re-emits.
+  bool _prefilled = false;
+
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
     _addressController = TextEditingController();
     _nccController = TextEditingController();
-
-    // Pre-fill form if editing existing store
-    if (widget.isEditMode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _loadExistingStore();
-      });
-    }
   }
 
-  void _loadExistingStore() {
-    final storeAsync = ref.read(storeConfigProvider);
-    storeAsync.when(
-      data: (store) {
-        if (store != null && mounted) {
-          _nameController.text = store.name;
-          _addressController.text = store.address ?? '';
-          _nccController.text = store.ncc ?? '';
-          setState(() => _isSubjectToVat = store.isSubjectToVat);
-        }
-      },
-      error: (error, _) {
-        Logger().w('Failed to load existing store: $error');
-      },
-      loading: () {},
-    );
+  /// Pre-fills the form from the store once its data is available.
+  ///
+  /// Handles the async race where `storeConfigProvider` is still loading on
+  /// first build: called both from the initial `ref.read` and from a
+  /// `ref.listen` so a late-arriving value still populates the fields.
+  void _prefillFrom(AsyncValue<Store?> async) {
+    if (_prefilled) return;
+    final store = async.asData?.value;
+    if (store == null) return;
+    _prefilled = true;
+    _nameController.text = store.name;
+    _addressController.text = store.address ?? '';
+    _nccController.text = store.ncc ?? '';
+    // Defer setState out of the build phase (this may run during build).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _isSubjectToVat = store.isSubjectToVat);
+    });
   }
 
   @override
@@ -109,34 +108,28 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
         receiptFooterText: null,
       );
 
-      try {
-        await ref.read(storeConfigProvider.notifier).save(store);
-      } catch (e) {
-        // If provider is disposed during save (router redirected), ignore silently
-        if (!mounted || e.toString().contains('disposed')) {
-          return;
-        }
-        rethrow;
-      }
+      await ref.read(storeConfigProvider.notifier).save(store);
 
-      // Check if widget is still mounted after async operation
+      // Bail out if the widget was unmounted during the save.
       if (!mounted) {
-        Logger().w('Widget not mounted after save');
+        _logger.w('Widget not mounted after save');
         return;
       }
 
       setState(() => _isLoading = false);
 
       if (widget.isEditMode) {
-        context.pop();
+        // Edit mode is opened via showModalBottomSheet (root Navigator),
+        // not go_router — pop the Flutter Navigator, not the router.
+        Navigator.of(context).pop();
       } else {
-        Logger().i('Calling proceedToPinSetup()');
+        _logger.i('Calling proceedToPinSetup()');
         ref.read(authProvider.notifier).proceedToPinSetup();
-        Logger().i('proceedToPinSetup() completed');
+        _logger.i('proceedToPinSetup() completed');
       }
     } catch (e) {
       if (mounted) {
-        Logger().e('Error saving store configuration - $e');
+        _logger.e('Error saving store configuration - $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -153,6 +146,15 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Edit mode: pre-fill from the existing store, handling the case where the
+    // provider is still loading on first build (listen catches late values).
+    if (widget.isEditMode && !_prefilled) {
+      ref.listen<AsyncValue<Store?>>(storeConfigProvider, (_, next) {
+        _prefillFrom(next);
+      });
+      _prefillFrom(ref.read(storeConfigProvider));
+    }
+
     final spacing = responsiveValue(
       context,
       small: AppSpacing.md,
@@ -161,108 +163,123 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
-      body: SingleChildScrollView(
-        padding: EdgeInsets.only(
-          left: spacing,
-          right: spacing,
-          top: spacing,
-          bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Enregistrer ma boutique',
-              style: AppTypography.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            const Text(
-              'Informations de votre commerce',
-              style: AppTypography.bodyMedium,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            AppTextField(
-              label: 'Nom de la boutique',
-              hint: 'ex: Ma boutique',
-              controller: _nameController,
-              errorText: _nameError,
-              prefixIcon: Icons.storefront_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'Adresse (optionnel)',
-              hint: 'ex: 123 rue du Commerce',
-              controller: _addressController,
-              prefixIcon: Icons.location_on_outlined,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AppTextField(
-              label: 'NCC (optionnel)',
-              hint: 'Numéro de contribuable',
-              controller: _nccController,
-              prefixIcon: Icons.card_giftcard_outlined,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Padding(
-              padding: EdgeInsets.only(left: AppSpacing.md),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.help_outline,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  SizedBox(width: AppSpacing.xs),
-                  Expanded(
-                    child: Text(
-                      'Numéro attribué par les autorités fiscales pour la facturation',
-                      style: AppTypography.captionText,
+      // Edit mode is pushed as a fullscreen dialog from settings — give it a
+      // close affordance. Create mode is reached via the router and has no
+      // back action (onboarding step), so it keeps its in-body header only.
+      appBar: widget.isEditMode
+          ? AppBar(
+              backgroundColor: AppColors.background,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            )
+          : null,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            left: spacing,
+            right: spacing,
+            top: spacing,
+            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enregistrer ma boutique',
+                style: AppTypography.titleLarge,
+              ),
+              const SizedBox(height: AppSpacing.xs),
+              const Text(
+                'Informations de votre commerce',
+                style: AppTypography.bodyMedium,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              AppTextField(
+                label: 'Nom de la boutique',
+                hint: 'ex: Ma boutique',
+                controller: _nameController,
+                errorText: _nameError,
+                prefixIcon: Icons.storefront_outlined,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'Adresse (optionnel)',
+                hint: 'ex: 123 rue du Commerce',
+                controller: _addressController,
+                prefixIcon: Icons.location_on_outlined,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AppTextField(
+                label: 'NCC (optionnel)',
+                hint: 'Numéro de contribuable',
+                controller: _nccController,
+                prefixIcon: Icons.card_giftcard_outlined,
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const Padding(
+                padding: EdgeInsets.only(left: AppSpacing.md),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.help_outline,
+                      size: 16,
+                      color: AppColors.textSecondary,
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Assujetti à la TVA',
-                        style: AppTypography.labelMedium,
-                      ),
-                      SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'Votre boutique facture avec TVA',
+                    SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        'Numéro attribué par les autorités fiscales pour la facturation',
                         style: AppTypography.captionText,
                       ),
-                    ],
-                  ),
-                  Switch(
-                    value: _isSubjectToVat,
-                    onChanged: (value) {
-                      setState(() => _isSubjectToVat = value);
-                    },
-                    activeThumbColor: AppColors.primary,
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            PrimaryButton(
-              label: 'Enregistrer ma boutique',
-              onPressed: _isLoading ? null : _saveStore,
-              isLoading: _isLoading,
-            ),
-          ],
+              const SizedBox(height: AppSpacing.lg),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Assujetti à la TVA',
+                          style: AppTypography.labelMedium,
+                        ),
+                        SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'Votre boutique facture avec TVA',
+                          style: AppTypography.captionText,
+                        ),
+                      ],
+                    ),
+                    Switch(
+                      value: _isSubjectToVat,
+                      onChanged: (value) {
+                        setState(() => _isSubjectToVat = value);
+                      },
+                      activeThumbColor: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              PrimaryButton(
+                label: 'Enregistrer ma boutique',
+                onPressed: _isLoading ? null : _saveStore,
+                isLoading: _isLoading,
+              ),
+            ],
+          ),
         ),
       ),
     );
