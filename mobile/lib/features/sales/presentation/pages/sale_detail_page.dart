@@ -101,25 +101,24 @@ class SaleDetailPage extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
 
             // Warning card about items not available
-            AppCard(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.warningContainer,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                ),
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline, color: AppColors.warning),
-                    SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Text(
-                        'Le détail des articles n\'est disponible que pendant la session de vente.',
-                        style: AppTypography.bodySmall,
-                      ),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.warningContainer,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                border: Border.all(color: AppColors.warning, width: 1),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.warning),
+                  SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Text(
+                      'Le détail des articles n\'est disponible que pendant la session de vente.',
+                      style: AppTypography.bodySmall,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: AppSpacing.lg),

@@ -328,7 +328,11 @@ class _ScannerPanel extends StatelessWidget {
         Positioned(
           top: AppSpacing.sm,
           left: AppSpacing.sm,
-          child: _FloatingIconButton(icon: Icons.arrow_back, onPressed: onBack),
+          child: _FloatingIconButton(
+            icon: Icons.arrow_back,
+            onPressed: onBack,
+            tooltip: 'Retour',
+          ),
         ),
         Positioned(
           top: AppSpacing.sm,
@@ -338,17 +342,22 @@ class _ScannerPanel extends StatelessWidget {
               _FloatingIconButton(
                 icon: Icons.settings_outlined,
                 onPressed: onOpenSettings,
+                tooltip: 'Paramètres',
               ),
               const SizedBox(height: AppSpacing.sm),
               if (isPermissionGranted && !isCheckingPermission) ...[
                 _FloatingIconButton(
                   icon: isTorchOn ? Icons.flashlight_off : Icons.flashlight_on,
                   onPressed: isCameraActive ? onToggleTorch : null,
+                  tooltip: isTorchOn ? 'Éteindre la torche' : 'Torche',
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 _FloatingIconButton(
                   icon: isCameraActive ? Icons.videocam : Icons.videocam_off,
                   onPressed: isCameraActive ? onDisableCamera : onEnableCamera,
+                  tooltip: isCameraActive
+                      ? 'Éteindre la caméra'
+                      : 'Activer la caméra',
                 ),
               ],
             ],
@@ -360,13 +369,14 @@ class _ScannerPanel extends StatelessWidget {
 }
 
 class _FloatingIconButton extends StatelessWidget {
-  const _FloatingIconButton({required this.icon, this.onPressed});
+  const _FloatingIconButton({required this.icon, this.onPressed, this.tooltip});
   final IconData icon;
   final VoidCallback? onPressed;
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final button = Material(
       color: AppColors.surface.withValues(alpha: 0.85),
       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
       child: InkWell(
@@ -385,6 +395,10 @@ class _FloatingIconButton extends StatelessWidget {
         ),
       ),
     );
+    if (tooltip != null) {
+      return Tooltip(message: tooltip!, child: button);
+    }
+    return button;
   }
 }
 
@@ -515,28 +529,18 @@ class _CartPanel extends StatelessWidget {
                     },
                   ),
           ),
-          const Padding(
-            padding: EdgeInsets.symmetric(
+          Padding(
+            padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
               vertical: AppSpacing.sm,
             ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [Text('TOTAL', style: AppTypography.labelSmall)],
-                  ),
-                ),
+                const Text('TOTAL', style: AppTypography.labelSmall),
+                AmountDisplay(amount: cartState.total, size: AmountSize.hero),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-            child: AmountDisplay(
-              amount: cartState.total,
-              size: AmountSize.hero,
             ),
           ),
           Padding(

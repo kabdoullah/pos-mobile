@@ -8,7 +8,6 @@ import 'package:logger/logger.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../../../core/network/error_mapper.dart';
 import '../../../auth/providers/auth_di_providers.dart';
@@ -230,16 +229,9 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
               const SizedBox(height: AppSpacing.sm),
               Align(
                 alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () => _showForgotPasswordDialog(context),
-                  child: Text(
-                    'Mot de passe oublié ?',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: cs.primary,
-                      decoration: TextDecoration.underline,
-                      decorationColor: cs.primary,
-                    ),
-                  ),
+                child: TextButton(
+                  onPressed: () => _showForgotPasswordDialog(context),
+                  child: const Text('Mot de passe oublié ?'),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -253,16 +245,9 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('Pas de compte ? ', style: tt.bodyMedium),
-                  GestureDetector(
-                    onTap: () => context.go(Routes.register),
-                    child: Text(
-                      'Inscrivez-vous',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: cs.primary,
-                        decoration: TextDecoration.underline,
-                        decorationColor: cs.primary,
-                      ),
-                    ),
+                  TextButton(
+                    onPressed: () => context.go(Routes.register),
+                    child: const Text('Inscrivez-vous'),
                   ),
                 ],
               ),

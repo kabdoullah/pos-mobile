@@ -97,19 +97,16 @@ class AppColors {
 
   // Payment badge backgrounds — couleurs brand tierces, light/dark aware
   /// Orange Money badge background.
-  static Color orangeMoneyBg(Brightness b) => b == Brightness.dark
-      ? const Color(0xFF3D1A08)
-      : const Color(0xFFFFF4ED);
+  static Color orangeMoneyBg(Brightness b) =>
+      b == Brightness.dark ? const Color(0xFF3D1A08) : const Color(0xFFFFF4ED);
 
   /// MTN Mobile Money badge background.
-  static Color mtnBg(Brightness b) => b == Brightness.dark
-      ? const Color(0xFF362508)
-      : const Color(0xFFFFFBEB);
+  static Color mtnBg(Brightness b) =>
+      b == Brightness.dark ? const Color(0xFF362508) : const Color(0xFFFFFBEB);
 
   /// Wave badge background.
-  static Color waveBg(Brightness b) => b == Brightness.dark
-      ? const Color(0xFF071830)
-      : const Color(0xFFEFF6FF);
+  static Color waveBg(Brightness b) =>
+      b == Brightness.dark ? const Color(0xFF071830) : const Color(0xFFEFF6FF);
 
   // Utility
   /// Scrim for modals and overlays.

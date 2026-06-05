@@ -47,6 +47,16 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
     if (mounted) context.go(Routes.emailLogin);
   }
 
+  PinTheme _buildPinTheme(Color borderColor) => PinTheme(
+    width: 70,
+    height: 70,
+    textStyle: AppTypography.amountDisplay,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      border: Border.all(color: borderColor, width: 2),
+    ),
+  );
+
   Future<void> _verifyPin() async {
     final pin = _pinController.text;
     if (pin.length != 4) {
@@ -72,6 +82,7 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
     // Local _error shows PIN validation errors before submit (e.g., "4 chiffres requis")
     final authValue = ref.watch(authProvider);
     final systemError = authValue.asError?.error.toString();
+    final cs = Theme.of(context).colorScheme;
 
     final spacing = responsiveValue(
       context,
@@ -111,48 +122,9 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
                         length: 4,
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         obscureText: true,
-                        defaultPinTheme: PinTheme(
-                          width: 70,
-                          height: 70,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        focusedPinTheme: PinTheme(
-                          width: 70,
-                          height: 70,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        errorPinTheme: PinTheme(
-                          width: 70,
-                          height: 70,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.error,
-                              width: 2,
-                            ),
-                          ),
-                        ),
+                        defaultPinTheme: _buildPinTheme(cs.outline),
+                        focusedPinTheme: _buildPinTheme(cs.primary),
+                        errorPinTheme: _buildPinTheme(cs.error),
                         onCompleted: (_) => _verifyPin(),
                         onChanged: (_) => setState(() => _error = null),
                       ),
@@ -170,15 +142,9 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage> {
                     ],
                     const SizedBox(height: AppSpacing.xxl),
                     Center(
-                      child: GestureDetector(
-                        onTap: _onForgotPin,
-                        child: Text(
-                          'J\'ai oublié mon PIN',
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.primary,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
+                      child: TextButton(
+                        onPressed: _onForgotPin,
+                        child: const Text('J\'ai oublié mon PIN'),
                       ),
                     ),
                   ],

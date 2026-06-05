@@ -10,7 +10,6 @@ import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/catalog_providers.dart';
 
@@ -182,6 +181,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isEditMode = widget.productId != null;
     final productAsync = isEditMode
         ? ref.watch(productProvider(widget.productId!))
@@ -269,20 +269,26 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
                     Column(
                       children: [
                         const SizedBox(height: AppSpacing.md),
-                        GestureDetector(
-                          onTap: _openScanner,
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryContainer,
+                        Tooltip(
+                          message: 'Scanner un code-barres',
+                          child: Material(
+                            color: cs.primaryContainer,
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                            child: InkWell(
+                              onTap: _openScanner,
                               borderRadius: BorderRadius.circular(
                                 AppSpacing.radiusMd,
                               ),
-                            ),
-                            child: const Icon(
-                              Icons.qr_code_2,
-                              color: AppColors.primary,
-                              size: 28,
+                              child: Padding(
+                                padding: const EdgeInsets.all(AppSpacing.md),
+                                child: Icon(
+                                  Icons.qr_code_2,
+                                  color: cs.onPrimaryContainer,
+                                  size: 28,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -317,25 +323,23 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
                 _AnimatedFormField(
                   animation: _formAnimationController,
                   delay: 0.5,
-                  child: GestureDetector(
-                    onTap: _isLoading ? null : _delete,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: AppSpacing.md,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.errorContainer,
-                        borderRadius: BorderRadius.circular(
-                          AppSpacing.radiusMd,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _delete,
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Supprimer'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error,
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.error,
                         ),
-                        border: Border.all(color: AppColors.error, width: 1),
-                      ),
-                      child: Text(
-                        'Supprimer',
-                        style: AppTypography.labelLarge.copyWith(
-                          color: AppColors.error,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusMd,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
                       ),
                     ),
                   ),

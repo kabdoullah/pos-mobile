@@ -210,10 +210,7 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                         color: isConnected ? cs.secondary : cs.onSurfaceVariant,
                       ),
                       title: Text(device.name),
-                      subtitle: Text(
-                        device.macAdress,
-                        style: tt.bodySmall,
-                      ),
+                      subtitle: Text(device.macAdress, style: tt.bodySmall),
                       trailing: isConnected
                           ? Text(
                               'Connectée',

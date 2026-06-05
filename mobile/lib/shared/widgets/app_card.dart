@@ -30,7 +30,7 @@ class AppCard extends StatelessWidget {
     final borderRadius = BorderRadius.circular(AppSpacing.radiusMd);
     return Container(
       decoration: BoxDecoration(
-        color: cs.surface, // ✨ theme-aware: correct en dark mode
+        color: cs.surface,
         borderRadius: borderRadius,
         boxShadow: [
           BoxShadow(

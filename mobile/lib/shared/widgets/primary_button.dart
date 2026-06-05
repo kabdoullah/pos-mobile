@@ -56,9 +56,7 @@ class PrimaryButton extends StatelessWidget {
                 ],
         ),
         child: Material(
-          color: isDisabled
-              ? cs.onSurface.withValues(alpha: 0.12)
-              : cs.primary,
+          color: isDisabled ? cs.onSurface.withValues(alpha: 0.12) : cs.primary,
           borderRadius: borderRadius,
           child: InkWell(
             onTap: isLoading || isDisabled

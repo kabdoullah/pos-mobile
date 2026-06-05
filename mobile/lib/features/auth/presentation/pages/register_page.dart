@@ -240,15 +240,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     'Vous avez un compte ? ',
                     style: AppTypography.bodyMedium,
                   ),
-                  GestureDetector(
-                    onTap: () => context.go(Routes.emailLogin),
-                    child: Text(
-                      'Connectez-vous',
-                      style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.primary,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
+                  TextButton(
+                    onPressed: () => context.go(Routes.emailLogin),
+                    child: const Text('Connectez-vous'),
                   ),
                 ],
               ),

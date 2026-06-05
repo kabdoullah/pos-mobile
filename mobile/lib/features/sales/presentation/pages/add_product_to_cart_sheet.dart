@@ -115,8 +115,14 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
               Expanded(
                 child: catalogState.when(
                   loading: () => const AppLoadingScreen(),
-                  error: (error, stack) =>
-                      Center(child: Text('Erreur: $error')),
+                  error: (error, stack) => EmptyState(
+                    icon: Icons.error_outline,
+                    title: 'Impossible de charger',
+                    message: 'Une erreur est survenue',
+                    actionLabel: 'Réessayer',
+                    onAction: () =>
+                        ref.read(catalogListProvider.notifier).refresh(),
+                  ),
                   data: (products) {
                     if (products.isEmpty) {
                       return const Center(

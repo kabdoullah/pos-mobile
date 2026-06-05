@@ -100,8 +100,20 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
     }
   }
 
+  static final _logger = Logger();
+
+  PinTheme _buildPinTheme(Color borderColor) => PinTheme(
+    width: 60,
+    height: 60,
+    textStyle: AppTypography.amountDisplay,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+      border: Border.all(color: borderColor, width: 2),
+    ),
+  );
+
   Future<void> _confirmPin() async {
-    Logger().i('_confirmPin() called');
+    _logger.i('_confirmPin() called');
     final pin = _pinController.text;
     final confirmPin = _confirmPinController.text;
 
@@ -113,19 +125,17 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
     }
 
     if (_confirmPinError == null) {
-      Logger().i('Validation passed, calling setupPin()');
+      _logger.i('Validation passed, calling setupPin()');
       try {
         final authNotifier = ref.read(authProvider.notifier);
-        Logger().i('Awaiting setupPin()...');
+        _logger.i('Awaiting setupPin()...');
         await authNotifier.setupPin(pin);
-        Logger().i('setupPin() completed, router should redirect');
-        // Router redirect automatically navigates to home when auth state becomes Authenticated
+        _logger.i('setupPin() completed, router should redirect');
       } catch (_) {
-        // Error state already displayed via systemError (from authValue.asError)
-        // Page title "Confirmer le PIN" shows error context
+        // Error state displayed via systemError (authValue.asError)
       }
     } else {
-      Logger().w('Validation failed: $_confirmPinError');
+      _logger.w('Validation failed: $_confirmPinError');
       setState(() {});
     }
   }
@@ -135,6 +145,7 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
     // Watch auth to display system errors (network, server errors, etc.)
     final authValue = ref.watch(authProvider);
     final systemError = authValue.asError?.error.toString();
+    final cs = Theme.of(context).colorScheme;
 
     final padding = responsiveValue(
       context,
@@ -174,48 +185,9 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                         length: 4,
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         obscureText: true,
-                        defaultPinTheme: PinTheme(
-                          width: 60,
-                          height: 60,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        focusedPinTheme: PinTheme(
-                          width: 60,
-                          height: 60,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        errorPinTheme: PinTheme(
-                          width: 60,
-                          height: 60,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.error,
-                              width: 2,
-                            ),
-                          ),
-                        ),
+                        defaultPinTheme: _buildPinTheme(cs.outline),
+                        focusedPinTheme: _buildPinTheme(cs.primary),
+                        errorPinTheme: _buildPinTheme(cs.error),
                         onChanged: (_) => setState(() => _pinError = null),
                       ),
                     ),
@@ -270,48 +242,9 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                         length: 4,
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         obscureText: true,
-                        defaultPinTheme: PinTheme(
-                          width: 60,
-                          height: 60,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.border,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        focusedPinTheme: PinTheme(
-                          width: 60,
-                          height: 60,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.primary,
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        errorPinTheme: PinTheme(
-                          width: 60,
-                          height: 60,
-                          textStyle: AppTypography.amountDisplay,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            border: Border.all(
-                              color: AppColors.error,
-                              width: 2,
-                            ),
-                          ),
-                        ),
+                        defaultPinTheme: _buildPinTheme(cs.outline),
+                        focusedPinTheme: _buildPinTheme(cs.primary),
+                        errorPinTheme: _buildPinTheme(cs.error),
                         onChanged: (_) =>
                             setState(() => _confirmPinError = null),
                       ),
@@ -331,8 +264,8 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                     PrimaryButton(label: 'Confirmer', onPressed: _confirmPin),
                     const SizedBox(height: AppSpacing.md),
                     Center(
-                      child: GestureDetector(
-                        onTap: () {
+                      child: TextButton(
+                        onPressed: () {
                           _pinController.clear();
                           _confirmPinController.clear();
                           unawaited(
@@ -342,13 +275,7 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                             ),
                           );
                         },
-                        child: Text(
-                          'Recommencer',
-                          style: AppTypography.labelMedium.copyWith(
-                            color: AppColors.textSecondary,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
+                        child: const Text('Recommencer'),
                       ),
                     ),
                   ],

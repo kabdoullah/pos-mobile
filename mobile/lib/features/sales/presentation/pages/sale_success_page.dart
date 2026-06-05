@@ -155,20 +155,9 @@ class SaleSuccessPage extends ConsumerWidget {
                 icon: Icons.add_shopping_cart,
               ),
               const SizedBox(height: AppSpacing.md),
-              GestureDetector(
-                onTap: () {
-                  context.go(Routes.home);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-                  child: Text(
-                    'Retour à l\'accueil',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.primary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+              TextButton(
+                onPressed: () => context.go(Routes.home),
+                child: const Text('Retour à l\'accueil'),
               ),
               const SizedBox(height: AppSpacing.xxxl),
             ],

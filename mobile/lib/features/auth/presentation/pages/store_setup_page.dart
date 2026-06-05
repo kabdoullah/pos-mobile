@@ -215,7 +215,7 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
                 label: 'NCC (optionnel)',
                 hint: 'Numéro de contribuable',
                 controller: _nccController,
-                prefixIcon: Icons.card_giftcard_outlined,
+                prefixIcon: Icons.badge_outlined,
               ),
               const SizedBox(height: AppSpacing.sm),
               Padding(

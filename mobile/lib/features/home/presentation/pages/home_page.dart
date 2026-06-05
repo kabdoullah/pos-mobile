@@ -1,8 +1,3 @@
-// ============================================================
-// AVANT → APRÈS : HomePage
-// Flutter 3.x+ | Material 3 | Dart 3+ | POS Mobile
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -86,13 +81,16 @@ class HomePage extends ConsumerWidget {
               padding: EdgeInsets.symmetric(horizontal: hPad),
               child: dailySummaryAsync.when(
                 loading: () => const AppLoadingIndicator(),
-                error: (_, _) => _SummaryCard(summary: DailySummary.empty),
+                error: (_, _) => _SummaryCard(
+                  summary: DailySummary.empty,
+                  hasError: true,
+                  onRetry: () => ref.invalidate(dailySummaryProvider),
+                ),
                 data: (summary) => _SummaryCard(summary: summary),
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // Primary CTA — full width ✨ FilledButton (M3, ripple, sémantique a11y)
             Padding(
               padding: EdgeInsets.symmetric(horizontal: hPad),
               child: SizedBox(
@@ -116,7 +114,6 @@ class HomePage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            // Quick access shortcuts ✨ comble l'espace vide, fluidité POS
             const _QuickActionsSection(),
             const SizedBox(height: AppSpacing.xl),
           ],
@@ -232,9 +229,19 @@ class _QuickActionCard extends StatelessWidget {
 
 /// Premium summary card with gradient background.
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.summary});
+  const _SummaryCard({
+    required this.summary,
+    this.hasError = false,
+    this.onRetry,
+  });
 
   final DailySummary summary;
+
+  /// When true, shows a subtle error indicator at the bottom of the card.
+  final bool hasError;
+
+  /// Optional retry callback shown when [hasError] is true.
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -272,7 +279,6 @@ class _SummaryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            // ✨ color: cs.onPrimary — corrige le bug contraste (onSurface sombre sur fond primaire)
             AmountDisplay(
               amount: summary.totalAmount,
               size: AmountSize.hero,
@@ -311,6 +317,39 @@ class _SummaryCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (hasError) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning_outlined,
+                    color: cs.onPrimary.withValues(alpha: 0.7),
+                    size: 14,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Données non disponibles',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: cs.onPrimary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  if (onRetry != null) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    GestureDetector(
+                      onTap: onRetry,
+                      child: Text(
+                        'Réessayer',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onPrimary,
+                          decoration: TextDecoration.underline,
+                          decorationColor: cs.onPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -323,7 +362,7 @@ class _SummaryMetric extends StatelessWidget {
   const _SummaryMetric({required this.label, required this.child});
 
   final String label;
-  final Widget child; // ✨ type-safe — supprime le dynamic
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {

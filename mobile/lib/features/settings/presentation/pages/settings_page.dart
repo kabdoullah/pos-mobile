@@ -230,7 +230,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: cs.primary,
           fontWeight: FontWeight.w500,
-        ), // ✨ textTheme au lieu de TextStyle inline
+        ),
       ),
       PrinterDisconnected(savedName: final name) => Text(
         name == null ? 'Aucune imprimante' : 'Prête: $name',
@@ -241,7 +241,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: cs.error,
-        ), // ✨ textTheme au lieu de TextStyle inline
+        ),
       ),
       _ => const Text('Non configurée'),
     };
@@ -257,7 +257,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         'Erreur — Réessayer',
         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: Theme.of(context).colorScheme.error,
-        ), // ✨ textTheme au lieu de TextStyle inline
+        ),
       ),
       SyncStatusIdle(lastSyncAt: final lastSyncAt) => Text(
         pendingCount > 0
@@ -441,7 +441,7 @@ class _SettingsTile extends StatelessWidget {
         : null;
 
     return ListTile(
-      leading: Icon(icon, color: cs.onSurfaceVariant), // ✨ M3 list icon color
+      leading: Icon(icon, color: cs.onSurfaceVariant),
       title: Text(title),
       subtitle: subtitle,
       trailing: trailing,
@@ -475,12 +475,14 @@ class _SettingsSection extends StatelessWidget {
             AppSpacing.md,
           ),
           child: Text(
-          title,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: Theme.of(context).colorScheme.primary, // ✨ M3 section header
-            letterSpacing: 0.8,
+            title,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(
+                context,
+              ).colorScheme.primary,
+              letterSpacing: 0.8,
+            ),
           ),
-        ),
         ),
         AppCard(padding: 0, child: Column(children: children)),
       ],

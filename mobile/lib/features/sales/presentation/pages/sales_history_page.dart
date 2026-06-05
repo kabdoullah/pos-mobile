@@ -77,7 +77,9 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                       Expanded(
                         child: Text(
                           syncStatus.message,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.error),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: cs.error),
                         ),
                       ),
                     ],
@@ -106,7 +108,9 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         'Synchronisation en cours...',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: cs.primary),
                       ),
                     ],
                   ),
@@ -115,8 +119,17 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
             ),
           // Date filter header
           Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            child: Text(dateLabel),
+            width: double.infinity,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            child: Text(
+              dateLabel,
+              style: Theme.of(context).textTheme.titleSmall,
+              textAlign: TextAlign.center,
+            ),
           ),
           // Sales list
           Expanded(
@@ -148,24 +161,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     final sale = sales[index];
-                    final cs = Theme.of(context).colorScheme;
-                    return Dismissible(
-                      key: ValueKey(sale.id),
-                      direction: DismissDirection.endToStart,
-                      background: Container(
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.only(right: AppSpacing.lg),
-                        decoration: BoxDecoration(
-                          color: cs.errorContainer,
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusMd,
-                          ),
-                        ),
-                        child: Icon(Icons.delete_outline, color: cs.error),
-                      ),
-                      onDismissed: (_) {},
-                      child: _SaleCard(sale: sale),
-                    );
+                    return _SaleCard(sale: sale);
                   },
                 );
               },
@@ -194,7 +190,11 @@ class _SaleCard extends ConsumerWidget {
         ? '#${sale.receiptNumber}'
         : 'Provisoire';
     final paymentLabel = _paymentMethodLabel(sale.paymentMethod);
-    final paymentColor = _paymentMethodColor(sale.paymentMethod, cs, brightness);
+    final paymentColor = _paymentMethodColor(
+      sale.paymentMethod,
+      cs,
+      brightness,
+    );
 
     return AppCard(
       onTap: () => context.push(Routes.saleDetail, extra: sale),
@@ -208,10 +208,15 @@ class _SaleCard extends ConsumerWidget {
           children: [
             Text(
               _formatAmount(sale.totalAmount),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             Chip(
-              label: Text(paymentLabel, style: Theme.of(context).textTheme.labelSmall),
+              label: Text(
+                paymentLabel,
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
               backgroundColor: paymentColor,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -250,6 +255,6 @@ class _SaleCard extends ConsumerWidget {
   }
 
   static String _formatAmount(Decimal amount) {
-    return '${(amount / Decimal.fromInt(1000)).toDouble().toStringAsFixed(0)}k FCFA';
+    return '${NumberFormat('#,##0', 'fr_FR').format(amount.toDouble())} FCFA';
   }
 }

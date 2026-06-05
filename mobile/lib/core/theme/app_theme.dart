@@ -73,7 +73,9 @@ class AppTheme {
       onSecondary: Color(0xFF451A03), // très sombre
       secondaryContainer: Color(0xFF713F12), // amber-800
       onSecondaryContainer: Color(0xFFFEFCE8), // yellow-50
-      tertiary: Color(0xFFFB923C), // orange-400 — warning/offline sur fond sombre
+      tertiary: Color(
+        0xFFFB923C,
+      ), // orange-400 — warning/offline sur fond sombre
       onTertiary: Color(0xFF431407),
       tertiaryContainer: Color(0xFF7C2D12), // orange-950
       onTertiaryContainer: Color(0xFFFFEDD5), // orange-100

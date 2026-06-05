@@ -8,6 +8,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../shared/widgets/index.dart';
 
 /// Page that displays a barcode scanner and handles camera permission.
 class BarcodeScannerPage extends StatefulWidget {
@@ -108,6 +109,7 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
         elevation: 0,
       ),
       body: Stack(
+        fit: StackFit.expand,
         children: [
           // Camera feed
           MobileScanner(
@@ -122,18 +124,19 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
               }
             },
           ),
-          // Scan frame overlay
-          Container(color: AppColors.scrim),
+          // Scrim with viewfinder cutout — evenOdd fill leaves the scan area clear
+          const CustomPaint(
+            painter: _ScanOverlayPainter(overlayColor: AppColors.scrim),
+          ),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
+                const SizedBox(
                   width: 280,
                   height: 280,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.primary, width: 2),
-                    borderRadius: BorderRadius.circular(12),
+                  child: CustomPaint(
+                    painter: _ViewfinderPainter(color: AppColors.primary),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.xl),
@@ -152,40 +155,84 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
   }
 }
 
-/// A primary action button used throughout the app.
-class PrimaryButton extends StatelessWidget {
-  /// Creates a primary button with a label and tap callback.
-  const PrimaryButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-  });
+class _ScanOverlayPainter extends CustomPainter {
+  const _ScanOverlayPainter({required this.overlayColor});
 
-  /// The text displayed within the button.
-  final String label;
-
-  /// Callback invoked when the button is pressed.
-  final VoidCallback? onPressed;
+  final Color overlayColor;
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        ),
-        child: Text(
-          label,
-          style: AppTypography.labelLarge.copyWith(
-            color: AppColors.textOnPrimary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
+  void paint(Canvas canvas, Size size) {
+    const viewfinderSize = 280.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final viewfinderRect = Rect.fromCenter(
+      center: center,
+      width: viewfinderSize,
+      height: viewfinderSize,
+    );
+
+    final path = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addRRect(
+        RRect.fromRectAndRadius(viewfinderRect, const Radius.circular(12)),
+      )
+      ..fillType = PathFillType.evenOdd;
+
+    canvas.drawPath(path, Paint()..color = overlayColor);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ViewfinderPainter extends CustomPainter {
+  const _ViewfinderPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    const cornerLength = 28.0;
+
+    canvas.drawLine(Offset.zero, const Offset(cornerLength, 0), paint);
+    canvas.drawLine(Offset.zero, const Offset(0, cornerLength), paint);
+    canvas.drawLine(
+      Offset(size.width, 0),
+      Offset(size.width - cornerLength, 0),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width, 0),
+      Offset(size.width, cornerLength),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(0, size.height),
+      Offset(cornerLength, size.height),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(0, size.height),
+      Offset(0, size.height - cornerLength),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width - cornerLength, size.height),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(size.width, size.height),
+      Offset(size.width, size.height - cornerLength),
+      paint,
     );
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

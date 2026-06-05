@@ -250,13 +250,13 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                   _buildPaymentMethodButton(
                     PaymentMethod.cash,
                     'Espèces',
-                    Icons.payments,
+                    Icons.payments_outlined,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _buildPaymentMethodButton(
                     PaymentMethod.orangeMoney,
                     'Orange Money',
-                    Icons.phone_android,
+                    Icons.smartphone_outlined,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _buildPaymentMethodButton(
@@ -268,7 +268,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                   _buildPaymentMethodButton(
                     PaymentMethod.wave,
                     'Wave',
-                    Icons.phone_android,
+                    Icons.contactless,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   _buildPaymentMethodButton(
@@ -348,36 +348,42 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     IconData icon,
   ) {
     final isSelected = _selectedMethod == method;
-    return GestureDetector(
-      onTap: () => _selectMethod(method),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryContainer : AppColors.surface,
-          border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.border,
-            width: isSelected ? 2 : 1,
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+    final radius = BorderRadius.circular(AppSpacing.radiusMd);
+    return Material(
+      color: isSelected ? cs.primaryContainer : cs.surface,
+      borderRadius: radius,
+      child: InkWell(
+        onTap: () => _selectMethod(method),
+        borderRadius: radius,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isSelected ? cs.primary : cs.outlineVariant,
+              width: isSelected ? 2 : 1,
+            ),
+            borderRadius: radius,
           ),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.primary : AppColors.textPrimary,
-              size: 28,
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Text(
-              label,
-              style: AppTypography.titleMedium.copyWith(
-                color: isSelected ? AppColors.primary : AppColors.textPrimary,
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? cs.primary : cs.onSurface,
+                size: 28,
               ),
-            ),
-            const Spacer(),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppColors.primary),
-          ],
+              const SizedBox(width: AppSpacing.md),
+              Text(
+                label,
+                style: tt.titleMedium?.copyWith(
+                  color: isSelected ? cs.primary : cs.onSurface,
+                ),
+              ),
+              const Spacer(),
+              if (isSelected) Icon(Icons.check_circle, color: cs.primary),
+            ],
+          ),
         ),
       ),
     );

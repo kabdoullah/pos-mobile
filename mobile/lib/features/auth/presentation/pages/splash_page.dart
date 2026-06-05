@@ -68,6 +68,12 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             ),
             const SizedBox(height: AppSpacing.sm),
             const Text('Pour votre boutique', style: AppTypography.bodyMedium),
+            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
           ],
         ),
       ),

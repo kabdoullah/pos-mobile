@@ -34,25 +34,22 @@ class _TutorialPageState extends State<TutorialPage> {
       title: 'Ajouter des produits',
       description: 'Gérez votre catalogue directement dans l\'app.',
       icon: Icons.shopping_bag_outlined,
-      color: AppColors.primary,
     ),
     TutorialSlide(
       title: 'Faire une vente',
       description: 'Sélectionnez les articles et encaissez rapidement.',
       icon: Icons.point_of_sale_outlined,
-      color: AppColors.primary,
     ),
     TutorialSlide(
       title: 'Imprimer le reçu',
       description: 'Connectez votre imprimante thermique sans fil.',
       icon: Icons.receipt_long_outlined,
-      color: AppColors.primary,
     ),
     TutorialSlide(
       title: 'Consulter mes ventes',
       description: 'Suivez vos revenus en temps réel et hors ligne.',
       icon: Icons.trending_up_outlined,
-      color: AppColors.secondary,
+      isAccent: true,
     ),
   ];
 
@@ -103,11 +100,14 @@ class _TutorialPageState extends State<TutorialPage> {
                 padding: EdgeInsets.all(padding),
                 child: TextButton.icon(
                   onPressed: () => context.go(Routes.home),
-                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                  icon: Icon(
+                    Icons.close,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   label: Text(
                     'Passer',
-                    style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.textSecondary,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -143,8 +143,8 @@ class _TutorialPageState extends State<TutorialPage> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
                       color: _currentPage == index
-                          ? AppColors.primary
-                          : AppColors.border,
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.outline,
                     ),
                   ),
                 ),
@@ -177,6 +177,8 @@ class _SlideBuilder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final color = slide.isAccent ? cs.secondary : cs.primary;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -185,10 +187,10 @@ class _SlideBuilder extends StatelessWidget {
           width: 120,
           height: 120,
           decoration: BoxDecoration(
-            color: slide.color.withValues(alpha: 0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: Icon(slide.icon, size: 64, color: slide.color),
+          child: Icon(slide.icon, size: 64, color: color),
         ),
         const SizedBox(height: AppSpacing.xl),
 
@@ -208,8 +210,8 @@ class _SlideBuilder extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: padding),
           child: Text(
             slide.description,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
           ),
@@ -226,7 +228,7 @@ class TutorialSlide {
     required this.title,
     required this.description,
     required this.icon,
-    required this.color,
+    this.isAccent = false,
   });
 
   /// Slide title.
@@ -238,6 +240,6 @@ class TutorialSlide {
   /// Large icon to display.
   final IconData icon;
 
-  /// Color for the icon and accent.
-  final Color color;
+  /// Whether to use secondary (accent) color instead of primary.
+  final bool isAccent;
 }

@@ -18,10 +18,7 @@ class AppConfig {
   static late final String _apiUrl;
 
   /// Initialise la configuration. À appeler une seule fois avant [runApp].
-  static void setup({
-    required AppFlavor flavor,
-    required String apiUrl,
-  }) {
+  static void setup({required AppFlavor flavor, required String apiUrl}) {
     _flavor = flavor;
     _apiUrl = apiUrl;
   }

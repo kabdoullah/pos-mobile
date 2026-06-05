@@ -64,9 +64,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
     return AppScaffold(
       title: 'Catalogue',
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
         onPressed: _openProductForm,
-        child: const Icon(Icons.add, color: AppColors.textOnPrimary),
+        tooltip: 'Ajouter un produit',
+        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
