@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 
@@ -35,6 +34,7 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isDisabled = onPressed == null;
     final borderRadius = BorderRadius.circular(AppSpacing.radiusMd);
 
@@ -48,7 +48,7 @@ class PrimaryButton extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.25),
+                    color: cs.primary.withValues(alpha: 0.25),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                     spreadRadius: 0,
@@ -56,7 +56,9 @@ class PrimaryButton extends StatelessWidget {
                 ],
         ),
         child: Material(
-          color: isDisabled ? AppColors.inactive : AppColors.primary,
+          color: isDisabled
+              ? cs.onSurface.withValues(alpha: 0.12)
+              : cs.primary,
           borderRadius: borderRadius,
           child: InkWell(
             onTap: isLoading || isDisabled
@@ -68,13 +70,11 @@ class PrimaryButton extends StatelessWidget {
             borderRadius: borderRadius,
             child: Center(
               child: isLoading
-                  ? const SizedBox.square(
+                  ? SizedBox.square(
                       dimension: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.textOnPrimary,
-                        ),
+                        valueColor: AlwaysStoppedAnimation<Color>(cs.onPrimary),
                       ),
                     )
                   : Row(
@@ -82,13 +82,13 @@ class PrimaryButton extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (icon != null) ...[
-                          Icon(icon, color: AppColors.textOnPrimary, size: 20),
+                          Icon(icon, color: cs.onPrimary, size: 20),
                           const SizedBox(width: AppSpacing.sm),
                         ],
                         Text(
                           label,
                           style: AppTypography.labelLarge.copyWith(
-                            color: AppColors.textOnPrimary,
+                            color: cs.onPrimary,
                           ),
                           textAlign: TextAlign.center,
                         ),

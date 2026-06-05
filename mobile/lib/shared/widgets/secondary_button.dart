@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 
@@ -35,7 +34,9 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isDisabled = onPressed == null;
+    final disabledColor = cs.onSurface.withValues(alpha: 0.38);
     final borderRadius = BorderRadius.circular(AppSpacing.radiusMd);
 
     return SizedBox(
@@ -43,17 +44,17 @@ class SecondaryButton extends StatelessWidget {
       width: double.infinity,
       child: Container(
         decoration: BoxDecoration(
-          color: isDisabled ? AppColors.surfaceVariant : AppColors.surface,
+          color: isDisabled ? cs.surfaceContainerHighest : cs.surface,
           borderRadius: borderRadius,
           border: Border.all(
-            color: isDisabled ? AppColors.border : AppColors.secondary,
+            color: isDisabled ? cs.outlineVariant : cs.secondary,
             width: 2,
           ),
           boxShadow: isDisabled
               ? []
               : [
                   BoxShadow(
-                    color: AppColors.secondary.withValues(alpha: 0.12),
+                    color: cs.secondary.withValues(alpha: 0.12),
                     blurRadius: 6,
                     offset: const Offset(0, 2),
                     spreadRadius: 0,
@@ -72,13 +73,12 @@ class SecondaryButton extends StatelessWidget {
             borderRadius: borderRadius,
             child: Center(
               child: isLoading
-                  ? const SizedBox.square(
+                  ? SizedBox.square(
                       dimension: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppColors.secondary,
-                        ),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(cs.secondary),
                       ),
                     )
                   : Row(
@@ -88,9 +88,7 @@ class SecondaryButton extends StatelessWidget {
                         if (icon != null) ...[
                           Icon(
                             icon,
-                            color: isDisabled
-                                ? AppColors.textDisabled
-                                : AppColors.secondary,
+                            color: isDisabled ? disabledColor : cs.secondary,
                             size: 20,
                           ),
                           const SizedBox(width: AppSpacing.sm),
@@ -98,9 +96,7 @@ class SecondaryButton extends StatelessWidget {
                         Text(
                           label,
                           style: AppTypography.labelLarge.copyWith(
-                            color: isDisabled
-                                ? AppColors.textDisabled
-                                : AppColors.secondary,
+                            color: isDisabled ? disabledColor : cs.secondary,
                           ),
                           textAlign: TextAlign.center,
                         ),

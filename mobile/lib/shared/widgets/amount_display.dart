@@ -57,10 +57,9 @@ class AmountDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var textStyle = _getTextStyle();
-    if (color != null) {
-      textStyle = textStyle.copyWith(color: color);
-    }
+    // RichText ne propage pas DefaultTextStyle — couleur explicite obligatoire.
+    final defaultColor = color ?? Theme.of(context).colorScheme.onSurface;
+    final textStyle = _getTextStyle().copyWith(color: defaultColor);
     final formattedAmount = _formatAmount();
 
     return RichText(

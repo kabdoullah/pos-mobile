@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/navigation/nav_provider.dart';
-import '../../core/theme/app_colors.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/catalog/presentation/pages/catalog_page.dart';
 import '../../features/sales/presentation/pages/sales_history_page.dart';
@@ -41,18 +40,19 @@ class _BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: cs.surface,
         border: Border(
           top: BorderSide(
-            color: AppColors.textPrimary.withValues(alpha: 0.08),
+            color: cs.onSurface.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: cs.shadow.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, -2),
           ),
@@ -67,7 +67,7 @@ class _BottomNavBar extends StatelessWidget {
               label: 'Accueil',
               icon: Icons.home_outlined,
               activeIcon: Icons.home,
-              color: AppColors.primary,
+              color: cs.primary,
               isActive: currentIndex == 0,
               onTap: () =>
                   ref.read(bottomNavIndexProvider.notifier).setIndex(0),
@@ -168,7 +168,7 @@ class _NavBarItemState extends State<_NavBarItem> {
                       widget.isActive ? widget.activeIcon : widget.icon,
                       color: widget.isActive
                           ? widget.color
-                          : AppColors.textSecondary,
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                       size: 24,
                     ),
                   ),
@@ -178,7 +178,7 @@ class _NavBarItemState extends State<_NavBarItem> {
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: widget.isActive
                           ? widget.color
-                          : AppColors.textSecondary,
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                       fontWeight: widget.isActive
                           ? FontWeight.w600
                           : FontWeight.w500,

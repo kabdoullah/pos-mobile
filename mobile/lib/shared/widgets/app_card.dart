@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 
 /// Minimal card container with subtle elevation.
@@ -27,14 +26,15 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final borderRadius = BorderRadius.circular(AppSpacing.radiusMd);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: cs.surface, // ✨ theme-aware: correct en dark mode
         borderRadius: borderRadius,
         boxShadow: [
           BoxShadow(
-            color: AppColors.scrim.withValues(alpha: 0.08),
+            color: cs.shadow.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
             spreadRadius: 0,

@@ -10,9 +10,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/router/app_router.dart';
 import '../../../../core/sync/sync_orchestrator.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
@@ -24,14 +22,24 @@ import '../../../sales/providers/sales_di_providers.dart';
 import '../../../sync/presentation/providers/sync_providers.dart';
 
 /// Settings page — store info, printer config, account management.
-class SettingsPage extends ConsumerWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   /// Creates a [SettingsPage].
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  // Guard against double-tap on async actions (concurrent jobs).
+  bool _exporting = false;
+  bool _syncing = false;
+
+  @override
+  Widget build(BuildContext context) {
     final storeAsync = ref.watch(storeConfigProvider);
     final printerState = ref.watch(printerProvider);
+    final cs = Theme.of(context).colorScheme;
 
     return AppScaffold(
       title: 'Paramètres',
@@ -43,9 +51,9 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: 'MA BOUTIQUE',
               children: [
-                ListTile(
-                  leading: const Icon(Icons.store_outlined),
-                  title: const Text('Informations boutique'),
+                _SettingsTile(
+                  icon: Icons.store_outlined,
+                  title: 'Informations boutique',
                   subtitle: storeAsync.whenOrNull(
                     data: (store) => Text(
                       store?.name ?? 'Non configurée',
@@ -53,16 +61,12 @@ class SettingsPage extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  isNavigation: true,
                   onTap: () => Navigator.of(context).push<void>(
                     MaterialPageRoute(
                       fullscreenDialog: true,
                       builder: (_) => const StoreSetupPage(isEditMode: true),
                     ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
                   ),
                 ),
               ],
@@ -72,16 +76,12 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: 'IMPRIMANTE',
               children: [
-                ListTile(
-                  leading: const Icon(Icons.print_outlined),
-                  title: const Text('Configuration imprimante'),
-                  subtitle: _getPrinterSubtitle(printerState),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                _SettingsTile(
+                  icon: Icons.print_outlined,
+                  title: 'Configuration imprimante',
+                  subtitle: _printerSubtitle(context, printerState),
+                  isNavigation: true,
                   onTap: () => context.push(Routes.bluetoothSetup),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
                 ),
               ],
             ),
@@ -90,32 +90,23 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: 'DONNÉES',
               children: [
-                ListTile(
-                  leading: const Icon(Icons.file_download_outlined),
-                  title: const Text('Exporter CSV'),
+                _SettingsTile(
+                  icon: Icons.file_download_outlined,
+                  title: 'Exporter CSV',
                   subtitle: const Text('Télécharger les ventes'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _exportCsv(context, ref),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
+                  busy: _exporting,
+                  onTap: _exporting ? null : _exportCsv,
                 ),
                 const Divider(indent: AppSpacing.md, endIndent: AppSpacing.md),
-                ListTile(
-                  leading: const Icon(Icons.picture_as_pdf_outlined),
-                  title: const Text('Exporter PDF'),
+                _SettingsTile(
+                  icon: Icons.picture_as_pdf_outlined,
+                  title: 'Exporter PDF',
                   subtitle: const Text('Rapport mensuel'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Bientôt disponible')),
                     );
                   },
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
                 ),
               ],
             ),
@@ -124,16 +115,12 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: 'SUPPORT',
               children: [
-                ListTile(
-                  leading: const Icon(Icons.help_outline),
-                  title: const Text('Relancer le tutoriel'),
+                _SettingsTile(
+                  icon: Icons.help_outline,
+                  title: 'Relancer le tutoriel',
                   subtitle: const Text('Redémarrer la visite guidée'),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  isNavigation: true,
                   onTap: () => context.push(Routes.tutorial),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
                 ),
               ],
             ),
@@ -142,16 +129,12 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: 'SAUVEGARDE',
               children: [
-                ListTile(
-                  leading: const Icon(Icons.cloud_sync_outlined),
-                  title: const Text('Sauvegarder maintenant'),
-                  subtitle: _getSyncSubtitle(ref),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onTap: () => _handleManualSync(context, ref),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
+                _SettingsTile(
+                  icon: Icons.cloud_sync_outlined,
+                  title: 'Sauvegarder maintenant',
+                  subtitle: _syncSubtitle(context),
+                  busy: _syncing,
+                  onTap: _syncing ? null : _handleManualSync,
                 ),
               ],
             ),
@@ -160,47 +143,38 @@ class SettingsPage extends ConsumerWidget {
             _SettingsSection(
               title: 'APPARENCE',
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.palette_outlined),
-                      const SizedBox(width: AppSpacing.md),
-                      const Expanded(child: Text('Thème')),
-                      SegmentedButton<ThemeMode>(
-                        segments: const [
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            icon: Icon(Icons.light_mode_outlined, size: 18),
-                            tooltip: 'Clair',
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            icon: Icon(
-                              Icons.brightness_auto_outlined,
-                              size: 18,
-                            ),
-                            tooltip: 'Système',
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            icon: Icon(Icons.dark_mode_outlined, size: 18),
-                            tooltip: 'Sombre',
-                          ),
-                        ],
-                        selected: {ref.watch(themeModeProvider)},
-                        onSelectionChanged: (modes) => ref
-                            .read(themeModeProvider.notifier)
-                            .setMode(modes.first),
-                        style: SegmentedButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                        ),
+                // ListTile au lieu d'un Row fait main → alignement cohérent
+                // avec les autres rangées.
+                ListTile(
+                  leading: const Icon(Icons.palette_outlined),
+                  title: const Text('Thème'),
+                  trailing: SegmentedButton<ThemeMode>(
+                    segments: const [
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        icon: Icon(Icons.light_mode_outlined, size: 18),
+                        tooltip: 'Clair',
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        icon: Icon(Icons.brightness_auto_outlined, size: 18),
+                        tooltip: 'Système',
+                      ),
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        icon: Icon(Icons.dark_mode_outlined, size: 18),
+                        tooltip: 'Sombre',
                       ),
                     ],
+                    selected: {ref.watch(themeModeProvider)},
+                    onSelectionChanged: (modes) => ref
+                        .read(themeModeProvider.notifier)
+                        .setMode(modes.first),
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
+                  contentPadding: _kTilePadding,
                 ),
               ],
             ),
@@ -210,33 +184,16 @@ class SettingsPage extends ConsumerWidget {
               title: 'COMPTE',
               children: [
                 ListTile(
-                  leading: const Icon(
-                    Icons.logout_outlined,
-                    color: AppColors.error,
-                  ),
+                  // Couleur via colorScheme → adapte light/dark.
+                  leading: Icon(Icons.logout_outlined, color: cs.error),
                   title: Text(
                     'Se déconnecter',
-                    style: AppTypography.labelLarge.copyWith(
-                      color: AppColors.error,
-                    ),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  onTap: () async {
-                    final confirm = await showConfirmDialog(
+                    style: Theme.of(
                       context,
-                      title: 'Se déconnecter',
-                      message: 'Êtes-vous sûr ?',
-                      confirmLabel: 'Déconnecter',
-                      cancelLabel: 'Annuler',
-                      isDangerous: true,
-                    );
-                    if (confirm && context.mounted) {
-                      unawaited(ref.read(authProvider.notifier).logout());
-                    }
-                  },
+                    ).textTheme.labelLarge?.copyWith(color: cs.error),
+                  ),
+                  contentPadding: _kTilePadding,
+                  onTap: _confirmLogout,
                 ),
               ],
             ),
@@ -248,16 +205,32 @@ class SettingsPage extends ConsumerWidget {
     );
   }
 
-  static Widget? _getPrinterSubtitle(PrinterState state) {
+  Future<void> _confirmLogout() async {
+    final confirm = await showConfirmDialog(
+      context,
+      title: 'Se déconnecter',
+      message: 'Êtes-vous sûr ?',
+      confirmLabel: 'Déconnecter',
+      cancelLabel: 'Annuler',
+      isDangerous: true,
+    );
+    if (confirm && mounted) {
+      unawaited(ref.read(authProvider.notifier).logout());
+    }
+  }
+
+  // Couleurs theme-aware → s'adaptent au mode sombre.
+  Widget? _printerSubtitle(BuildContext context, PrinterState state) {
+    final cs = Theme.of(context).colorScheme;
     return switch (state) {
       PrinterConnected(name: final name) => Text(
         name,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: AppColors.secondary,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: cs.primary,
           fontWeight: FontWeight.w500,
-        ),
+        ), // ✨ textTheme au lieu de TextStyle inline
       ),
       PrinterDisconnected(savedName: final name) => Text(
         name == null ? 'Aucune imprimante' : 'Prête: $name',
@@ -266,33 +239,39 @@ class SettingsPage extends ConsumerWidget {
         'Erreur: $msg',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: AppColors.error),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: cs.error,
+        ), // ✨ textTheme au lieu de TextStyle inline
       ),
       _ => const Text('Non configurée'),
     };
   }
 
-  static Widget? _getSyncSubtitle(WidgetRef ref) {
+  Widget? _syncSubtitle(BuildContext context) {
     final syncStatus = ref.watch(syncOrchestratorProvider);
     final pendingCount = ref.watch(pendingSyncCountProvider).value ?? 0;
 
     return switch (syncStatus) {
       SyncStatusSyncing() => const Text('Synchronisation en cours...'),
-      SyncStatusError() => const Text(
+      SyncStatusError() => Text(
         'Erreur — Réessayer',
-        style: TextStyle(color: AppColors.error),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).colorScheme.error,
+        ), // ✨ textTheme au lieu de TextStyle inline
       ),
       SyncStatusIdle(lastSyncAt: final lastSyncAt) => Text(
         pendingCount > 0
             ? '$pendingCount en attente'
             : lastSyncAt == null
             ? 'Jamais synchronisé'
-            : 'Dernière: ${lastSyncAt.hour}:${lastSyncAt.minute.toString().padLeft(2, '0')}',
+            // DateFormat locale plutôt qu'une concaténation manuelle.
+            : 'Dernière: ${DateFormat('HH:mm').format(lastSyncAt)}',
       ),
     };
   }
 
-  static Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+  Future<void> _exportCsv() async {
+    setState(() => _exporting = true);
     final messenger = ScaffoldMessenger.of(context);
     messenger.showSnackBar(
       const SnackBar(
@@ -347,15 +326,17 @@ class SettingsPage extends ConsumerWidget {
       );
     } catch (e) {
       messenger.hideCurrentSnackBar();
-      if (context.mounted) {
+      if (mounted) {
         messenger.showSnackBar(
           SnackBar(
             content: Text('Erreur export: $e'),
-            backgroundColor: AppColors.error,
+            backgroundColor: Theme.of(context).colorScheme.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => _exporting = false);
     }
   }
 
@@ -369,10 +350,8 @@ class SettingsPage extends ConsumerWidget {
     };
   }
 
-  static Future<void> _handleManualSync(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
+  Future<void> _handleManualSync() async {
+    setState(() => _syncing = true);
     final messenger = ScaffoldMessenger.of(context);
     final orchestrator = ref.read(syncOrchestratorProvider.notifier);
 
@@ -403,7 +382,72 @@ class SettingsPage extends ConsumerWidget {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _syncing = false);
     }
+  }
+}
+
+/// Shared content padding for every settings row (defined once).
+const EdgeInsets _kTilePadding = EdgeInsets.symmetric(
+  horizontal: AppSpacing.md,
+  vertical: AppSpacing.sm,
+);
+
+/// Reusable settings row.
+///
+/// [isNavigation] shows a chevron (true navigation only, never on actions).
+/// [busy] swaps the trailing for a spinner and ignores taps.
+class _SettingsTile extends StatelessWidget {
+  /// Creates a [_SettingsTile].
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+    this.isNavigation = false,
+    this.busy = false,
+  });
+
+  /// Leading icon.
+  final IconData icon;
+
+  /// Row title.
+  final String title;
+
+  /// Optional subtitle widget.
+  final Widget? subtitle;
+
+  /// Tap callback. Null disables the row.
+  final VoidCallback? onTap;
+
+  /// Whether to show a navigation chevron as trailing.
+  final bool isNavigation;
+
+  /// Whether an async action is in progress.
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final Widget? trailing = busy
+        ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : isNavigation
+        ? Icon(Icons.arrow_forward_ios, size: 16, color: cs.onSurfaceVariant)
+        : null;
+
+    return ListTile(
+      leading: Icon(icon, color: cs.onSurfaceVariant), // ✨ M3 list icon color
+      title: Text(title),
+      subtitle: subtitle,
+      trailing: trailing,
+      contentPadding: _kTilePadding,
+      onTap: onTap,
+    );
   }
 }
 
@@ -430,7 +474,13 @@ class _SettingsSection extends StatelessWidget {
             AppSpacing.md,
             AppSpacing.md,
           ),
-          child: Text(title, style: AppTypography.labelLarge),
+          child: Text(
+          title,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.primary, // ✨ M3 section header
+            letterSpacing: 0.8,
+          ),
+        ),
         ),
         AppCard(padding: 0, child: Column(children: children)),
       ],

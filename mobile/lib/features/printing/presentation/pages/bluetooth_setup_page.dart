@@ -5,7 +5,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 
 import '../../../../core/responsive/responsive.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/printer_provider.dart';
@@ -86,7 +85,7 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: AppColors.error,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
@@ -113,7 +112,7 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erreur: ${newState.message}'),
-          backgroundColor: AppColors.error,
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
     }
@@ -122,10 +121,10 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
   // Fix #2: show snackbar + pop instead of broken test-print dialog
   void _onConnectSuccess() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Imprimante connectée avec succès'),
-        backgroundColor: AppColors.secondary,
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: const Text('Imprimante connectée avec succès'),
+        backgroundColor: Theme.of(context).colorScheme.secondary,
+        duration: const Duration(seconds: 2),
       ),
     );
     Navigator.of(context).pop();
@@ -181,10 +180,7 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
             ] else ...[
               Text(
                 'Appareils appairés (${_pairedDevices.length})',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(context).textTheme.titleSmall,
               ),
               const SizedBox(height: AppSpacing.md),
               ListView.separated(
@@ -194,6 +190,8 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                 separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
+                  final cs = Theme.of(context).colorScheme;
+                  final tt = Theme.of(context).textTheme;
                   final device = _pairedDevices[index];
                   final printerState = ref.watch(printerProvider);
                   final isConnected =
@@ -209,20 +207,18 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                     child: ListTile(
                       leading: Icon(
                         isConnected ? Icons.check_circle : Icons.bluetooth,
-                        color: isConnected
-                            ? AppColors.secondary
-                            : AppColors.textSecondary,
+                        color: isConnected ? cs.secondary : cs.onSurfaceVariant,
                       ),
                       title: Text(device.name),
                       subtitle: Text(
                         device.macAdress,
-                        style: const TextStyle(fontSize: 12),
+                        style: tt.bodySmall,
                       ),
                       trailing: isConnected
-                          ? const Text(
+                          ? Text(
                               'Connectée',
-                              style: TextStyle(
-                                color: AppColors.secondary,
+                              style: tt.bodyMedium?.copyWith(
+                                color: cs.secondary,
                                 fontWeight: FontWeight.w500,
                               ),
                             )
@@ -233,7 +229,11 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : const Icon(Icons.arrow_forward_ios, size: 16),
+                          : Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                              color: cs.onSurfaceVariant,
+                            ),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.md,
                         vertical: AppSpacing.xs,

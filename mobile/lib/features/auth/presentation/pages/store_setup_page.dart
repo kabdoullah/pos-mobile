@@ -4,7 +4,6 @@ import 'package:logger/logger.dart';
 
 import '../../../../core/network/error_mapper.dart';
 import '../../../../core/responsive/responsive.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
@@ -134,9 +133,11 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
           SnackBar(
             content: Text(
               errorToFrench(e),
-              style: const TextStyle(color: AppColors.textOnPrimary),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onError,
+              ),
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
         setState(() => _isLoading = false);
@@ -161,14 +162,12 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
       medium: AppSpacing.lg,
     );
     return Scaffold(
-      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       // Edit mode is pushed as a fullscreen dialog from settings — give it a
       // close affordance. Create mode is reached via the router and has no
       // back action (onboarding step), so it keeps its in-body header only.
       appBar: widget.isEditMode
           ? AppBar(
-              backgroundColor: AppColors.background,
               elevation: 0,
               leading: IconButton(
                 icon: const Icon(Icons.close),
@@ -219,17 +218,17 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
                 prefixIcon: Icons.card_giftcard_outlined,
               ),
               const SizedBox(height: AppSpacing.sm),
-              const Padding(
-                padding: EdgeInsets.only(left: AppSpacing.md),
+              Padding(
+                padding: const EdgeInsets.only(left: AppSpacing.md),
                 child: Row(
                   children: [
                     Icon(
                       Icons.help_outline,
                       size: 16,
-                      color: AppColors.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                    SizedBox(width: AppSpacing.xs),
-                    Expanded(
+                    const SizedBox(width: AppSpacing.xs),
+                    const Expanded(
                       child: Text(
                         'Numéro attribué par les autorités fiscales pour la facturation',
                         style: AppTypography.captionText,
@@ -242,7 +241,7 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceVariant,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 ),
                 child: Row(
@@ -267,7 +266,6 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
                       onChanged: (value) {
                         setState(() => _isSubjectToVat = value);
                       },
-                      activeThumbColor: AppColors.primary,
                     ),
                   ],
                 ),

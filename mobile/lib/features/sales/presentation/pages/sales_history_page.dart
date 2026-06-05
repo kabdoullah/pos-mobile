@@ -7,7 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/sync/sync_orchestrator.dart';
-import '../../../../core/theme/app_semantic_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/illustrations.dart';
 import '../../../../shared/widgets/index.dart';
@@ -77,7 +77,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                       Expanded(
                         child: Text(
                           syncStatus.message,
-                          style: TextStyle(color: cs.error, fontSize: 12),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.error),
                         ),
                       ),
                     ],
@@ -106,7 +106,7 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                       const SizedBox(width: AppSpacing.sm),
                       Text(
                         'Synchronisation en cours...',
-                        style: TextStyle(color: cs.primary, fontSize: 12),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: cs.primary),
                       ),
                     ],
                   ),
@@ -188,13 +188,13 @@ class _SaleCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
-    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
+    final brightness = Theme.of(context).brightness;
     final timeLabel = DateFormat('HH:mm', 'fr_FR').format(sale.createdAt);
     final receiptLabel = sale.receiptNumber > 0
         ? '#${sale.receiptNumber}'
         : 'Provisoire';
     final paymentLabel = _paymentMethodLabel(sale.paymentMethod);
-    final paymentColor = _paymentMethodColor(sale.paymentMethod, cs, semantic);
+    final paymentColor = _paymentMethodColor(sale.paymentMethod, cs, brightness);
 
     return AppCard(
       onTap: () => context.push(Routes.saleDetail, extra: sale),
@@ -208,10 +208,10 @@ class _SaleCard extends ConsumerWidget {
           children: [
             Text(
               _formatAmount(sale.totalAmount),
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             Chip(
-              label: Text(paymentLabel, style: const TextStyle(fontSize: 11)),
+              label: Text(paymentLabel, style: Theme.of(context).textTheme.labelSmall),
               backgroundColor: paymentColor,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -238,13 +238,13 @@ class _SaleCard extends ConsumerWidget {
   static Color _paymentMethodColor(
     PaymentMethod method,
     ColorScheme cs,
-    AppSemanticColors semantic,
+    Brightness brightness,
   ) {
     return switch (method) {
       PaymentMethod.cash => cs.secondaryContainer,
-      PaymentMethod.orangeMoney => semantic.orangeMoneyBg,
-      PaymentMethod.mtn => semantic.mtnBg,
-      PaymentMethod.wave => semantic.waveBg,
+      PaymentMethod.orangeMoney => AppColors.orangeMoneyBg(brightness),
+      PaymentMethod.mtn => AppColors.mtnBg(brightness),
+      PaymentMethod.wave => AppColors.waveBg(brightness),
       PaymentMethod.mixed => cs.primaryContainer,
     };
   }
