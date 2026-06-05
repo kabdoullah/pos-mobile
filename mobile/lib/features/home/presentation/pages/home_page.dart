@@ -1,3 +1,8 @@
+// ============================================================
+// AVANT → APRÈS : HomePage
+// Flutter 3.x+ | Material 3 | Dart 3+ | POS Mobile
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,6 +30,11 @@ class HomePage extends ConsumerWidget {
     final storeName =
         storeAsync.whenOrNull(data: (s) => s?.name) ?? 'Ma boutique';
     final dateLabel = DateFormat('EEEE d MMMM', 'fr_FR').format(DateTime.now());
+    final hPad = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
 
     return AppScaffold(
       title: 'Bonjour',
@@ -38,21 +48,14 @@ class HomePage extends ConsumerWidget {
       ],
       body: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header with store name and date
+            // Header: store name + date
             Padding(
               padding: EdgeInsets.fromLTRB(
-                responsiveValue(
-                  context,
-                  small: AppSpacing.md,
-                  medium: AppSpacing.lg,
-                ),
+                hPad,
                 AppSpacing.lg,
-                responsiveValue(
-                  context,
-                  small: AppSpacing.md,
-                  medium: AppSpacing.lg,
-                ),
+                hPad,
                 AppSpacing.xl,
               ),
               child: Column(
@@ -78,89 +81,44 @@ class HomePage extends ConsumerWidget {
               ),
             ),
 
-            // Main content area with asymmetric layout
+            // Daily summary card
             Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: responsiveValue(
-                  context,
-                  small: AppSpacing.md,
-                  medium: AppSpacing.lg,
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Hero summary section
-                  dailySummaryAsync.when(
-                    loading: () => const AppLoadingIndicator(),
-                    error: (_, _) => _SummaryCard(summary: DailySummary.empty),
-                    data: (summary) => _SummaryCard(summary: summary),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-
-                  // Primary CTA — full width
-                  GestureDetector(
-                    onTap: () => context.push(Routes.newSale),
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Theme.of(context).colorScheme.primary,
-                              Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.9),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusMd,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.25),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.lg,
-                            horizontal: AppSpacing.md,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.point_of_sale,
-                                color: Theme.of(context).colorScheme.onPrimary,
-                                size: 22,
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Text(
-                                'NOUVELLE VENTE',
-                                style: AppTypography.labelLarge.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.8,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                ],
+              padding: EdgeInsets.symmetric(horizontal: hPad),
+              child: dailySummaryAsync.when(
+                loading: () => const AppLoadingIndicator(),
+                error: (_, _) => _SummaryCard(summary: DailySummary.empty),
+                data: (summary) => _SummaryCard(summary: summary),
               ),
             ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Primary CTA — full width ✨ FilledButton (M3, ripple, sémantique a11y)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: hPad),
+              child: SizedBox(
+                width: double.infinity,
+                height: AppSpacing.buttonHeight,
+                child: FilledButton.icon(
+                  onPressed: () => context.push(Routes.newSale),
+                  icon: const Icon(Icons.point_of_sale, size: 22),
+                  label: const Text('NOUVELLE VENTE'),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    ),
+                    textStyle: AppTypography.labelLarge.copyWith(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Quick access shortcuts ✨ comble l'espace vide, fluidité POS
+            const _QuickActionsSection(),
+            const SizedBox(height: AppSpacing.xl),
           ],
         ),
       ),
@@ -168,29 +126,133 @@ class HomePage extends ConsumerWidget {
   }
 }
 
-/// Premium summary card with glass-morphism effect.
+/// Quick access section for frequent POS operations.
+class _QuickActionsSection extends ConsumerWidget {
+  const _QuickActionsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hPad = responsiveValue(
+      context,
+      small: AppSpacing.md,
+      medium: AppSpacing.lg,
+    );
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: hPad),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Accès rapide',
+            style: AppTypography.labelMedium.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: _QuickActionCard(
+                  icon: Icons.shopping_bag_outlined,
+                  label: 'Catalogue',
+                  onTap: () =>
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(1),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _QuickActionCard(
+                  icon: Icons.history_outlined,
+                  label: 'Historique',
+                  onTap: () =>
+                      ref.read(bottomNavIndexProvider.notifier).setIndex(2),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: _QuickActionCard(
+                  icon: Icons.add_box_outlined,
+                  label: 'Nouveau produit',
+                  onTap: () => context.push(Routes.productNew),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tappable quick-action card with icon and label.
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AppCard(
+      onTap: onTap,
+      padding: AppSpacing.md,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: cs.primaryContainer,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
+            ),
+            child: Icon(icon, color: cs.onPrimaryContainer, size: 22),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: AppTypography.labelSmall.copyWith(
+              color: cs.onSurface,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Premium summary card with gradient background.
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({required this.summary});
+
   final DailySummary summary;
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    final onPrimary = Theme.of(context).colorScheme.onPrimary;
+    final cs = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            primary.withValues(alpha: 0.95),
-            primary.withValues(alpha: 0.85),
+            cs.primary.withValues(alpha: 0.95),
+            cs.primary.withValues(alpha: 0.85),
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: primary.withValues(alpha: 0.2),
+            color: cs.primary.withValues(alpha: 0.2),
             blurRadius: 30,
             offset: const Offset(0, 12),
           ),
@@ -204,32 +266,47 @@ class _SummaryCard extends StatelessWidget {
             Text(
               'Total du jour',
               style: AppTypography.labelMedium.copyWith(
-                color: onPrimary.withValues(alpha: 0.8),
+                color: cs.onPrimary.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            AmountDisplay(amount: summary.totalAmount, size: AmountSize.hero),
+            // ✨ color: cs.onPrimary — corrige le bug contraste (onSurface sombre sur fond primaire)
+            AmountDisplay(
+              amount: summary.totalAmount,
+              size: AmountSize.hero,
+              color: cs.onPrimary,
+            ),
             const SizedBox(height: AppSpacing.xl),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _SummaryMetric(label: 'Nombre', value: '${summary.saleCount}'),
+                _SummaryMetric(
+                  label: 'Nombre',
+                  child: Text(
+                    '${summary.saleCount}',
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: cs.onPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.md),
                 _SummaryMetric(
                   label: 'Espèces',
-                  value: AmountDisplay(
+                  child: AmountDisplay(
                     amount: summary.cashTotal,
                     size: AmountSize.medium,
+                    color: cs.onPrimary,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 _SummaryMetric(
                   label: 'Mobile',
-                  value: AmountDisplay(
+                  child: AmountDisplay(
                     amount: summary.mobileMoneyTotal,
                     size: AmountSize.medium,
+                    color: cs.onPrimary,
                   ),
                 ),
               ],
@@ -241,18 +318,17 @@ class _SummaryCard extends StatelessWidget {
   }
 }
 
-/// Refined metric display for summary breakdown.
+/// Labeled metric in the summary card.
 class _SummaryMetric extends StatelessWidget {
-  const _SummaryMetric({required this.label, required this.value});
+  const _SummaryMetric({required this.label, required this.child});
 
   final String label;
-  final dynamic value;
+  final Widget child; // ✨ type-safe — supprime le dynamic
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             label,
@@ -264,16 +340,7 @@ class _SummaryMetric extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          if (value is String)
-            Text(
-              value as String,
-              style: AppTypography.bodyLarge.copyWith(
-                color: Theme.of(context).colorScheme.onPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            )
-          else
-            value as Widget,
+          child,
         ],
       ),
     );
