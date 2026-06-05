@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'app_semantic_colors.dart';
 import 'app_spacing.dart';
 import 'app_typography.dart';
 
 /// Material 3 theme factory for POS Mobile CI.
 ///
 /// Two public methods: [light] and [dark].
-/// Both register [AppSemanticColors] as a [ThemeExtension] for stock status,
-/// sync banner, and payment badge colors.
 class AppTheme {
   /// Prevent instantiation.
   AppTheme._();
@@ -16,37 +13,36 @@ class AppTheme {
   static ThemeData light() {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
-      primary: Color(0xFF2563EB),
+      primary: Color(0xFF92400E), // brun cacao — WCAG 7.1:1 on white
       onPrimary: Color(0xFFFFFFFF),
-      primaryContainer: Color(0xFFDBEAFE),
-      onPrimaryContainer: Color(0xFF1D4ED8),
-      secondary: Color(0xFF16A34A),
-      onSecondary: Color(0xFFFFFFFF),
-      secondaryContainer: Color(0xFFDCFCE7),
-      onSecondaryContainer: Color(0xFF15803D),
-      tertiary: Color(0xFFD97706), // amber — warning / offline banner
+      primaryContainer: Color(0xFFFEF3C7), // amber-100
+      onPrimaryContainer: Color(0xFF451A03), // brown-950
+      secondary: Color(0xFFCA8A04), // or/doré — ≠ jaune MTN #FFCC00
+      onSecondary: Color(0xFF1C1107), // jamais blanc sur or (3.4:1 insuffisant)
+      secondaryContainer: Color(0xFFFEFCE8), // yellow-50
+      onSecondaryContainer: Color(0xFF713F12), // amber-800
+      tertiary: Color(0xFFC2410C), // orange-rouge — warning/offline banner
       onTertiary: Color(0xFFFFFFFF),
-      tertiaryContainer: Color(0xFFFEF3C7),
-      onTertiaryContainer: Color(0xFF92400E),
-      error: Color(0xFFDC2626),
+      tertiaryContainer: Color(0xFFFFEDD5), // orange-100
+      onTertiaryContainer: Color(0xFF7C2D12), // orange-950
+      error: Color(0xFFBA1A1A),
       onError: Color(0xFFFFFFFF),
-      errorContainer: Color(0xFFFEE2E2),
-      onErrorContainer: Color(0xFFDC2626),
+      errorContainer: Color(0xFFFFDAD6),
+      onErrorContainer: Color(0xFF410002),
       surface: Color(0xFFFFFFFF),
-      onSurface: Color(0xFF0F172A),
-      surfaceContainerHighest: Color(0xFFF1F5F9),
-      onSurfaceVariant: Color(0xFF475569),
-      outline: Color(0xFFE2E8F0),
-      outlineVariant: Color(0xFFF1F5F9),
-      scrim: Color(0x990F172A),
+      onSurface: Color(0xFF1C1107), // warm near-black
+      surfaceContainerHighest: Color(0xFFFEF9EE), // ivory-warm tint
+      onSurfaceVariant: Color(0xFF57534E), // stone-600
+      outline: Color(0xFFA8A29E), // stone-400
+      outlineVariant: Color(0xFFE7E5E4), // stone-200
+      scrim: Color(0x991C1107),
       shadow: Color(0xFF000000),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-      extensions: const [AppSemanticColors.light],
+      scaffoldBackgroundColor: const Color(0xFFFFFBF5), // ivory-warm
       textTheme: _buildTextTheme(colorScheme),
       appBarTheme: _buildAppBarTheme(colorScheme),
       cardTheme: _buildCardTheme(colorScheme),
@@ -69,37 +65,36 @@ class AppTheme {
   static ThemeData dark() {
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: Color(0xFF38BDF8), // electric sky blue
-      onPrimary: Color(0xFF082F49),
-      primaryContainer: Color(0xFF0C4A6E),
-      onPrimaryContainer: Color(0xFFE0F2FE),
-      secondary: Color(0xFF10B981), // emerald green
-      onSecondary: Color(0xFF022C22),
-      secondaryContainer: Color(0xFF022C22),
-      onSecondaryContainer: Color(0xFFD1FAE5),
-      tertiary: Color(0xFFF59E0B), // amber warning
-      onTertiary: Color(0xFF422006),
-      tertiaryContainer: Color(0xFF422006),
-      onTertiaryContainer: Color(0xFFFEF3C7),
-      error: Color(0xFFEF4444),
-      onError: Color(0xFF450A0A),
-      errorContainer: Color(0xFF450A0A),
-      onErrorContainer: Color(0xFFFEE2E2),
-      surface: Color(0xFF1E293B), // dark slate card surface
-      onSurface: Color(0xFFF8FAFC), // near-white text
-      surfaceContainerHighest: Color(0xFF334155),
-      onSurfaceVariant: Color(0xFF94A3B8), // secondary text
-      outline: Color(0xFF475569),
-      outlineVariant: Color(0xFF334155),
-      scrim: Color(0x990B0F19),
+      primary: Color(0xFFFDBA74), // amber-300 — cacao clair sur fond sombre
+      onPrimary: Color(0xFF431407), // very dark cacao
+      primaryContainer: Color(0xFF78350F), // amber-900
+      onPrimaryContainer: Color(0xFFFEF3C7), // amber-100
+      secondary: Color(0xFFFDE68A), // amber-200 — or clair sur fond sombre
+      onSecondary: Color(0xFF451A03), // très sombre
+      secondaryContainer: Color(0xFF713F12), // amber-800
+      onSecondaryContainer: Color(0xFFFEFCE8), // yellow-50
+      tertiary: Color(0xFFFB923C), // orange-400 — warning/offline sur fond sombre
+      onTertiary: Color(0xFF431407),
+      tertiaryContainer: Color(0xFF7C2D12), // orange-950
+      onTertiaryContainer: Color(0xFFFFEDD5), // orange-100
+      error: Color(0xFFFFB4AB),
+      onError: Color(0xFF690005),
+      errorContainer: Color(0xFF93000A),
+      onErrorContainer: Color(0xFFFFDAD6),
+      surface: Color(0xFF1C1107), // near-black warm brown
+      onSurface: Color(0xFFF5F0E8), // warm white
+      surfaceContainerHighest: Color(0xFF3D2A14), // dark warm brown
+      onSurfaceVariant: Color(0xFFD6C7B8), // warm light gray
+      outline: Color(0xFF9D8E81),
+      outlineVariant: Color(0xFF4A3728),
+      scrim: Color(0x990C0906),
       shadow: Color(0xFF000000),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: const Color(0xFF0B0F19), // near-black blue
-      extensions: const [AppSemanticColors.dark],
+      scaffoldBackgroundColor: const Color(0xFF0C0906), // near-black warm cacao
       textTheme: _buildTextTheme(colorScheme),
       appBarTheme: _buildAppBarTheme(colorScheme),
       cardTheme: _buildCardTheme(colorScheme),

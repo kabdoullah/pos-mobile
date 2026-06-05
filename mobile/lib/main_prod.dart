@@ -6,13 +6,11 @@ import 'core/app.dart';
 import 'core/config.dart';
 import 'core/network/network_providers.dart';
 
-/// Point d'entrée dev — flavor "dev", API staging.
-///
-/// Pour la prod, utiliser main_prod.dart avec `--flavor prod`.
+/// Point d'entrée production — flavor "prod", API prod.
 void main() async {
   AppConfig.setup(
-    flavor: AppFlavor.dev,
-    apiUrl: 'https://pos-mobile-vkuh.onrender.com',
+    flavor: AppFlavor.prod,
+    apiUrl: 'https://api.pos-mobile-ci.com',
   );
   await initializeDateFormatting('fr_FR');
   runApp(

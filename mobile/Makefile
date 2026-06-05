@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help install gen gen-watch run analyze format test clean
+.PHONY: help install gen gen-watch run run-prod analyze format test build-apk build-apk-dev clean
 
 help: ## Liste les commandes disponibles
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -14,11 +14,11 @@ gen: ## Génère le code (drift, freezed, riverpod, retrofit)
 gen-watch: ## Lance la génération de code en mode watch
 	dart run build_runner watch --delete-conflicting-outputs
 
-run: ## Lance l'app sur l'appareil ou émulateur connecté
-	flutter run --dart-define=API_URL=https://pos-mobile-vkuh.onrender.com
+run: ## Lance l'app en mode dev (flavor dev, API staging)
+	flutter run --flavor dev -t lib/main.dart
 
-run-prod: ## Lance avec l'URL de production
-	flutter run --release --dart-define=API_URL=https://api.pos-mobile-ci.com
+run-prod: ## Lance l'app en mode prod (flavor prod, API prod) — release
+	flutter run --release --flavor prod -t lib/main_prod.dart
 
 analyze: ## Vérifie le code statiquement
 	flutter analyze
@@ -29,8 +29,11 @@ format: ## Formate le code Dart
 test: ## Lance les tests
 	flutter test
 
-build-apk: ## Build l'APK release
-	flutter build apk --release --dart-define=API_URL=https://api.pos-mobile-ci.com
+build-apk: ## Build l'APK release prod
+	flutter build apk --release --flavor prod -t lib/main_prod.dart
+
+build-apk-dev: ## Build l'APK dev (debug)
+	flutter build apk --flavor dev -t lib/main.dart
 
 clean: ## Nettoie les caches Flutter
 	flutter clean

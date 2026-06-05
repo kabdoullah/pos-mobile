@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/sync/sync_orchestrator.dart';
-import '../../core/theme/app_semantic_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../providers/connectivity_provider.dart';
@@ -64,10 +63,9 @@ class SyncStatusIndicator extends ConsumerWidget {
 
   Widget _buildSyncingBanner(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return Container(
       width: double.infinity,
-      color: semantic.syncingContainer,
+      color: cs.primaryContainer,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -118,13 +116,12 @@ class SyncStatusIndicator extends ConsumerWidget {
 
   Widget _buildPendingBanner(BuildContext context, int count) {
     final cs = Theme.of(context).colorScheme;
-    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     final label = count == 1
         ? '1 vente à sauvegarder'
         : '$count ventes à sauvegarder';
     return Container(
       width: double.infinity,
-      color: semantic.pendingContainer,
+      color: cs.tertiaryContainer,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -145,10 +142,9 @@ class SyncStatusIndicator extends ConsumerWidget {
   Widget _buildIdleBanner(BuildContext context, bool hasEverSynced) {
     if (!hasEverSynced) return const SizedBox.shrink();
     final cs = Theme.of(context).colorScheme;
-    final semantic = Theme.of(context).extension<AppSemanticColors>()!;
     return Container(
       width: double.infinity,
-      color: semantic.syncOkContainer,
+      color: cs.secondaryContainer,
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,

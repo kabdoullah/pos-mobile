@@ -194,7 +194,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               ],
               AppTextField(
                 label: 'Email',
-                hint: 'vous@example.com',
+                hint: 'ab@gmail.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 errorText: _emailError,

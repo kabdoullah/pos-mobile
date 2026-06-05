@@ -1,14 +1,39 @@
+/// Environnement de déploiement de l'application.
+enum AppFlavor {
+  /// Développement local — API staging, logs verbeux, banner debug.
+  dev,
+
+  /// Production — API prod, pas de banner debug.
+  prod,
+}
+
 /// Configuration globale de l'application.
+///
+/// Initialisée via [AppConfig.setup] dans le point d'entrée (main_*.dart)
+/// avant tout appel à [runApp].
 class AppConfig {
   AppConfig._();
 
-  /// URL de l'API, injectée via --dart-define au build.
-  /// En dev sur émulateur Android : http://10.0.2.2:8000
-  /// En prod : https://api.pos-mobile-ci.com
-  static const String apiUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'http://192.168.112.252:8000',
-  );
+  static late final AppFlavor _flavor;
+  static late final String _apiUrl;
+
+  /// Initialise la configuration. À appeler une seule fois avant [runApp].
+  static void setup({
+    required AppFlavor flavor,
+    required String apiUrl,
+  }) {
+    _flavor = flavor;
+    _apiUrl = apiUrl;
+  }
+
+  /// Environnement actif.
+  static AppFlavor get flavor => _flavor;
+
+  /// URL de base de l'API.
+  static String get apiUrl => _apiUrl;
+
+  /// Vrai si l'app tourne en mode développement.
+  static bool get isDev => _flavor == AppFlavor.dev;
 
   /// Timeout des requêtes HTTP en secondes.
   static const int httpTimeoutSeconds = 30;
