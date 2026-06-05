@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 
@@ -84,14 +83,18 @@ class _AppTextFieldState extends State<AppTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final hasError = widget.errorText != null && widget.errorText!.isNotEmpty;
-    final borderColor = hasError ? AppColors.error : AppColors.border;
-    final activeBorderColor = hasError ? AppColors.error : AppColors.primary;
+    final borderColor = hasError ? cs.error : cs.outline;
+    final activeBorderColor = hasError ? cs.error : cs.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: AppTypography.labelMedium),
+        Text(
+          widget.label,
+          style: AppTypography.labelMedium.copyWith(color: cs.onSurface),
+        ),
         const SizedBox(height: AppSpacing.xs),
         SizedBox(
           height: widget.maxLines == 1 ? 56 : null,
@@ -103,32 +106,34 @@ class _AppTextFieldState extends State<AppTextField> {
             maxLines: widget.maxLines,
             minLines: widget.minLines,
             onChanged: widget.onChanged,
-            style: AppTypography.bodyMedium,
+            style: AppTypography.bodyMedium.copyWith(color: cs.onSurface),
             decoration: InputDecoration(
               hintText: widget.hint,
-              hintStyle: AppTypography.hintText,
+              hintStyle: AppTypography.hintText.copyWith(
+                color: cs.onSurfaceVariant,
+              ),
               prefixIcon: widget.prefixIcon != null
-                  ? Icon(widget.prefixIcon, color: AppColors.textSecondary)
+                  ? Icon(widget.prefixIcon, color: cs.onSurfaceVariant)
                   : null,
               suffixIcon: widget.obscureText
                   ? IconButton(
+                      tooltip: _isObscured
+                          ? 'Afficher le mot de passe'
+                          : 'Masquer le mot de passe',
                       icon: Icon(
                         _isObscured
                             ? Icons.visibility_off_outlined
                             : Icons.visibility_outlined,
-                        color: AppColors.textSecondary,
+                        color: cs.onSurfaceVariant,
                       ),
                       onPressed: () =>
                           setState(() => _isObscured = !_isObscured),
                     )
                   : (widget.suffixIcon != null
-                        ? Icon(
-                            widget.suffixIcon,
-                            color: AppColors.textSecondary,
-                          )
+                        ? Icon(widget.suffixIcon, color: cs.onSurfaceVariant)
                         : null),
               filled: true,
-              fillColor: AppColors.surface,
+              fillColor: cs.surfaceContainerHighest,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 borderSide: BorderSide(color: borderColor, width: 2),
@@ -143,11 +148,11 @@ class _AppTextFieldState extends State<AppTextField> {
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                borderSide: const BorderSide(color: AppColors.error, width: 2),
+                borderSide: BorderSide(color: cs.error, width: 2),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                borderSide: const BorderSide(color: AppColors.error, width: 2),
+                borderSide: BorderSide(color: cs.error, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.md,
@@ -158,7 +163,10 @@ class _AppTextFieldState extends State<AppTextField> {
         ),
         if (hasError) ...[
           const SizedBox(height: AppSpacing.xs),
-          Text(widget.errorText!, style: AppTypography.errorText),
+          Text(
+            widget.errorText!,
+            style: AppTypography.errorText.copyWith(color: cs.error),
+          ),
         ],
       ],
     );

@@ -7,7 +7,6 @@ import 'package:logger/logger.dart';
 
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
@@ -118,22 +117,24 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
                       .read(authRepositoryProvider)
                       .sendPasswordReset(email);
                   if (context.mounted) {
+                    final cs = Theme.of(context).colorScheme;
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
+                      SnackBar(
+                        content: const Text(
                           'Email envoyé. Vérifiez votre boîte mail.',
                         ),
-                        backgroundColor: AppColors.secondary,
-                        duration: Duration(seconds: 4),
+                        backgroundColor: cs.secondaryContainer,
+                        duration: const Duration(seconds: 4),
                       ),
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
+                    final cs = Theme.of(context).colorScheme;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(errorToFrench(e)),
-                        backgroundColor: AppColors.error,
+                        backgroundColor: cs.errorContainer,
                       ),
                     );
                   }
@@ -166,6 +167,8 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
     final authValue = ref.watch(authProvider);
     final isLoading = authValue.isLoading;
     final errorMessage = authValue.asError?.error.toString();
@@ -176,7 +179,6 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
       medium: AppSpacing.lg,
     );
     return Scaffold(
-      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       body: Center(
         child: SingleChildScrollView(
@@ -190,33 +192,28 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Text('Se connecter', style: AppTypography.titleLarge),
+              Text('Se connecter', style: tt.titleLarge),
               const SizedBox(height: AppSpacing.xs),
-              const Text(
-                'Accédez à votre compte POS',
-                style: AppTypography.bodyMedium,
-              ),
+              Text('Accédez à votre compte POS', style: tt.bodyMedium),
               const SizedBox(height: AppSpacing.lg),
               if (errorMessage != null) ...[
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.1),
-                    border: Border.all(color: AppColors.error),
-                    borderRadius: BorderRadius.circular(8),
+                    color: cs.errorContainer,
+                    border: Border.all(color: cs.error),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                   ),
                   child: Text(
                     errorMessage,
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: AppColors.error,
-                    ),
+                    style: tt.bodyMedium?.copyWith(color: cs.onErrorContainer),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
               ],
               AppTextField(
                 label: 'Email',
-                hint: 'vous@example.com',
+                hint: 'ab@gmail.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 errorText: _emailError,
@@ -238,8 +235,9 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
                   child: Text(
                     'Mot de passe oublié ?',
                     style: AppTypography.labelMedium.copyWith(
-                      color: AppColors.primary,
+                      color: cs.primary,
                       decoration: TextDecoration.underline,
+                      decorationColor: cs.primary,
                     ),
                   ),
                 ),
@@ -254,17 +252,15 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Pas de compte ? ',
-                    style: AppTypography.bodyMedium,
-                  ),
+                  Text('Pas de compte ? ', style: tt.bodyMedium),
                   GestureDetector(
                     onTap: () => context.go(Routes.register),
                     child: Text(
                       'Inscrivez-vous',
                       style: AppTypography.labelMedium.copyWith(
-                        color: AppColors.primary,
+                        color: cs.primary,
                         decoration: TextDecoration.underline,
+                        decorationColor: cs.primary,
                       ),
                     ),
                   ),
