@@ -54,7 +54,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _SettingsTile(
                   icon: Icons.store_outlined,
                   title: 'Informations boutique',
-                  subtitle: storeAsync.whenOrNull(
+                  // ✨ état loading explicite plutôt que subtitle vide
+                  subtitle: storeAsync.when(
+                    loading: () => const Text('Chargement...'),
+                    error: (_, _) => const Text('Erreur de chargement'),
                     data: (store) => Text(
                       store?.name ?? 'Non configurée',
                       maxLines: 1,
@@ -98,15 +101,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onTap: _exporting ? null : _exportCsv,
                 ),
                 const Divider(indent: AppSpacing.md, endIndent: AppSpacing.md),
-                _SettingsTile(
+                // ✨ feature à venir — désactivée visuellement, sans SnackBar trompeur
+                const _SettingsTile(
                   icon: Icons.picture_as_pdf_outlined,
                   title: 'Exporter PDF',
-                  subtitle: const Text('Rapport mensuel'),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Bientôt disponible')),
-                    );
-                  },
+                  subtitle: Text('Rapport mensuel'),
+                  onTap: null,
+                  trailingWidget: Chip(
+                    label: Text('Bientôt'),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    labelPadding: EdgeInsets.symmetric(horizontal: 6),
+                  ),
                 ),
               ],
             ),
@@ -134,6 +140,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: 'Sauvegarder maintenant',
                   subtitle: _syncSubtitle(context),
                   busy: _syncing,
+                  // ✨ badge alerte quand des ventes attendent la sync
+                  badgeCount: ref.watch(pendingSyncCountProvider).value ?? 0,
                   onTap: _syncing ? null : _handleManualSync,
                 ),
               ],
@@ -206,15 +214,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _confirmLogout() async {
-    final confirm = await showConfirmDialog(
-      context,
-      title: 'Se déconnecter',
-      message: 'Êtes-vous sûr ?',
-      confirmLabel: 'Déconnecter',
-      cancelLabel: 'Annuler',
-      isDangerous: true,
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Se déconnecter'),
+        content: const Text('Êtes-vous sûr ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Déconnecter'),
+          ),
+        ],
+      ),
     );
-    if (confirm && mounted) {
+    if (confirm == true && mounted) {
       unawaited(ref.read(authProvider.notifier).logout());
     }
   }
@@ -407,6 +428,8 @@ class _SettingsTile extends StatelessWidget {
     this.subtitle,
     this.isNavigation = false,
     this.busy = false,
+    this.badgeCount = 0,
+    this.trailingWidget,
   });
 
   /// Leading icon.
@@ -427,21 +450,37 @@ class _SettingsTile extends StatelessWidget {
   /// Whether an async action is in progress.
   final bool busy;
 
+  /// Badge count on the leading icon — 0 hides the badge.
+  final int badgeCount;
+
+  /// Optional trailing widget — overrides built-in chevron/spinner logic.
+  final Widget? trailingWidget;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final Widget? trailing = busy
-        ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+
+    // ✨ badge M3 sur l'icône pour signaler des éléments en attente
+    final Widget leading = badgeCount > 0
+        ? Badge(
+            label: Text('$badgeCount'),
+            child: Icon(icon, color: cs.onSurfaceVariant),
           )
-        : isNavigation
-        ? Icon(Icons.arrow_forward_ios, size: 16, color: cs.onSurfaceVariant)
-        : null;
+        : Icon(icon, color: cs.onSurfaceVariant);
+
+    final Widget? trailing = trailingWidget ??
+        (busy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : isNavigation
+            ? Icon(Icons.arrow_forward_ios, size: 16, color: cs.onSurfaceVariant)
+            : null);
 
     return ListTile(
-      leading: Icon(icon, color: cs.onSurfaceVariant),
+      leading: leading,
       title: Text(title),
       subtitle: subtitle,
       trailing: trailing,
@@ -464,6 +503,8 @@ class _SettingsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✨ un seul appel Theme.of(context) — évite la double lookup
+    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -477,9 +518,7 @@ class _SettingsSection extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary,
+              color: cs.primary,
               letterSpacing: 0.8,
             ),
           ),
