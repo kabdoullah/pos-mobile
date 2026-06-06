@@ -133,7 +133,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(errorToFrench(e)),
-                        backgroundColor: cs.errorContainer,
+                        backgroundColor: cs.error, // ✨ errorContainer+blanc=1.5:1 fail WCAG — cs.error+blanc=4.6:1
                       ),
                     );
                   }

@@ -515,7 +515,7 @@ class _CartPanel extends StatelessWidget {
                     icon: const Icon(Icons.delete_sweep_outlined),
                     tooltip: 'Vider le panier',
                     onPressed: onClearCart,
-                    color: AppColors.error,
+                    color: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
                     visualDensity: VisualDensity.compact,
                   ),
               ],
@@ -543,7 +543,7 @@ class _CartPanel extends StatelessWidget {
                         direction: DismissDirection.endToStart,
                         onDismissed: (_) => onRemoveItem(item.productId),
                         background: Container(
-                          color: AppColors.error,
+                          color: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: AppSpacing.md),
                           child: const Icon(

@@ -145,16 +145,13 @@ class SaleDetailPage extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Reçu imprimé avec succès'),
-            backgroundColor: AppColors.secondary,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 2), // ✨ AppColors.secondary (#CA8A04)+blanc=3.4:1 fail WCAG — theme neutre
           ),
         );
       }
     } on PrintException catch (e) {
       if (context.mounted) {
         if (e.reason == PrintFailureReason.noPrinterConfigured) {
-          // Navigate to printer setup if not configured
-          // context.push(Routes.bluetoothSetup);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Aucune imprimante configurée'),
@@ -168,7 +165,7 @@ class SaleDetailPage extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Erreur d\'impression: ${e.details}'),
-              backgroundColor: AppColors.error,
+              backgroundColor: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
             ),
           );
         }
@@ -178,7 +175,7 @@ class SaleDetailPage extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorToFrench(e)),
-            backgroundColor: AppColors.error,
+            backgroundColor: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
           ),
         );
       }

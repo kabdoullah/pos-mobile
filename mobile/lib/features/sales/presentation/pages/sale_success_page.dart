@@ -193,7 +193,7 @@ class SaleSuccessPage extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Erreur impression: ${e.details}'),
-              backgroundColor: AppColors.error,
+              backgroundColor: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
             ),
           );
         }
