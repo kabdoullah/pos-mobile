@@ -255,8 +255,14 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: Routes.productNew,
-        pageBuilder: (context, state) =>
-            PageTransitions.scale(context, state, const ProductFormPage()),
+        pageBuilder: (context, state) {
+          final initialBarcode = state.extra as String?;
+          return PageTransitions.scale(
+            context,
+            state,
+            ProductFormPage(initialBarcode: initialBarcode),
+          );
+        },
       ),
       GoRoute(
         path: Routes.productEdit,

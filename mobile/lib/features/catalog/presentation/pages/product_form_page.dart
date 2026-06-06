@@ -15,10 +15,13 @@ import '../providers/catalog_providers.dart';
 /// Page for creating or editing a product.
 class ProductFormPage extends ConsumerStatefulWidget {
   /// Creates a [ProductFormPage].
-  const ProductFormPage({super.key, this.productId});
+  const ProductFormPage({super.key, this.productId, this.initialBarcode});
 
   /// Product ID for edit mode, null for create mode.
   final String? productId;
+
+  /// Barcode pre-filled when navigating from a failed scan lookup.
+  final String? initialBarcode;
 
   @override
   ConsumerState<ProductFormPage> createState() => _ProductFormPageState();
@@ -40,7 +43,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
     super.initState();
     _nameController = TextEditingController();
     _priceController = TextEditingController();
-    _barcodeController = TextEditingController();
+    _barcodeController = TextEditingController(
+      text: widget.initialBarcode ?? '',
+    );
     _stockController = TextEditingController();
     _formAnimationController = AnimationController(
       duration: const Duration(milliseconds: 600),

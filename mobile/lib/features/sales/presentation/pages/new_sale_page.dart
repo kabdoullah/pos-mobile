@@ -150,12 +150,43 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
     }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      final cs = Theme.of(context).colorScheme;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
         SnackBar(
-          content: Text('Produit introuvable : $code'),
-          action: SnackBarAction(
-            label: 'Ajouter au catalogue',
-            onPressed: () => context.push(Routes.productNew),
+          duration: const Duration(seconds: 8),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Produit introuvable : $code'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: cs.onInverseSurface,
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    onPressed: messenger.hideCurrentSnackBar,
+                    child: const Text('Annuler'),
+                  ),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      foregroundColor: cs.inversePrimary,
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    ),
+                    onPressed: () {
+                      messenger.hideCurrentSnackBar();
+                      unawaited(context.push(Routes.productNew, extra: code));
+                    },
+                    child: const Text('Ajouter au catalogue'),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       );
