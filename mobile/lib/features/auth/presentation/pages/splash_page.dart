@@ -1,80 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:logger/logger.dart';
 
-import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/app_typography.dart';
+import '../../presentation/providers/auth_providers.dart';
 
-/// Splash/loading screen.
+/// Handles initial routing after app launch.
 ///
-/// Displays app logo and determines where to redirect based on auth state.
-/// Initializes auth state by checking for existing session.
-class SplashPage extends ConsumerStatefulWidget {
+/// Renders an invisible placeholder while the native splash is shown.
+/// Removes the native splash when auth state resolves; the router's
+/// `ref.listen` in `appRouter` then triggers the appropriate redirect.
+class SplashPage extends ConsumerWidget {
   /// Creates a splash page.
   const SplashPage({super.key});
 
   @override
-  ConsumerState<SplashPage> createState() => _SplashPageState();
-}
-
-class _SplashPageState extends ConsumerState<SplashPage> {
-  static final _logger = Logger();
-
-  @override
-  void initState() {
-    super.initState();
-    _logger.i('[Splash] SplashPage mounted');
-    FlutterNativeSplash.remove(); // ✨ libère le native splash, Flutter prend la main
-    _delayMinimumSplashTime();
-  }
-
-  void _delayMinimumSplashTime() {
-    // Ensure minimum splash display time (1 second for visual polish) before redirect.
-    Future<void>.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        _logger.i(
-          '[Splash] Minimum splash time elapsed, triggering router refresh',
-        );
-        // Trigger router redirect mechanism to navigate based on auth state.
-        ref.read(appRouterProvider).refresh();
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Remove native splash when auth transitions from loading → resolved.
+    ref.listen(authProvider, (previous, next) {
+      if (previous?.isLoading == true && !next.isLoading) {
+        FlutterNativeSplash.remove();
       }
     });
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.storefront_rounded,
-              size: 64,
-              color: AppColors.primary,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'POS Mobile',
-              style: AppTypography.titleLarge.copyWith(
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text('Pour votre boutique', style: AppTypography.bodyMedium),
-            const SizedBox(height: AppSpacing.xl),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-          ],
-        ),
-      ),
-    );
+    // Edge case: auth already resolved on first build (hot reload, fast init).
+    if (!ref.watch(authProvider).isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => FlutterNativeSplash.remove(),
+      );
+    }
+
+    // Native splash covers this entirely. Color matches background to avoid
+    // a flash on the single frame between remove() and router redirect.
+    return const ColoredBox(color: AppColors.background);
   }
 }
