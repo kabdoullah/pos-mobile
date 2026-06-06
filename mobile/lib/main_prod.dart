@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -8,7 +9,8 @@ import 'core/network/network_providers.dart';
 
 /// Point d'entrée production — flavor "prod", API prod.
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: binding);
   AppConfig.setup(
     flavor: AppFlavor.prod,
     apiUrl: 'https://api.pos-mobile-ci.com',

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Hexagone fond cacao -->
+  <polygon points="100,16 170,58 170,142 100,184 30,142 30,58" fill="#92400E"/>
+  <!-- Hexagone intérieur or (filet décoratif) -->
+  <polygon points="100,28 158,62 158,136 100,170 42,136 42,62"
+           fill="none" stroke="#CA8A04" stroke-width="3.5"/>
+  <!-- Lettre P (ivoire) -->
+  <text x="42" y="128"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="bold"
+        font-size="80"
+        fill="#FFFBF5"
+        letter-spacing="-4">P</text>
+  <!-- Lettre M (or) — légèrement superposée pour dynamisme -->
+  <text x="97" y="128"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-weight="bold"
+        font-size="80"
+        fill="#CA8A04"
+        letter-spacing="-4">M</text>
+  <!-- Sous-ligne or centrée -->
+  <line x1="50" y1="142" x2="150" y2="142" stroke="#CA8A04" stroke-width="3.5" stroke-linecap="round"/>
+</svg>

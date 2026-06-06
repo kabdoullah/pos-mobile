@@ -1,0 +1,25 @@
+flutter_native_splash:
+  # Fond ivoire chaud — identique à AppColors.background (#FFFBF5)
+  color: "#FFFBF5"
+  # Fond sombre — identique à AppColors.textPrimary (#1C1107)
+  color_dark: "#1C1107"
+
+  # Logo centré (fond transparent — le color ci-dessus remplit l'écran)
+  image: assets/images/logo_splash.png
+  image_dark: assets/images/logo_splash_dark.png
+
+  # Plein écran (cache la barre de statut pendant le splash)
+  fullscreen: true
+
+  android: true
+  ios: true
+  web: false
+
+  android_12:
+    # Android 12+ : adaptive icon
+    color: "#FFFBF5"
+    color_dark: "#1C1107"
+    image: assets/images/logo_splash.png
+    image_dark: assets/images/logo_splash_dark.png
+    icon_background_color: "#FFFBF5"
+    icon_background_color_dark: "#1C1107"

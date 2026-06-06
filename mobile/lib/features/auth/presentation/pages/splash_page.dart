@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 
@@ -26,6 +27,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   void initState() {
     super.initState();
     _logger.i('[Splash] SplashPage mounted');
+    FlutterNativeSplash.remove(); // ✨ libère le native splash, Flutter prend la main
     _delayMinimumSplashTime();
   }
 

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Fond cercle transparent (fond = #1C1107 depuis le yaml) -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#CA8A04" stroke-width="6"/>
+  <!-- Arche de boutique (ivoire sur fond sombre) -->
+  <path d="M45 120 L45 85 Q45 60 100 60 Q155 60 155 85 L155 120 Z" fill="#FFFBF5"/>
+  <!-- Enseigne dorée -->
+  <rect x="60" y="72" width="80" height="18" rx="4" fill="#CA8A04"/>
+  <!-- Comptoir -->
+  <rect x="38" y="118" width="124" height="10" rx="5" fill="#CA8A04" stroke="#FFFBF5" stroke-width="1.5"/>
+  <!-- 3 colonnes boutique (cacao sur ivoire) -->
+  <rect x="62" y="90" width="14" height="28" rx="3" fill="#92400E" opacity="0.7"/>
+  <rect x="93" y="90" width="14" height="28" rx="3" fill="#92400E" opacity="0.7"/>
+  <rect x="124" y="90" width="14" height="28" rx="3" fill="#92400E" opacity="0.7"/>
+  <!-- Pièce accent or -->
+  <circle cx="148" cy="58" r="18" fill="#CA8A04"/>
+  <circle cx="148" cy="58" r="13" fill="none" stroke="#1C1107" stroke-width="2"/>
+  <text x="148" y="63" text-anchor="middle" fill="#1C1107" font-family="sans-serif" font-weight="bold" font-size="13">₣</text>
+  <!-- Bordure intérieure subtile -->
+  <circle cx="100" cy="100" r="84" fill="none" stroke="#CA8A04" stroke-width="1.5" opacity="0.3"/>
+</svg>
