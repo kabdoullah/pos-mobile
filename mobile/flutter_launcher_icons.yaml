@@ -9,8 +9,9 @@ flutter_launcher_icons:
   min_sdk_android: 21
   # Fallback pour Android < API 26 (non-adaptive)
   image_path_android: assets/images/icon_android_legacy.png
-  adaptive_icon_foreground: assets/images/icon_android_fg.png
-  adaptive_icon_background: "#FFFBF5"
+  # Dark foreground (gold ring + ivoire) sur fond cacao — contraste fort à petite taille
+  adaptive_icon_foreground: assets/images/icon_android_fg_dark.png
+  adaptive_icon_background: "#92400E"
 
   # Android dark mode (API 33+)
   adaptive_icon_foreground_dark: assets/images/icon_android_fg_dark.png
