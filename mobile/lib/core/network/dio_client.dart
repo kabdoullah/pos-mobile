@@ -66,7 +66,7 @@ Dio buildDio({
       connectTimeout: const Duration(seconds: AppConfig.httpTimeoutSeconds),
       receiveTimeout: const Duration(seconds: AppConfig.httpTimeoutSeconds),
       contentType: 'application/json',
-      validateStatus: null,
+      validateStatus: (status) => status != null && status >= 200 && status < 300,
     ),
   );
 

@@ -150,6 +150,23 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> hasPinSetup() => pinStorage.hasPinConfigured();
 
+  @override
+  Future<void> refreshTokens() async {
+    final refreshToken = await tokenStorage.getRefreshToken();
+    if (refreshToken == null) return;
+    try {
+      final tokenRes = await dataSource.refresh(
+        RefreshRequestDto(refreshToken: refreshToken),
+      );
+      await tokenStorage.saveTokens(
+        accessToken: tokenRes.accessToken,
+        refreshToken: tokenRes.refreshToken,
+      );
+    } on DioException catch (e) {
+      throw _parseException(e);
+    }
+  }
+
   /// Converts [DioException] to a [NetworkException].
   NetworkException _parseException(DioException e) {
     return parseException(e);

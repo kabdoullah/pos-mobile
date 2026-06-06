@@ -82,6 +82,8 @@ class _TutorialPageState extends State<TutorialPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ✨ un seul lookup — partagé par bouton Passer et dots
+    final cs = Theme.of(context).colorScheme;
     final padding = responsiveValue(
       context,
       small: AppSpacing.md,
@@ -100,16 +102,12 @@ class _TutorialPageState extends State<TutorialPage> {
                 padding: EdgeInsets.all(padding),
                 child: TextButton.icon(
                   onPressed: () => context.go(Routes.home),
-                  icon: Icon(
-                    Icons.close,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  // ✨ foregroundColor héritée par icon et label — supprime 3 Theme.of calls
+                  style: TextButton.styleFrom(
+                    foregroundColor: cs.onSurfaceVariant,
                   ),
-                  label: Text(
-                    'Passer',
-                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  icon: const Icon(Icons.close),
+                  label: const Text('Passer'),
                 ),
               ),
             ),
@@ -136,15 +134,25 @@ class _TutorialPageState extends State<TutorialPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
                   _slides.length,
-                  (index) => Container(
-                    width: _currentPage == index ? 28 : 8,
-                    height: 8,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      color: _currentPage == index
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.outline,
+                  (index) => Semantics(
+                    // ✨ annonce la position pour le lecteur d'écran
+                    label:
+                        'Diapositive ${index + 1} sur ${_slides.length}',
+                    selected: _currentPage == index,
+                    excludeSemantics: true,
+                    child: AnimatedContainer(
+                      // ✨ transition fluide 8→28px au lieu d'un saut instantané
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      width: _currentPage == index ? 28 : 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        color: _currentPage == index
+                            ? cs.primary
+                            : cs.outline,
+                      ),
                     ),
                   ),
                 ),
@@ -211,7 +219,7 @@ class _SlideBuilder extends StatelessWidget {
           child: Text(
             slide.description,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: cs.onSurfaceVariant, // ✨ cs déjà défini en haut du build
             ),
             textAlign: TextAlign.center,
           ),

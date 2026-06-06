@@ -87,12 +87,11 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                   ),
                 ),
               ),
+              // ✨ viewInsets.bottom supprimé — DraggableScrollableSheet gère le resize
               Padding(
-                padding: EdgeInsets.only(
-                  left: spacing,
-                  right: spacing,
-                  top: spacing,
-                  bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
+                padding: EdgeInsets.symmetric(
+                  horizontal: spacing,
+                  vertical: spacing,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,11 +124,11 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                   ),
                   data: (products) {
                     if (products.isEmpty) {
-                      return const Center(
-                        child: Text(
-                          'Aucun produit',
-                          style: AppTypography.bodyMedium,
-                        ),
+                      // ✨ empty state cohérent avec le reste de l'app
+                      return const EmptyState(
+                        icon: Icons.search_off,
+                        title: 'Aucun résultat',
+                        message: 'Essayez un autre nom de produit',
                       );
                     }
 

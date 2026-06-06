@@ -69,16 +69,8 @@ class RefreshInterceptor extends Interceptor {
     if (_isRefreshing) {
       final success = await _refreshCompleter!.future;
       if (success) {
-        // Retry original request with new token (in practice, re-enters onRequest).
-        handler.resolve(
-          Response(
-            data: null,
-            statusCode: 200,
-            requestOptions: err.requestOptions,
-          ),
-        );
+        handler.resolve(await dio.fetch(err.requestOptions));
       } else {
-        // Refresh failed; forward error.
         handler.next(err);
       }
       return;

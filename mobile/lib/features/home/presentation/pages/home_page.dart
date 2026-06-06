@@ -246,6 +246,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme; // ✨ un seul lookup pour l'error block
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -329,22 +330,26 @@ class _SummaryCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Données non disponibles',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    style: tt.labelSmall?.copyWith(
                       color: cs.onPrimary.withValues(alpha: 0.7),
                     ),
                   ),
                   if (onRetry != null) ...[
                     const SizedBox(width: AppSpacing.sm),
-                    GestureDetector(
-                      onTap: onRetry,
-                      child: Text(
-                        'Réessayer',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onPrimary,
+                    // ✨ TextButton : ripple + zone tactile 48px + Semantics natifs
+                    TextButton(
+                      onPressed: onRetry,
+                      style: TextButton.styleFrom(
+                        foregroundColor: cs.onPrimary,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(48, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: tt.labelSmall?.copyWith(
                           decoration: TextDecoration.underline,
                           decorationColor: cs.onPrimary,
                         ),
                       ),
+                      child: const Text('Réessayer'),
                     ),
                   ],
                 ],
@@ -366,15 +371,15 @@ class _SummaryMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✨ extrait pour éviter Theme.of(context) multi-ligne verbeux
+    final cs = Theme.of(context).colorScheme;
     return Expanded(
       child: Column(
         children: [
           Text(
             label,
             style: AppTypography.captionText.copyWith(
-              color: Theme.of(
-                context,
-              ).colorScheme.onPrimary.withValues(alpha: 0.7),
+              color: cs.onPrimary.withValues(alpha: 0.7),
               fontWeight: FontWeight.w500,
             ),
           ),

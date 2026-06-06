@@ -33,7 +33,8 @@ class AppConfig {
   static bool get isDev => _flavor == AppFlavor.dev;
 
   /// Timeout des requêtes HTTP en secondes.
-  static const int httpTimeoutSeconds = 30;
+  /// 60s pour absorber le cold-start Render free tier (~50s).
+  static const int httpTimeoutSeconds = 60;
 
   /// Nombre max de tentatives de PIN avant blocage temporaire.
   static const int maxPinAttempts = 5;

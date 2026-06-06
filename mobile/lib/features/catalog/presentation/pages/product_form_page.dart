@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/network/error_mapper.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/catalog_providers.dart';
@@ -68,28 +67,26 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
   }
 
   bool _validate() {
-    bool isValid = true;
-    setState(() {
-      _nameError = null;
-      _priceError = null;
-    });
+    // ✨ un seul setState — pas de rebuild intermédiaire inutile
+    String? nameError;
+    String? priceError;
 
     if (_nameController.text.trim().isEmpty) {
-      setState(() => _nameError = 'Le nom est obligatoire');
-      isValid = false;
+      nameError = 'Le nom est obligatoire';
     }
 
     if (_priceController.text.trim().isEmpty) {
-      setState(() => _priceError = 'Le prix est obligatoire');
-      isValid = false;
-    } else {
-      if (Decimal.tryParse(_priceController.text.trim()) == null) {
-        setState(() => _priceError = 'Entrez un montant valide');
-        isValid = false;
-      }
+      priceError = 'Le prix est obligatoire';
+    } else if (Decimal.tryParse(_priceController.text.trim()) == null) {
+      priceError = 'Entrez un montant valide';
     }
 
-    return isValid;
+    setState(() {
+      _nameError = nameError;
+      _priceError = priceError;
+    });
+
+    return nameError == null && priceError == null;
   }
 
   Future<void> _submit() async {
@@ -210,12 +207,11 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
       small: AppSpacing.md,
       medium: AppSpacing.lg,
     );
+    // ✨ AppBar M3 standard — backgroundColor et elevation gérés par le theme
     return Scaffold(
-      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(isEditMode ? 'Modifier le produit' : 'Nouveau produit'),
-        elevation: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -248,7 +244,6 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
                   controller: _priceController,
                   keyboardType: TextInputType.number,
                   errorText: _priceError,
-                  prefixIcon: Icons.attach_money,
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -266,33 +261,18 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
                       ),
                     ),
                     const SizedBox(width: AppSpacing.md),
-                    Column(
-                      children: [
-                        const SizedBox(height: AppSpacing.md),
-                        Tooltip(
-                          message: 'Scanner un code-barres',
-                          child: Material(
-                            color: cs.primaryContainer,
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
-                            ),
-                            child: InkWell(
-                              onTap: _openScanner,
-                              borderRadius: BorderRadius.circular(
-                                AppSpacing.radiusMd,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(AppSpacing.md),
-                                child: Icon(
-                                  Icons.qr_code_2,
-                                  color: cs.onPrimaryContainer,
-                                  size: 28,
-                                ),
-                              ),
-                            ),
-                          ),
+                    // ✨ IconButton M3 — remplace Material+InkWell custom (20 lignes → 8)
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpacing.md),
+                      child: IconButton(
+                        onPressed: _openScanner,
+                        icon: const Icon(Icons.qr_code_2, size: 28),
+                        tooltip: 'Scanner un code-barres',
+                        style: IconButton.styleFrom(
+                          backgroundColor: cs.primaryContainer,
+                          foregroundColor: cs.onPrimaryContainer,
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -323,23 +303,16 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
                 _AnimatedFormField(
                   animation: _formAnimationController,
                   delay: 0.5,
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _delete,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Supprimer'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Theme.of(context).colorScheme.error,
-                        side: BorderSide(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusMd,
-                          ),
-                        ),
+                  // ✨ cs.error — cs déjà défini en build(), SizedBox fixe supprimé
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _delete,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Supprimer'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: cs.error,
+                      side: BorderSide(color: cs.error),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                       ),
                     ),
                   ),
@@ -367,23 +340,19 @@ class _AnimatedFormField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final delayedAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: animation,
-        curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
-      ),
+    // ✨ une seule CurvedAnimation partagée — évite de créer le même objet deux fois
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
     );
 
     return FadeTransition(
-      opacity: delayedAnimation,
+      opacity: Tween<double>(begin: 0, end: 1).animate(curved),
       child: SlideTransition(
-        position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-            .animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Interval(delay, delay + 0.4, curve: Curves.easeOut),
-              ),
-            ),
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.3),
+          end: Offset.zero,
+        ).animate(curved),
         child: child,
       ),
     );

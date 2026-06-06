@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
+import '../../../../core/sync/sync_orchestrator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -43,7 +44,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   }
 
   Future<void> _onRefresh() async {
-    await ref.read(catalogListProvider.notifier).refresh();
+    await ref
+        .read(syncOrchestratorProvider.notifier)
+        .syncNow(forceFullPull: true);
   }
 
   void _openProductForm({String? productId}) {

@@ -1,7 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../data/models/store_mappers.dart';
 import '../../domain/entities/store.dart';
+import '../../providers/auth_di_providers.dart';
 
 part 'store_provider.g.dart';
 
@@ -56,7 +58,11 @@ class StoreConfig extends _$StoreConfig {
     );
   }
 
-  /// Persist store configuration to secure storage.
+  /// Persist store configuration locally then sync to backend.
+  ///
+  /// Local write always runs first. Backend PATCH follows — if it fails the
+  /// exception propagates so the UI can display it (store name update is
+  /// meaningful to the user and must reach the server).
   Future<void> save(Store store) async {
     await _storage.write(key: _StoreKeys.name, value: store.name);
     await _storage.write(key: _StoreKeys.address, value: store.address);
@@ -69,7 +75,12 @@ class StoreConfig extends _$StoreConfig {
       key: _StoreKeys.footerText,
       value: store.receiptFooterText,
     );
-    // Update state immediately
+
+    // Sync to backend (PATCH /api/v1/stores/me).
+    final datasource = ref.read(storesRemoteDataSourceProvider);
+    await datasource.updateStore(store.toUpdateDto());
+
+    // Update state only after both local + remote succeed.
     state = AsyncData(store);
   }
 }

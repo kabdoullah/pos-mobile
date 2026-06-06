@@ -117,7 +117,10 @@ class SyncOrchestrator extends _$SyncOrchestrator {
   /// Orchestrates full sync: push sales, push products, then pull.
   /// Guarded against concurrent syncs (only one can run at a time).
   /// Push happens first to ensure local unsent changes are uploaded before pull.
-  Future<void> syncNow() async {
+  ///
+  /// When [forceFullPull] is true, the pull ignores [last_pull_at] and fetches
+  /// the full catalog. Use when the user triggers a manual refresh.
+  Future<void> syncNow({bool forceFullPull = false}) async {
     final authState = ref.read(authProvider);
     if (authState.value is! AuthAuthenticated) {
       _logger.d('Sync skipped: not authenticated');
@@ -143,7 +146,7 @@ class SyncOrchestrator extends _$SyncOrchestrator {
       await pushService.pushPendingProductChanges();
 
       _logger.d('Sync step: pull changes');
-      await pullService.pullChanges();
+      await pullService.pullChanges(forceFullPull: forceFullPull);
 
       // Invalidate UI caches so screens refresh after pull writes to drift.
       ref.invalidate(salesHistoryProvider);

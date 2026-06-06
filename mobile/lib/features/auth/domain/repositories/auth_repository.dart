@@ -37,4 +37,8 @@ abstract class AuthRepository {
 
   /// True si un PIN est défini sur cet appareil.
   Future<bool> hasPinSetup();
+
+  /// Rafraîchit l'access token via le refresh token stocké.
+  /// Nécessaire après création de boutique pour obtenir un token avec store_id.
+  Future<void> refreshTokens();
 }

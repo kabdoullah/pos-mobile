@@ -25,13 +25,17 @@ class PullService {
   ///
   /// Returns true if pull succeeded, false otherwise.
   /// On success, updates last_pull_at metadata.
-  Future<bool> pullChanges() async {
+  ///
+  /// When [forceFullPull] is true, ignores [last_pull_at] and fetches the
+  /// full catalog (since=null). Use for manual refresh to recover from
+  /// products inserted on the server with timestamps older than last_pull_at.
+  Future<bool> pullChanges({bool forceFullPull = false}) async {
     try {
       final storage = SyncMetadataStorage(_db);
-      final lastPullAt = await storage.getLastPullAt();
+      final lastPullAt = forceFullPull ? null : await storage.getLastPullAt();
       final since = lastPullAt?.toIso8601String();
 
-      _logger?.d('Starting pull. Last pull: $lastPullAt');
+      _logger?.d('Starting pull. Full: $forceFullPull. Last pull: $lastPullAt');
 
       String? cursor;
       bool hasMore = true;

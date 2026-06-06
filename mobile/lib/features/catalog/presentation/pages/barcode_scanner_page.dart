@@ -7,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
-import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 
 /// Page that displays a barcode scanner and handles camera permission.
@@ -49,108 +48,76 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
     });
   }
 
-  Future<void> _openSettings() async {
-    await openAppSettings();
-  }
-
   @override
   Widget build(BuildContext context) {
+    // ✨ un seul Scaffold — AppBar M3 standard sans backgroundColor ni elevation hardcodés
+    return Scaffold(
+      appBar: AppBar(title: const Text('Scanner code-barres')),
+      body: _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     if (_isCheckingPermission) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(title: const Text('Scanner code-barres')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
+      return const Center(child: AppLoadingIndicator());
     }
 
     if (!_isPermissionGranted) {
-      return Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(title: const Text('Scanner code-barres')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.no_photography_outlined,
-                  size: 64,
-                  color: AppColors.error,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                const Text(
-                  'Accès à la caméra refusé',
-                  style: AppTypography.titleMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Text(
-                  'Pour scanner des codes-barres, autorisez l\'accès à la caméra dans les paramètres.',
-                  style: AppTypography.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                PrimaryButton(
-                  label: 'Ouvrir les paramètres',
-                  onPressed: _openSettings,
-                ),
-              ],
-            ),
-          ),
+      // ✨ EmptyState partagé — supprime ~20 lignes de layout custom redondant
+      return const Padding(
+        padding: EdgeInsets.all(AppSpacing.lg),
+        child: EmptyState(
+          icon: Icons.no_photography_outlined,
+          title: 'Accès à la caméra refusé',
+          message:
+              'Pour scanner des codes-barres, autorisez l\'accès à la caméra dans les paramètres.',
+          actionLabel: 'Ouvrir les paramètres',
+          onAction: openAppSettings, // ✨ inline — wrapper _openSettings() supprimé
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scanner code-barres'),
-        backgroundColor: AppColors.background,
-        elevation: 0,
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Camera feed
-          MobileScanner(
-            controller: _controller,
-            onDetect: (capture) {
-              final barcodes = capture.barcodes;
-              if (barcodes.isNotEmpty) {
-                final code = barcodes.first.rawValue;
-                if (code != null && mounted) {
-                  context.pop(code);
-                }
-              }
-            },
-          ),
-          // Scrim with viewfinder cutout — evenOdd fill leaves the scan area clear
-          const CustomPaint(
-            painter: _ScanOverlayPainter(overlayColor: AppColors.scrim),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(
-                  width: 280,
-                  height: 280,
-                  child: CustomPaint(
-                    painter: _ViewfinderPainter(color: AppColors.primary),
-                  ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Camera feed
+        MobileScanner(
+          controller: _controller,
+          onDetect: (capture) {
+            // ✨ firstOrNull — null-safe, évite crash si liste vide
+            final code = capture.barcodes.firstOrNull?.rawValue;
+            if (code != null && mounted) context.pop(code);
+          },
+        ),
+        // Scrim with viewfinder cutout — evenOdd fill leaves the scan area clear
+        const CustomPaint(
+          painter: _ScanOverlayPainter(overlayColor: AppColors.scrim),
+        ),
+        Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 280,
+                height: 280,
+                child: CustomPaint(
+                  // ✨ couleur via colorScheme — AppColors.primary hardcodé supprimé
+                  painter: _ViewfinderPainter(color: cs.secondary),
                 ),
-                const SizedBox(height: AppSpacing.xl),
-                Text(
-                  'Alignez le code-barres',
-                  style: AppTypography.titleMedium.copyWith(
-                    color: AppColors.textOnPrimary,
-                  ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Text(
+                'Alignez le code-barres',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: cs.onPrimary, // ✨ onPrimary — texte sur fond sombre
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

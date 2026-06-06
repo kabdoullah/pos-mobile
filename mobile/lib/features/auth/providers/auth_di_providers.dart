@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/network/network_providers.dart';
 import '../data/datasources/auth_remote_datasource.dart';
+import '../data/datasources/stores_remote_datasource.dart';
 import '../data/repositories/auth_repository_impl.dart';
 import '../domain/repositories/auth_repository.dart';
 
@@ -11,6 +12,12 @@ part 'auth_di_providers.g.dart';
 @riverpod
 AuthRemoteDataSource authRemoteDataSource(Ref ref) {
   return AuthRemoteDataSource(ref.read(dioProvider));
+}
+
+/// Provides the remote data source for store API calls.
+@riverpod
+StoresRemoteDataSource storesRemoteDataSource(Ref ref) {
+  return StoresRemoteDataSource(ref.read(dioProvider));
 }
 
 /// Provides the auth repository implementation.

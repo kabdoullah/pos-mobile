@@ -243,9 +243,17 @@ class Auth extends _$Auth {
   }
 
   /// User has navigated past store setup (from store_setup_page.dart).
-  /// Immediately transition to PIN setup screen.
-  /// Synchronous — no network call, just state machine transition.
-  void proceedToPinSetup() {
+  /// Refreshes JWT so the new access token carries store_id, then
+  /// transitions to PIN setup screen.
+  Future<void> proceedToPinSetup() async {
+    _logger.i('[Auth.proceedToPinSetup] Refreshing token with store_id');
+    try {
+      await ref.read(authRepositoryProvider).refreshTokens();
+    } catch (e) {
+      _logger.w(
+        '[Auth.proceedToPinSetup] Token refresh failed (non-fatal): $e',
+      );
+    }
     _logger.i('[Auth.proceedToPinSetup] Transitioning to PinSetupRequired');
     state = const AsyncData(AuthPinSetupRequired());
   }

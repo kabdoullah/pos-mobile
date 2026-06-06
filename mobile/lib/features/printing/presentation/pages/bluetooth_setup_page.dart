@@ -26,6 +26,8 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
   bool _checkingPermission = true;
   List<BluetoothInfo> _pairedDevices = [];
   bool _isLoading = false;
+  // ✨ track quel MAC est en cours de connexion — évite le spinner global sur tous les devices
+  String? _connectingMac;
 
   @override
   void initState() {
@@ -95,8 +97,10 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
   }
 
   Future<void> _connectToDevice(BluetoothInfo device) async {
-    // Fix #1: guard against double-tap while connecting
     if (ref.read(printerProvider) is PrinterConnecting) return;
+
+    // ✨ mémoriser le MAC pour afficher le spinner uniquement sur cette carte
+    setState(() => _connectingMac = device.macAdress);
 
     // Note: BluetoothInfo.macAdress (single 'd')
     await ref
@@ -104,6 +108,7 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
         .connect(device.macAdress, device.name);
 
     if (!mounted) return;
+    setState(() => _connectingMac = null);
 
     final newState = ref.read(printerProvider);
     if (newState is PrinterConnected) {
@@ -132,6 +137,10 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ✨ extraits une fois — pas de double lookup Theme.of(context) dans itemBuilder
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return AppScaffold(
       title: 'Configurer l\'imprimante',
       actions: [
@@ -178,9 +187,12 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                 ),
               ),
             ] else ...[
+              // ✨ barre de progression lors d'un refresh (liste déjà visible)
+              if (_isLoading) const LinearProgressIndicator(),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 'Appareils appairés (${_pairedDevices.length})',
-                style: Theme.of(context).textTheme.titleSmall,
+                style: tt.titleSmall,
               ),
               const SizedBox(height: AppSpacing.md),
               ListView.separated(
@@ -190,18 +202,18 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                 separatorBuilder: (_, _) =>
                     const SizedBox(height: AppSpacing.sm),
                 itemBuilder: (context, index) {
-                  final cs = Theme.of(context).colorScheme;
-                  final tt = Theme.of(context).textTheme;
                   final device = _pairedDevices[index];
                   final printerState = ref.watch(printerProvider);
                   final isConnected =
                       printerState is PrinterConnected &&
                       printerState.mac == device.macAdress;
-                  // Fix #4: track connecting state per device
-                  final isConnecting = printerState is PrinterConnecting;
+                  final isAnyConnecting = printerState is PrinterConnecting;
+                  // ✨ spinner uniquement sur LA carte du device en cours de connexion
+                  final isThisDeviceConnecting =
+                      _connectingMac == device.macAdress;
 
                   return AppCard(
-                    onTap: (isConnected || isConnecting)
+                    onTap: (isConnected || isAnyConnecting)
                         ? null
                         : () => _connectToDevice(device),
                     child: ListTile(
@@ -219,8 +231,7 @@ class _BluetoothSetupPageState extends ConsumerState<BluetoothSetupPage> {
                                 fontWeight: FontWeight.w500,
                               ),
                             )
-                          : isConnecting
-                          // Fix #4: spinner during connection attempt
+                          : isThisDeviceConnecting
                           ? const SizedBox(
                               width: 20,
                               height: 20,

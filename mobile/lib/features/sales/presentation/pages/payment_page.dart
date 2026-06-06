@@ -2,11 +2,11 @@ import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/network/error_mapper.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
@@ -66,12 +66,6 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
   }
 
   bool _validate() {
-    bool isValid = true;
-    setState(() {
-      _cashReceivedError = null;
-      _mobileMoneyError = null;
-    });
-
     if (_selectedMethod == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sélectionnez un mode de paiement')),
@@ -79,17 +73,23 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       return false;
     }
 
+    // ✨ un seul setState — compute errors first, then render once
+    String? cashError;
+    String? mobileError;
+    var isValid = true;
+
     if (_selectedMethod == PaymentMethod.cash) {
-      if (_cashReceivedController.text.trim().isEmpty) {
-        setState(() => _cashReceivedError = 'Entrez le montant reçu');
+      final text = _cashReceivedController.text.trim();
+      if (text.isEmpty) {
+        cashError = 'Entrez le montant reçu';
         isValid = false;
       } else {
-        final received = Decimal.tryParse(_cashReceivedController.text.trim());
+        final received = Decimal.tryParse(text);
         if (received == null) {
-          setState(() => _cashReceivedError = 'Montant invalide');
+          cashError = 'Montant invalide';
           isValid = false;
         } else if (received < _getCartTotal()) {
-          setState(() => _cashReceivedError = 'Montant insuffisant');
+          cashError = 'Montant insuffisant';
           isValid = false;
         }
       }
@@ -98,17 +98,15 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       final hasMobileMoney = _mobileMoneyController.text.trim().isNotEmpty;
 
       if (!hasCash && !hasMobileMoney) {
-        setState(() {
-          _cashReceivedError = 'Entrez au moins un montant';
-          _mobileMoneyError = 'Entrez au moins un montant';
-        });
+        cashError = 'Entrez au moins un montant';
+        mobileError = 'Entrez au moins un montant';
         isValid = false;
       } else {
         var total = Decimal.zero;
         if (hasCash) {
           final cash = Decimal.tryParse(_cashReceivedController.text.trim());
           if (cash == null) {
-            setState(() => _cashReceivedError = 'Montant invalide');
+            cashError = 'Montant invalide';
             isValid = false;
           } else {
             total += cash;
@@ -117,21 +115,26 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         if (hasMobileMoney) {
           final mm = Decimal.tryParse(_mobileMoneyController.text.trim());
           if (mm == null) {
-            setState(() => _mobileMoneyError = 'Montant invalide');
+            mobileError = 'Montant invalide';
             isValid = false;
           } else {
             total += mm;
           }
         }
         if (isValid && total != _getCartTotal()) {
-          setState(() {
-            _cashReceivedError = 'Total doit égaler ${_getCartTotal()} FCFA';
-            _mobileMoneyError = 'Total doit égaler ${_getCartTotal()} FCFA';
-          });
+          final formatted =
+              NumberFormat('#,##0', 'fr_FR').format(_getCartTotal().toDouble());
+          cashError = 'Total doit être $formatted FCFA';
+          mobileError = 'Total doit être $formatted FCFA';
           isValid = false;
         }
       }
     }
+
+    setState(() {
+      _cashReceivedError = cashError;
+      _mobileMoneyError = mobileError;
+    });
 
     return isValid;
   }
@@ -173,6 +176,10 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
         ).future,
       );
 
+      // ✨ vider le panier ici — submitSaleProvider (auto-dispose) peut être
+      // disposé pendant l'await, rendant ref.mounted false et skippant le clear
+      ref.read(cartProvider.notifier).clear();
+
       if (mounted) {
         // Navigate to success screen with sale and items
         context.pushReplacement(
@@ -203,10 +210,10 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
       small: AppSpacing.md,
       medium: AppSpacing.lg,
     );
+    // ✨ backgroundColor géré par le thème M3 — AppColors.background supprimé
     return Scaffold(
-      backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: false,
-      appBar: AppBar(title: const Text('Paiement'), elevation: 0),
+      appBar: AppBar(title: const Text('Paiement')),
       body: Column(
         children: [
           Expanded(
@@ -230,12 +237,10 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                           style: AppTypography.bodySmall,
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(''),
-                            AmountDisplay(amount: total, size: AmountSize.hero),
-                          ],
+                        // ✨ texte vide supprimé — amount seul, aligné à droite
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: AmountDisplay(amount: total, size: AmountSize.hero),
                         ),
                       ],
                     ),
@@ -351,38 +356,44 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final radius = BorderRadius.circular(AppSpacing.radiusMd);
-    return Material(
-      color: isSelected ? cs.primaryContainer : cs.surface,
-      borderRadius: radius,
-      child: InkWell(
-        onTap: () => _selectMethod(method),
+    // ✨ Semantics pour screen readers (selected state déclaré)
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: label,
+      child: Material(
+        color: isSelected ? cs.primaryContainer : cs.surface,
         borderRadius: radius,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: isSelected ? cs.primary : cs.outlineVariant,
-              width: isSelected ? 2 : 1,
+        child: InkWell(
+          onTap: () => _selectMethod(method),
+          borderRadius: radius,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: isSelected ? cs.primary : cs.outlineVariant,
+                width: isSelected ? 2 : 1,
+              ),
+              borderRadius: radius,
             ),
-            borderRadius: radius,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? cs.primary : cs.onSurface,
-                size: 28,
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Text(
-                label,
-                style: tt.titleMedium?.copyWith(
+            child: Row(
+              children: [
+                Icon(
+                  icon,
                   color: isSelected ? cs.primary : cs.onSurface,
+                  size: 28,
                 ),
-              ),
-              const Spacer(),
-              if (isSelected) Icon(Icons.check_circle, color: cs.primary),
-            ],
+                const SizedBox(width: AppSpacing.md),
+                Text(
+                  label,
+                  style: tt.titleMedium?.copyWith(
+                    color: isSelected ? cs.primary : cs.onSurface,
+                  ),
+                ),
+                const Spacer(),
+                if (isSelected) Icon(Icons.check_circle, color: cs.primary),
+              ],
+            ),
           ),
         ),
       ),

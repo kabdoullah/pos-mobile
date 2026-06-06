@@ -13,13 +13,13 @@ abstract class StoresRemoteDataSource {
       _StoresRemoteDataSource;
 
   /// Gets the current user's store.
-  /// Endpoint: GET /api/v1/stores
-  @GET('/api/v1/stores')
+  /// Endpoint: GET /api/v1/stores/me
+  @GET('/api/v1/stores/me')
   Future<StoreDto> getCurrentStore();
 
   /// Updates the current user's store.
-  /// Endpoint: PATCH /api/v1/stores
-  @PATCH('/api/v1/stores')
+  /// Endpoint: PATCH /api/v1/stores/me
+  @PATCH('/api/v1/stores/me')
   Future<StoreDto> updateStore(@Body() StoreUpdateDto request);
 
   /// Creates a new store.
