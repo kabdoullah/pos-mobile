@@ -4,11 +4,13 @@ import 'package:logger/logger.dart';
 
 import '../../../../core/network/error_mapper.dart';
 import '../../../../core/responsive/responsive.dart';
+// ✨ [Design system] import app_colors.dart supprimé — AppColors.textSecondary → cs.onSurfaceVariant
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/auth_providers.dart';
 import '../providers/store_provider.dart';
+import '../widgets/registration_stepper.dart';
 import '../../domain/entities/store.dart';
 
 /// Store setup/configuration page.
@@ -123,7 +125,7 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
         Navigator.of(context).pop();
       } else {
         _logger.i('Calling proceedToPinSetup()');
-        ref.read(authProvider.notifier).proceedToPinSetup();
+        await ref.read(authProvider.notifier).proceedToPinSetup();
         _logger.i('proceedToPinSetup() completed');
       }
     } catch (e) {
@@ -156,13 +158,15 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
       _prefillFrom(ref.read(storeConfigProvider));
     }
 
+    // ✨ [Qualité] colorScheme centralisé — supprime les Theme.of(context) inline répétés
+    final cs = Theme.of(context).colorScheme;
     final spacing = responsiveValue(
       context,
       small: AppSpacing.md,
       medium: AppSpacing.lg,
     );
+
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       // Edit mode is pushed as a fullscreen dialog from settings — give it a
       // close affordance. Create mode is reached via the router and has no
       // back action (onboarding step), so it keeps its in-body header only.
@@ -171,113 +175,178 @@ class _StoreSetupPageState extends ConsumerState<StoreSetupPage> {
               elevation: 0,
               leading: IconButton(
                 icon: const Icon(Icons.close),
+                // ✨ [A11y] tooltip — obligatoire sur tous les IconButton (WCAG 2.4.6)
+                tooltip: 'Fermer',
                 onPressed: () => Navigator.of(context).pop(),
               ),
             )
           : null,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: spacing,
-            right: spacing,
-            top: spacing,
-            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Enregistrer ma boutique',
-                style: AppTypography.titleLarge,
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              const Text(
-                'Informations de votre commerce',
-                style: AppTypography.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              AppTextField(
-                label: 'Nom de la boutique',
-                hint: 'ex: Ma boutique',
-                controller: _nameController,
-                errorText: _nameError,
-                prefixIcon: Icons.storefront_outlined,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                label: 'Adresse (optionnel)',
-                hint: 'ex: 123 rue du Commerce',
-                controller: _addressController,
-                prefixIcon: Icons.location_on_outlined,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                label: 'NCC (optionnel)',
-                hint: 'Numéro de contribuable',
-                controller: _nccController,
-                prefixIcon: Icons.badge_outlined,
-              ),
-              const SizedBox(height: AppSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!widget.isEditMode)
               Padding(
-                padding: const EdgeInsets.only(left: AppSpacing.md),
-                child: Row(
+                padding: EdgeInsets.fromLTRB(
+                  spacing,
+                  spacing,
+                  spacing,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.help_outline,
-                      size: 16,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    const RegistrationStepper(currentStep: 2),
+                    const SizedBox(height: AppSpacing.lg),
+                    // ✨ [Design system] explicit cs.onSurface — cohérence avec register_page.dart
+                    Text(
+                      'Votre boutique',
+                      style: AppTypography.titleLarge.copyWith(
+                        color: cs.onSurface,
+                      ),
                     ),
-                    const SizedBox(width: AppSpacing.xs),
-                    const Expanded(
-                      child: Text(
-                        'Numéro attribué par les autorités fiscales pour la facturation',
-                        style: AppTypography.captionText,
+                    const SizedBox(height: AppSpacing.xs),
+                    // ✨ [Design system] cs.onSurfaceVariant remplace AppColors.textSecondary — dark mode safe
+                    Text(
+                      'Configurez votre point de vente pour vos reçus et rapports.',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  spacing,
+                  spacing,
+                  spacing,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ✨ [Design system] explicit cs.onSurface — cohérence inter-pages
+                    Text(
+                      'Modifier ma boutique',
+                      style: AppTypography.titleLarge.copyWith(
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Informations de votre commerce',
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: cs.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(spacing, 0, spacing, spacing),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Assujetti à la TVA',
-                          style: AppTypography.labelMedium,
-                        ),
-                        SizedBox(height: AppSpacing.xs),
-                        Text(
-                          'Votre boutique facture avec TVA',
-                          style: AppTypography.captionText,
-                        ),
-                      ],
+                    AppTextField(
+                      label: 'Nom de la boutique',
+                      hint: 'ex: Ma boutique',
+                      controller: _nameController,
+                      errorText: _nameError,
+                      prefixIcon: Icons.storefront_outlined,
                     ),
-                    Switch(
-                      value: _isSubjectToVat,
-                      onChanged: (value) {
-                        setState(() => _isSubjectToVat = value);
-                      },
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'Adresse (optionnel)',
+                      hint: 'ex: 123 rue du Commerce',
+                      controller: _addressController,
+                      prefixIcon: Icons.location_on_outlined,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    AppTextField(
+                      label: 'NCC (optionnel)',
+                      hint: 'Numéro de contribuable',
+                      controller: _nccController,
+                      prefixIcon: Icons.badge_outlined,
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Padding(
+                      padding: const EdgeInsets.only(left: AppSpacing.md),
+                      child: Row(
+                        children: [
+                          // ✨ [A11y] ExcludeSemantics — icône décorative, le texte suffit
+                          ExcludeSemantics(
+                            child: Icon(
+                              Icons.help_outline,
+                              size: 16,
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Expanded(
+                            // ✨ [Design system] cs.onSurfaceVariant explicite — visuel subordonné
+                            child: Text(
+                              'Numéro attribué par les autorités fiscales pour la facturation',
+                              style: AppTypography.captionText.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: cs.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
+                      ),
+                      // ✨ [A11y] MergeSemantics — associe "Assujetti à la TVA" au Switch
+                      //    pour que VoiceOver/TalkBack lise un seul élément cohérent
+                      child: MergeSemantics(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Assujetti à la TVA',
+                                  style: AppTypography.labelMedium,
+                                ),
+                                SizedBox(height: AppSpacing.xs),
+                                Text(
+                                  'Votre boutique facture avec TVA',
+                                  style: AppTypography.captionText,
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: _isSubjectToVat,
+                              onChanged: (value) {
+                                setState(() => _isSubjectToVat = value);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    PrimaryButton(
+                      label: 'Enregistrer ma boutique',
+                      onPressed: _isLoading ? null : _saveStore,
+                      isLoading: _isLoading,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.xl),
-              PrimaryButton(
-                label: 'Enregistrer ma boutique',
-                onPressed: _isLoading ? null : _saveStore,
-                isLoading: _isLoading,
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
