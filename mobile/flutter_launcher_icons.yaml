@@ -1,0 +1,21 @@
+flutter_launcher_icons:
+  # iOS — fond opaque obligatoire (pas de transparence acceptée par App Store)
+  ios: true
+  image_path_ios: assets/images/icon_ios.png
+  remove_alpha_ios: true
+
+  # Android — icône adaptative (foreground + background)
+  android: true
+  min_sdk_android: 21
+  # Fallback pour Android < API 26 (non-adaptive)
+  image_path_android: assets/images/icon_android_legacy.png
+  adaptive_icon_foreground: assets/images/icon_android_fg.png
+  adaptive_icon_background: "#FFFBF5"
+
+  # Android dark mode (API 33+)
+  adaptive_icon_foreground_dark: assets/images/icon_android_fg_dark.png
+  adaptive_icon_background_dark: "#1C1107"
+
+  # Web désactivé — app mobile uniquement
+  web:
+    generate: false
