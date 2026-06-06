@@ -11,11 +11,11 @@ import '../../sales/domain/entities/sale.dart';
 ///
 /// Receipt width: 32 monospaced characters.
 class ReceiptFormatter {
-  /// Logger instance.
   static final _log = Logger();
 
-  /// 32-character separator line.
+  static const int _lineWidth = 32;
   static const String _separator = '--------------------------------';
+  static const String _doubleSeparator = '================================';
 
   /// Builds ESC/POS bytes for the given sale receipt.
   ///
@@ -57,64 +57,63 @@ class ReceiptFormatter {
 
     // --- DATE / RECEIPT INFO ---
     final dateFormatter = DateFormat('dd/MM/yyyy HH:mm', 'fr_FR');
+    bytes.addAll(generator.text('Date : ${dateFormatter.format(sale.createdAt)}'));
     bytes.addAll(
-      generator.text('Date: ${dateFormatter.format(sale.createdAt)}'),
+      generator.text(
+        sale.receiptNumber > 0
+            ? 'Reçu N° ${sale.receiptNumber.toString().padLeft(6, '0')}'
+            : 'Reçu : PROVISOIRE',
+      ),
     );
-
-    // receipt_number is 0 until server assigns it after sync
-    if (sale.receiptNumber > 0) {
-      bytes.addAll(generator.text('Reçu N°: ${sale.receiptNumber}'));
-    } else {
-      bytes.addAll(generator.text('Reçu: PROVISOIRE'));
-    }
     bytes.addAll(generator.text(_separator));
 
     // --- ITEMS ---
     if (items != null && items.isNotEmpty) {
+      bytes.addAll(
+        generator.text('${items.length} article${items.length > 1 ? 's' : ''}'),
+      );
       for (final item in items) {
         bytes.addAll(_formatLineItem(generator, item));
       }
     } else {
       bytes.addAll(
         generator.text(
-          'Ticket provisoire - articles non disponibles',
+          'Ticket provisoire — articles non disponibles',
           styles: const PosStyles(align: PosAlign.center),
         ),
       );
     }
     bytes.addAll(generator.text(_separator));
 
-    // --- TOTAL ---
-    bytes.addAll(
-      generator.row([
-        PosColumn(text: 'TOTAL', width: 6, styles: const PosStyles(bold: true)),
-        PosColumn(
-          text: _formatFcfa(sale.totalAmount),
-          width: 6,
-          styles: const PosStyles(bold: true, align: PosAlign.right),
-        ),
-      ]),
-    );
-
+    // --- TOTALS ---
     if (sale.vatAmount != Decimal.zero) {
+      final htAmount = sale.totalAmount - sale.vatAmount;
+      bytes.addAll(generator.text(_padLine('Sous-total HT', _formatFcfa(htAmount))));
+      bytes.addAll(generator.text(_padLine('TVA', _formatFcfa(sale.vatAmount))));
+      bytes.addAll(generator.text(_doubleSeparator));
       bytes.addAll(
-        generator.row([
-          PosColumn(text: 'TVA', width: 6),
-          PosColumn(
-            text: _formatFcfa(sale.vatAmount),
-            width: 6,
-            styles: const PosStyles(align: PosAlign.right),
-          ),
-        ]),
+        generator.text(
+          _padLine('TOTAL TTC', _formatFcfa(sale.totalAmount)),
+          styles: const PosStyles(bold: true),
+        ),
+      );
+    } else {
+      bytes.addAll(generator.text(_doubleSeparator));
+      bytes.addAll(
+        generator.text(
+          _padLine('TOTAL', _formatFcfa(sale.totalAmount)),
+          styles: const PosStyles(bold: true),
+        ),
       );
     }
+    bytes.addAll(generator.text(_separator));
 
-    bytes.addAll(generator.text('Mode: ${_paymentLabel(sale.paymentMethod)}'));
+    // --- PAYMENT ---
+    bytes.addAll(generator.text('Mode : ${_paymentLabel(sale.paymentMethod)}'));
     bytes.addAll(generator.text(_separator));
 
     // --- FOOTER ---
-    if (store.receiptFooterText != null &&
-        store.receiptFooterText!.isNotEmpty) {
+    if (store.receiptFooterText != null && store.receiptFooterText!.isNotEmpty) {
       bytes.addAll(
         generator.text(
           store.receiptFooterText!,
@@ -124,7 +123,7 @@ class ReceiptFormatter {
     }
     bytes.addAll(
       generator.text(
-        'Merci de votre visite',
+        'Merci de votre visite !',
         styles: const PosStyles(align: PosAlign.center),
       ),
     );
@@ -134,22 +133,26 @@ class ReceiptFormatter {
     return bytes;
   }
 
-  /// Formats a line item for the receipt.
-  /// Product name is truncated to fit 32-char width.
+  /// Two-line item: product name on line 1, qty × unit_price = total on line 2.
   static List<int> _formatLineItem(Generator gen, CartItem item) {
-    final lineTotal = item.lineTotal;
-    // Truncate product name to 20 chars (leaves room for qty and amount)
-    final name = item.productName.length > 20
-        ? '${item.productName.substring(0, 17)}...'
+    final name = item.productName.length > _lineWidth
+        ? '${item.productName.substring(0, _lineWidth - 3)}...'
         : item.productName;
-    return gen.row([
-      PosColumn(text: '$name x${item.quantity}', width: 9),
-      PosColumn(
-        text: _formatFcfa(lineTotal),
-        width: 3,
-        styles: const PosStyles(align: PosAlign.right),
-      ),
-    ]);
+    final detail = _padLine(
+      '  ${item.quantity} x ${_formatFcfa(item.unitPrice)}',
+      _formatFcfa(item.lineTotal),
+    );
+    return [
+      ...gen.text(name),
+      ...gen.text(detail),
+    ];
+  }
+
+  /// Left-right aligned text padded to [_lineWidth] characters.
+  static String _padLine(String left, String right) {
+    final total = left.length + right.length;
+    if (total >= _lineWidth) return '$left $right';
+    return left + ' ' * (_lineWidth - total) + right;
   }
 
   /// Formats a Decimal amount as localized FCFA string.
@@ -162,7 +165,7 @@ class ReceiptFormatter {
     return switch (method) {
       PaymentMethod.cash => 'Espèces',
       PaymentMethod.orangeMoney => 'Orange Money',
-      PaymentMethod.mtn => 'MTN',
+      PaymentMethod.mtn => 'MTN Mobile Money',
       PaymentMethod.wave => 'Wave',
       PaymentMethod.mixed => 'Mixte',
     };
