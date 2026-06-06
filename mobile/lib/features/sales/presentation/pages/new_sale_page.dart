@@ -107,6 +107,34 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
     }
   }
 
+  Future<void> _clearCart() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vider le panier ?'),
+        content: const Text('Tous les articles seront supprimés.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            // ✨ couleur destructive M3
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Vider'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      ref.read(cartProvider.notifier).clear();
+    }
+  }
+
   Future<void> _onBarcodeDetected(BarcodeCapture capture) async {
     final code = capture.barcodes.firstOrNull?.rawValue;
     if (code == null || !mounted) return;
@@ -189,6 +217,7 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
                     onRemoveItem: _removeItem,
                     onCheckout: _checkout,
                     onAddManually: _openAddManuallySheet,
+                    onClearCart: _clearCart,
                   ),
                 ),
               ],
@@ -409,12 +438,14 @@ class _CartPanel extends StatelessWidget {
     required this.onRemoveItem,
     required this.onCheckout,
     required this.onAddManually,
+    required this.onClearCart,
   });
   final CartState cartState;
   final void Function(String productId, int qty) onUpdateQuantity;
   final void Function(String productId) onRemoveItem;
   final VoidCallback onCheckout;
   final VoidCallback onAddManually;
+  final VoidCallback onClearCart;
 
   @override
   Widget build(BuildContext context) {
@@ -447,9 +478,12 @@ class _CartPanel extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.xs,
+            ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
                   child: Column(
@@ -463,25 +497,31 @@ class _CartPanel extends StatelessWidget {
                     ],
                   ),
                 ),
+                // ✨ "Ajouter" compact — secondaire, ne rivalise pas avec le scan
+                TextButton.icon(
+                  onPressed: onAddManually,
+                  icon: const Icon(Icons.search, size: 16),
+                  label: const Text('Ajouter'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
+                  ),
+                ),
+                // ✨ "Vider" — destructif, visible seulement si panier non vide
+                if (!cartState.isEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.delete_sweep_outlined),
+                    tooltip: 'Vider le panier',
+                    onPressed: onClearCart,
+                    color: AppColors.error,
+                    visualDensity: VisualDensity.compact,
+                  ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
           const Divider(height: 1, color: AppColors.divider),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.sm,
-              AppSpacing.md,
-              AppSpacing.sm,
-            ),
-            child: SecondaryButton(
-              label: 'Ajouter manuellement',
-              onPressed: onAddManually,
-              icon: Icons.search,
-            ),
-            // onAddManually prevents const
-          ),
           Expanded(
             child: cartState.isEmpty
                 ? const EmptyStateIllustrated(
