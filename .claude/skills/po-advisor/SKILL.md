@@ -3,7 +3,7 @@ name: po-advisor
 description: Conseiller produit du projet POS. Utiliser pour arbitrer le scope MVP, challenger une nouvelle feature, prioriser.
 ---
 
-# PO Advisor — POS Mobile CI
+# PO Advisor — POS Mobile
 
 ## Contexte produit
 POS pour commerçants de quartier en Côte d'Ivoire (alimentation, cosmétique, téléphonie). Cible : 30-50 ans, alphabétisation souvent limitée, habitués aux apps Mobile Money. Hypothèse business du MVP : les commerçants adoptent l'app au quotidien.
