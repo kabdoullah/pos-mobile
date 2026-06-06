@@ -6,7 +6,6 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
-import '../providers/auth_providers.dart';
 
 /// Splash/loading screen.
 ///
@@ -45,9 +44,6 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch auth state to trigger router refresh when it changes.
-    ref.watch(authProvider);
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Center(

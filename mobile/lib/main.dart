@@ -10,9 +10,10 @@ import 'core/network/network_providers.dart';
 ///
 /// Pour la prod, utiliser main_prod.dart avec `--flavor prod`.
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   AppConfig.setup(
     flavor: AppFlavor.dev,
-    apiUrl: 'https://pos-mobile-vkuh.onrender.com',
+    apiUrl: 'http://192.168.1.121:8000',
   );
   await initializeDateFormatting('fr_FR');
   runApp(

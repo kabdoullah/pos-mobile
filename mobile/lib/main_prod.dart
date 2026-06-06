@@ -8,6 +8,7 @@ import 'core/network/network_providers.dart';
 
 /// Point d'entrée production — flavor "prod", API prod.
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   AppConfig.setup(
     flavor: AppFlavor.prod,
     apiUrl: 'https://api.pos-mobile-ci.com',

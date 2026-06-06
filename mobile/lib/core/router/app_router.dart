@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:logger/logger.dart';
 
+import '../navigation/nav_provider.dart';
 import 'page_transitions.dart';
 import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -112,6 +113,7 @@ GoRouter appRouter(Ref ref) {
         Routes.pinSetup,
         Routes.pinLogin,
         Routes.storeSetup,
+        Routes.tutorial,
       };
 
       // Redirect based on AsyncValue<AuthStatus> state.
@@ -205,12 +207,27 @@ GoRouter appRouter(Ref ref) {
         pageBuilder: (context, state) =>
             PageTransitions.slideRight(context, state, const MainShell()),
       ),
-      GoRoute(path: Routes.catalog, redirect: (context, state) => Routes.home),
+      GoRoute(
+        path: Routes.catalog,
+        redirect: (context, state) {
+          ref.read(bottomNavIndexProvider.notifier).setIndex(1);
+          return Routes.home;
+        },
+      ),
       GoRoute(
         path: Routes.salesHistory,
-        redirect: (context, state) => Routes.home,
+        redirect: (context, state) {
+          ref.read(bottomNavIndexProvider.notifier).setIndex(2);
+          return Routes.home;
+        },
       ),
-      GoRoute(path: Routes.settings, redirect: (context, state) => Routes.home),
+      GoRoute(
+        path: Routes.settings,
+        redirect: (context, state) {
+          ref.read(bottomNavIndexProvider.notifier).setIndex(3);
+          return Routes.home;
+        },
+      ),
       GoRoute(
         path: Routes.newSale,
         pageBuilder: (context, state) =>
@@ -224,7 +241,12 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: Routes.saleSuccess,
         pageBuilder: (context, state) {
-          final extra = state.extra as ({Sale sale, List<CartItem> items})?;
+          ({Sale sale, List<CartItem> items})? extra;
+          try {
+            extra = state.extra as ({Sale sale, List<CartItem> items})?;
+          } on TypeError {
+            extra = null;
+          }
           final child = extra == null
               ? const SalesHistoryPage()
               : SaleSuccessPage(sale: extra.sale, items: extra.items);
@@ -255,7 +277,12 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: Routes.saleDetail,
         pageBuilder: (context, state) {
-          final sale = state.extra as Sale?;
+          Sale? sale;
+          try {
+            sale = state.extra as Sale?;
+          } on TypeError {
+            sale = null;
+          }
           final child = sale == null
               ? const SalesHistoryPage()
               : SaleDetailPage(sale: sale);
