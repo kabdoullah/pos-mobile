@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
@@ -18,6 +19,7 @@ class AppTextField extends StatefulWidget {
     this.errorText,
     this.prefixIcon,
     this.suffixIcon,
+    this.inputFormatters,
     this.onChanged,
     this.maxLines = 1,
     this.minLines,
@@ -47,6 +49,9 @@ class AppTextField extends StatefulWidget {
 
   /// Icon displayed at the end of the input.
   final IconData? suffixIcon;
+
+  /// Input formatters applied to the field (e.g. [FilteringTextInputFormatter.digitsOnly]).
+  final List<TextInputFormatter>? inputFormatters;
 
   /// Callback when text changes.
   final ValueChanged<String>? onChanged;
@@ -105,6 +110,7 @@ class _AppTextFieldState extends State<AppTextField> {
             keyboardType: widget.keyboardType,
             maxLines: widget.maxLines,
             minLines: widget.minLines,
+            inputFormatters: widget.inputFormatters,
             onChanged: widget.onChanged,
             style: AppTypography.bodyMedium.copyWith(color: cs.onSurface),
             decoration: InputDecoration(

@@ -11,12 +11,13 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
+import '../../../../core/utils/phone_formatter.dart';
 import '../providers/auth_providers.dart';
 import '../widgets/registration_stepper.dart';
 
-/// User registration page (email + password).
+/// User registration page (phone + password, email optionnel).
 ///
-/// Validates email, password strength, and phone number format.
+/// Phone number is the primary identifier. Email is optional for account recovery.
 /// Creates new account and stores JWT tokens securely.
 class RegisterPage extends ConsumerStatefulWidget {
   /// Creates a register page.
@@ -65,19 +66,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     _confirmPasswordError = null;
     _phoneError = null;
 
-    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
-    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
 
     bool isValid = true;
 
-    // Email validation.
-    if (email.isEmpty) {
-      _emailError = 'Email requis';
+    // Phone validation (format local CI : 0XXXXXXXXX).
+    if (phone.isEmpty) {
+      _phoneError = 'Numéro requis';
       isValid = false;
-    } else if (!_isValidEmail(email)) {
-      _emailError = 'Email invalide';
+    } else if (!isValidLocalPhoneCi(phone)) {
+      _phoneError = 'Format invalide. Ex: 07 00 00 00 00';
       isValid = false;
     }
 
@@ -99,12 +100,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       isValid = false;
     }
 
-    // Phone validation (basic format for Côte d'Ivoire).
-    if (phone.isEmpty) {
-      _phoneError = 'Téléphone requis';
-      isValid = false;
-    } else if (!_isValidPhoneCI(phone)) {
-      _phoneError = 'Format invalide (ex: +225 0123456789)';
+    // Email validation (optional — only validate format if provided).
+    if (email.isNotEmpty && !_isValidEmail(email)) {
+      _emailError = 'Email invalide';
       isValid = false;
     }
 
@@ -116,29 +114,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return email.contains('@') && email.contains('.');
   }
 
-  bool _isValidPhoneCI(String phone) {
-    // Accept: +225XXXXXXXXXX, 225XXXXXXXXXX, or XXXXXXXXXX
-    final cleaned = phone.replaceAll(RegExp(r'\D'), '');
-    if (cleaned.startsWith('225')) {
-      return cleaned.length == 12;
-    }
-    return cleaned.length == 10;
-  }
-
   Future<void> _register() async {
     if (!_validateForm()) return;
 
+    final email = _emailController.text.trim();
+    final e164 = toE164Ci(_phoneController.text.trim())!;
     try {
       final authNotifier = ref.read(authProvider.notifier);
       await authNotifier.register(
-        _emailController.text.trim(),
+        e164,
         _passwordController.text,
-        _phoneController.text.trim(),
+        email: email.isEmpty ? null : email,
       );
-      // Router redirect automatically handles navigation based on new auth state
-      // (AuthStateStoreSetupRequired → /store-setup)
+      // Router redirect automatically handles navigation based on new auth state.
     } catch (_) {
-      // Error state already handled by authProvider state display above
+      // Error state already handled by authProvider state display above.
     }
   }
 
@@ -245,12 +235,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                           : const SizedBox.shrink(),
                     ),
                     AppTextField(
-                      label: 'Email',
-                      hint: 'ab@gmail.com',
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      errorText: _emailError,
-                      prefixIcon: Icons.email_outlined,
+                      label: 'Téléphone',
+                      hint: '07 00 00 00 00',
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: const [SpacedPhoneFormatter()],
+                      errorText: _phoneError,
+                      prefixIcon: Icons.phone_outlined,
                     ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
@@ -271,12 +262,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     ),
                     const SizedBox(height: AppSpacing.md),
                     AppTextField(
-                      label: 'Téléphone',
-                      hint: '+225 0123456789',
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      errorText: _phoneError,
-                      prefixIcon: Icons.phone_outlined,
+                      label: 'Email (optionnel)',
+                      hint: 'Pour récupérer votre compte',
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      errorText: _emailError,
+                      prefixIcon: Icons.email_outlined,
                     ),
                     const SizedBox(height: AppSpacing.lg),
                     PrimaryButton(

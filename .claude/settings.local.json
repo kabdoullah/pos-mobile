@@ -25,7 +25,12 @@
       "Bash(docker compose *)",
       "Bash(flutter devices *)",
       "Bash(flutter run *)",
-      "Bash(adb shell *)"
+      "Bash(adb shell *)",
+      "Bash(dart analyze *)",
+      "Bash(dart format *)",
+      "Bash(make -C /home/kemogoha/Documents/Development/pos-mobile/mobile analyze)",
+      "Bash(make makemigration *)",
+      "Bash(make migrate *)"
     ]
   }
 }

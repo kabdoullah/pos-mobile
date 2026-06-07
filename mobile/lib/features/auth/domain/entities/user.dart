@@ -10,8 +10,8 @@ sealed class User with _$User {
   /// Constructor.
   const factory User({
     required String id,
-    required String email,
     required String phoneNumber,
+    String? email,
     String? storeId,
     DateTime? emailVerifiedAt,
   }) = _User;

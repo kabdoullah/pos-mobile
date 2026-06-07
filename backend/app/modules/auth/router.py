@@ -16,13 +16,18 @@ router = APIRouter()
     summary="Créer un compte",
 )
 async def register(payload: schemas.RegisterRequest, db: DbSession) -> schemas.RegisterResponse:
-    """Crée un compte utilisateur avec email + mot de passe + numéro."""
+    """Crée un compte utilisateur avec numéro de téléphone + mot de passe. Email optionnel."""
     service = AuthService(db)
     user = await service.register(payload)
+    message = (
+        "Account created. Check your email to verify your address."
+        if user.email is not None
+        else "Account created."
+    )
     return schemas.RegisterResponse(
         user_id=user.id,
-        email=user.email,
-        message="Account created. Check your email to verify your address.",
+        phone_number=user.phone_number,
+        message=message,
     )
 
 
@@ -32,7 +37,7 @@ async def register(payload: schemas.RegisterRequest, db: DbSession) -> schemas.R
     summary="Obtenir un JWT",
 )
 async def login(payload: schemas.LoginRequest, db: DbSession) -> schemas.TokenResponse:
-    """Authentifie l'utilisateur et retourne un JWT access + refresh."""
+    """Authentifie l'utilisateur via numéro de téléphone + mot de passe."""
     service = AuthService(db)
     return await service.login(payload)
 

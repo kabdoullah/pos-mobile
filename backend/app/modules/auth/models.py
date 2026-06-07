@@ -11,7 +11,7 @@ from app.core.db import Base
 
 
 class User(Base):
-    """Utilisateur du système (commerçant). Authentification via email + password."""
+    """Utilisateur du système (commerçant). Authentification via phone + password."""
 
     __tablename__ = "users"
     __table_args__ = (
@@ -20,12 +20,16 @@ class User(Base):
             r"email ~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$'",
             name="chk_users_email_format",
         ),
+        CheckConstraint(
+            r"phone_number ~ '^\+[1-9]\d{6,14}$'",
+            name="chk_users_phone_e164",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    phone_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     email_verified_at: Mapped[datetime | None] = mapped_column(

@@ -1,11 +1,11 @@
-# Mobile POS Mobile CI
+# Mobile POS Mobile
 
 Application Flutter pour les commerçants en Côte d'Ivoire.
 
 ## Stack
 
 - **Flutter 3.22+** / Dart 3.4+
-- **Riverpod** pour le state management
+- **Riverpod 3** pour le state management
 - **drift** pour SQLite local typé
 - **dio + retrofit** pour l'API
 - **mobile_scanner** pour les codes-barres

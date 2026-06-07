@@ -2,7 +2,7 @@
 
 ## Statut
 
-Accepté — 29 avril 2026
+Superseded by ADR-0006 — 7 juin 2026
 
 ## Contexte
 

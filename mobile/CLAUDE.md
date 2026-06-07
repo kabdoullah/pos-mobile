@@ -12,8 +12,9 @@ make analyze       # static analysis (must pass before commit)
 make format        # dart format (fails if diff — run before commit)
 make test          # flutter test all
 make run           # dev on emulator/device (API: http://10.0.2.2:8000)
-make run-prod      # release against prod API (https://api.pos-mobile-ci.com)
-make build-apk     # release APK
+make run-prod      # release against prod API
+make build-apk     # release APK (prod flavor)
+make build-apk-dev # debug APK (dev flavor)
 make clean         # clear Flutter + dart_tool caches
 ```
 
@@ -21,73 +22,99 @@ make clean         # clear Flutter + dart_tool caches
 
 **Single test:** `flutter test test/auth_service_test.dart` or `flutter test test/ -k "test_pattern"`
 
+## App entry points and flavors
+
+Two entry points, two flavors:
+- `lib/main.dart` — `AppFlavor.dev`, API `http://10.0.2.2:8000` (Android emulator localhost)
+- `lib/main_prod.dart` — `AppFlavor.prod`, API prod
+
+Both call `AppConfig.setup(flavor:, apiUrl:)` before `runApp`. `AppConfig.isDev` gates debug features. Constants (timeout, PIN lockout, etc.) live in `AppConfig` — see `core/config.dart`.
+
 ## Architecture
 
-Feature-first Clean Architecture. Each feature has 3 layers:
+Feature-first Clean Architecture. Full features have 3 layers; presentation-only features (home, onboarding, settings) have only `presentation/`:
 
 ```
 lib/features/<feature>/
 ├── domain/       Pure business logic — entities (freezed), repository interfaces
 ├── data/         Concrete implementations — local/remote datasources, DTOs, repositories
-└── presentation/ Flutter UI — pages, widgets, Riverpod providers (state management)
+├── providers/    DI only — wires data → domain (imported by presentation, never data directly)
+└── presentation/ Flutter UI — pages, widgets, Riverpod state providers
 ```
 
-**Dependency rules (enforced):**
-- `presentation` → `domain` only (never `data`)
-- `data` → `domain` only
-- `domain` → nothing else (pure, independent)
-- Cross-feature: import other feature's `domain`, never `data`
+Two provider locations:
+- `<feature>/providers/<feature>_di_providers.dart` — DI: repos, datasources, usecases
+- `<feature>/presentation/providers/` — UI state: notifiers, AsyncValue
+
+**Dependency rules:** `presentation` → `domain` + `providers/` (never `data` directly). `data` → `domain` only. `domain` → nothing. Cross-feature: import other feature's `domain` and `providers/`, never `data`.
 
 **Global structure:**
-- `lib/core/` — app-wide: `AppConfig`, `theme`, router (GoRouter), network (Dio + Retrofit), storage, sync logic
+- `lib/core/` — `AppConfig`, theme (Cacao & Or palette), GoRouter, Dio/Retrofit network, secure storage, sync logic
 - `lib/database/` — drift schema (Products, Sales, SyncQueue tables)
-- `lib/shared/` — cross-feature UI components (currently empty)
 - `test/` — flat test files, no directory mirroring lib/
 
 ## Features status
 
 | Feature | Status |
 |---|---|
-| `auth` | Implemented — registration, email/PIN login, token refresh, store setup |
-| `catalog` | Implemented — product listing, QR scanning (via SalesFeature), local sync |
-| `sales` | Implemented — cart management, payment, receipt printing, sale history |
-| `printing` | Implemented — Bluetooth thermal printer (ESC/POS via print_bluetooth_thermal) |
+| `auth` | Implemented — phone+password registration, phone login, PIN setup/verify, token refresh, store setup |
+| `catalog` | Implemented — product listing, barcode scanning, local sync |
+| `sales` | Implemented — cart, payment, receipt printing, sale history |
+| `printing` | Implemented — Bluetooth thermal printer (ESC/POS via `print_bluetooth_thermal`) |
 | `sync` | Implemented — offline event queue, catalog dirty-flag sync, connectivity awareness |
+| `home` | Implemented — dashboard shell (presentation only) |
+| `onboarding` | Implemented — tutorial (presentation only) |
+| `settings` | Implemented — settings (presentation only) |
+
+## Auth flow (ADR-0006 — phone-first)
+
+Identifier is phone number (E.164), not email. Email is optional (account recovery only).
+
+```
+Unauthenticated → [phone+password login] → StoreSetupRequired (first reg)
+                                          → PinSetupRequired (first device login)
+                                          → PinRequired (PIN exists, not yet verified)
+                                          → Authenticated
+```
+
+`AuthStatus` sealed class in `auth_providers.dart`. Router reads `AsyncValue<AuthStatus>` and redirects accordingly. `Routes.emailLogin` maps to `PhoneLoginPage` (name kept for backward compat).
+
+Phone utilities: `core/utils/phone_formatter.dart` — `toE164Ci()` (local → E.164), `formatPhoneCiDisplay()` (display), `isValidLocalPhoneCi()`.
 
 ## Key conventions
 
-**State management (Riverpod):** Use `@riverpod` annotation with `riverpod_generator`. Providers live in `<feature>/presentation/providers/`. Complex state uses sealed classes (e.g., `AuthState` for auth workflow).
+**State management (Riverpod):** `@riverpod` with `riverpod_generator`. Complex state uses sealed classes (e.g., `AuthStatus`).
 
-**Local database (drift):** Schema in `lib/database/app_database.dart`. After any table/column change, run `make gen`. Never edit `*.g.dart` files manually. Monetary amounts stored as `TextColumn` (preserves decimal precision via `Decimal` type in domain layer).
+**Local database (drift):** Schema in `lib/database/app_database.dart`. Run `make gen` after any table/column change. Monetary amounts stored as `TextColumn`.
 
-**Monetary amounts (FCFA):** Domain entities use `Decimal` type (from `decimal` package). DTO/API models use `String`. Mappers convert: `Decimal.parse(stringValue)` on API→domain, `.toString()` on domain→storage.
+**Monetary amounts (FCFA):** Domain entities use `Decimal` (package `decimal`). API DTOs use `String`. Drift uses `TextColumn`. Mappers convert at boundaries — `Decimal.parse()` inbound, `.toString()` outbound. Never use `double` or `int.parse` for money.
 
-**Networking:** Dio client with auth/refresh interceptors in `lib/core/network/`. Retrofit generates typed clients. API URL via `--dart-define=API_URL=...`. Token storage in `flutter_secure_storage`.
+**Networking:** Dio with auth/refresh interceptors (`core/network/`). Retrofit generates typed clients. `httpTimeoutSeconds = 60` (absorbs Render free-tier cold start ~50s).
 
-**Secure storage:** JWT (access + refresh tokens) and hashed PIN stored in `flutter_secure_storage`. PIN never sent to backend. Lockout: 5 failed attempts → 5-minute block (thresholds in `AppConfig`).
+**Secure storage:** JWT and PBKDF2-hashed PIN in `flutter_secure_storage`. PIN never sent to backend. 5 attempts → 5-minute lockout.
 
-**Sync pattern:** Sales are append-only events in `SyncQueue` (client-generated UUID v4 for idempotence). Catalog: flag products `dirty=true` on local change, push full state to backend. Sync pulls on app start and when connectivity restored.
+**Sync:** Sales append-only via `SyncQueue` (UUID v4 client-side, idempotent). Catalog: `dirty=true` flag, push full state. Pull on app start + connectivity restored.
 
-**Code generation:** `make gen` triggers `drift_dev`, `freezed`, `json_serializable`, `riverpod_generator`, `retrofit_generator`. Must run after model changes before building.
+**Theme:** "Cacao & Or" — primary brun cacao `#92400E`, secondary or `#CA8A04`. `textOnSecondary` is dark (never white on gold — fails WCAG AA). Use `AppSemanticColors` extension for dark-mode and stock-status colors.
 
-**Linter rules:** `analysis_options.yaml` enforces single quotes, trailing commas, `const` constructors, `prefer_final_*`, no `dynamic`/`print`, `public_member_api_docs` on all public API.
+**Code generation:** `make gen` covers `drift_dev`, `freezed`, `json_serializable`, `riverpod_generator`, `retrofit_generator`.
 
-**Testing:** Test files flat under `test/`, named `<feature>_<concept>_test.dart` (e.g., `auth_service_test.dart`, `money_conversion_test.dart`). Mock with `mocktail`. See `test/mappers_characterization_test.dart` for integration test pattern.
+**Linter:** single quotes, trailing commas, `const` constructors, `prefer_final_*`, no `dynamic`/`print`, `public_member_api_docs` on all public API.
+
+**Testing:** Flat under `test/`, named `<feature>_<concept>_test.dart`. Mock with `mocktail`.
 
 ## App initialization
 
-`main.dart` sets up:
-1. French date formatting (`initializeDateFormatting('fr_FR')`)
-2. `ProviderScope` with token storage override
-3. Root `PosMobileApp` widget (in `core/app.dart`)
-
-Root widget uses GoRouter for navigation and `AppConfig` for theme/constants. See `core/router/app_router.dart` for route definitions.
+`main.dart` → `AppConfig.setup()` → `initializeDateFormatting('fr_FR')` → `ProviderScope` (overrides `tokenStorageProvider` with `secureTokenStorageProvider`) → `PosMobileApp` (GoRouter + theme).
 
 ## Key files by responsibility
 
-- `core/network/dio_client.dart` — builds Dio with auth/refresh interceptors, error parsing
-- `core/network/token_storage.dart` — interface for JWT persistence (implemented in `secure_token_storage.dart`)
-- `core/sync/` — `SyncOrchestrator`, offline queue management, connectivity listener
-- `core/storage/pin_storage.dart` — PBKDF2-HMAC-SHA256 PIN hashing with random salt (never stored plaintext)
-- `features/auth/domain/` — `Store`, `User` entities, `AuthRepository` interface
-- `features/sales/data/models/sale_mappers.dart` — converts domain `Sale` ↔ API/database models (includes Decimal handling)
+- `core/config.dart` — `AppConfig`, `AppFlavor`, all thresholds/constants
+- `core/router/app_router.dart` — GoRouter config, `Routes` constants, auth-redirect logic
+- `core/network/dio_client.dart` — Dio with auth/refresh interceptors
+- `core/network/token_storage.dart` — JWT persistence interface
+- `core/storage/pin_storage.dart` — PBKDF2-HMAC-SHA256 PIN hashing
+- `core/sync/` — `SyncOrchestrator`, offline queue, connectivity listener
+- `core/utils/phone_formatter.dart` — Ivorian phone number formatting/validation
+- `features/auth/presentation/providers/auth_providers.dart` — `AuthStatus` sealed class + `Auth` notifier
+- `features/sales/data/models/sale_mappers.dart` — domain `Sale` ↔ API/database (includes Decimal handling)

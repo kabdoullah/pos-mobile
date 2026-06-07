@@ -10,26 +10,26 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../../../core/network/error_mapper.dart';
+import '../../../../core/utils/phone_formatter.dart';
 import '../../../auth/providers/auth_di_providers.dart';
 import '../providers/auth_providers.dart';
 
-/// Email login screen.
+/// Phone number login screen (primary authentication).
 ///
-/// Used for account recovery and new device login.
-/// Also gateway if PIN not yet configured.
-class EmailLoginPage extends ConsumerStatefulWidget {
-  /// Creates an email login page.
-  const EmailLoginPage({super.key});
+/// Also entry point for new device login and account recovery via forgot-password dialog.
+class PhoneLoginPage extends ConsumerStatefulWidget {
+  /// Creates a phone login page.
+  const PhoneLoginPage({super.key});
 
   @override
-  ConsumerState<EmailLoginPage> createState() => _EmailLoginPageState();
+  ConsumerState<PhoneLoginPage> createState() => _PhoneLoginPageState();
 }
 
-class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
-  late TextEditingController _emailController;
+class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
+  late TextEditingController _phoneController;
   late TextEditingController _passwordController;
 
-  String? _emailError;
+  String? _phoneError;
   String? _passwordError;
 
   static final _logger = Logger();
@@ -37,9 +37,8 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
     _passwordController = TextEditingController();
-    // Clear any stale auth error from previous login attempt.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(authProvider.notifier).clearError();
     });
@@ -47,25 +46,25 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   bool _validateForm() {
-    _emailError = null;
+    _phoneError = null;
     _passwordError = null;
 
-    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
     final password = _passwordController.text;
 
     bool isValid = true;
 
-    if (email.isEmpty) {
-      _emailError = 'Email requis';
+    if (phone.isEmpty) {
+      _phoneError = 'Numéro requis';
       isValid = false;
-    } else if (!_isValidEmail(email)) {
-      _emailError = 'Email invalide';
+    } else if (!isValidLocalPhoneCi(phone)) {
+      _phoneError = 'Format invalide. Ex: 07 00 00 00 00';
       isValid = false;
     }
 
@@ -78,14 +77,8 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
     return isValid;
   }
 
-  bool _isValidEmail(String email) {
-    return email.contains('@') && email.contains('.');
-  }
-
   void _showForgotPasswordDialog(BuildContext context) {
-    final emailController = TextEditingController(
-      text: _emailController.text.trim(),
-    );
+    final emailController = TextEditingController();
 
     unawaited(
       showDialog<void>(
@@ -97,7 +90,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
             keyboardType: TextInputType.emailAddress,
             autofocus: true,
             decoration: const InputDecoration(
-              labelText: 'Adresse email',
+              labelText: 'Adresse email de récupération',
               hintText: 'votre@email.com',
             ),
           ),
@@ -133,7 +126,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(errorToFrench(e)),
-                        backgroundColor: cs.error, // ✨ errorContainer+blanc=1.5:1 fail WCAG — cs.error+blanc=4.6:1
+                        backgroundColor: cs.error,
                       ),
                     );
                   }
@@ -150,17 +143,13 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
   Future<void> _login() async {
     if (!_validateForm()) return;
 
-    _logger.i('[EmailLogin] Login clicked: ${_emailController.text}');
-    try {
-      final authNotifier = ref.read(authProvider.notifier);
-      _logger.i('[EmailLogin] Calling authNotifier.login()');
-      await authNotifier.login(_emailController.text, _passwordController.text);
-      _logger.i('[EmailLogin] Login succeeded, router should redirect');
-      // Router redirect automatically handles navigation based on new auth state
-      // (AuthPinRequired → /pin-login, AuthAuthenticated → /home, etc.)
-    } catch (_) {
-      // Error state already displayed via authValue.asError in build()
-      // No additional error handling needed here — AsyncNotifier stores the message
+    final e164 = toE164Ci(_phoneController.text.trim())!;
+    _logger.i('[PhoneLogin] Login clicked: $e164');
+    await ref
+        .read(authProvider.notifier)
+        .login(e164, _passwordController.text);
+    if (ref.read(authProvider) is AsyncData) {
+      _logger.i('[PhoneLogin] Login succeeded, router should redirect');
     }
   }
 
@@ -177,6 +166,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
       small: AppSpacing.md,
       medium: AppSpacing.lg,
     );
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Center(
@@ -193,7 +183,7 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
             children: [
               Text('Se connecter', style: tt.titleLarge),
               const SizedBox(height: AppSpacing.xs),
-              Text('Accédez à votre compte POS', style: tt.bodyMedium),
+              Text('Accédez à votre espace marchand', style: tt.bodyMedium),
               const SizedBox(height: AppSpacing.lg),
               if (errorMessage != null) ...[
                 Container(
@@ -211,12 +201,13 @@ class _EmailLoginPageState extends ConsumerState<EmailLoginPage> {
                 const SizedBox(height: AppSpacing.lg),
               ],
               AppTextField(
-                label: 'Email',
-                hint: 'ab@gmail.com',
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                errorText: _emailError,
-                prefixIcon: Icons.email_outlined,
+                label: 'Téléphone',
+                hint: '07 00 00 00 00',
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                inputFormatters: const [SpacedPhoneFormatter()],
+                errorText: _phoneError,
+                prefixIcon: Icons.phone_outlined,
               ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(

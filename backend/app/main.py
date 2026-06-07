@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import StoreContextMiddleware
+from app.core.seed import seed_superadmin
 from app.modules.auth.router import router as auth_router
 from app.modules.catalog.router import router as catalog_router
 from app.modules.sales.router import router as sales_router
@@ -23,6 +24,7 @@ from app.modules.sync.router import router as sync_router
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     """Hook de cycle de vie de l'application : startup et shutdown."""
     setup_logging()
+    await seed_superadmin()
     yield
 
 

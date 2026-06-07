@@ -1,6 +1,7 @@
 """Logique métier du module auth."""
 
 import hashlib
+import re
 import secrets
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
@@ -42,47 +43,55 @@ class AuthService:
         self.email_service = EmailService()
 
     async def register(self, payload: schemas.RegisterRequest) -> User:
-        """Crée un nouvel utilisateur après vérification d'unicité de l'email."""
-        existing = await self.repo.get_by_email(payload.email)
-        if existing is not None:
-            raise ConflictError("This email is already registered.", field="email")
+        """Crée un nouvel utilisateur. Phone requis, email optionnel."""
+        existing_phone = await self.repo.get_by_phone(payload.phone_number)
+        if existing_phone is not None:
+            raise ConflictError("This phone number is already registered.", field="phone_number")
+
+        if payload.email is not None:
+            existing_email = await self.repo.get_by_email(payload.email)
+            if existing_email is not None:
+                raise ConflictError("This email is already registered.", field="email")
 
         user = User(
+            phone_number=payload.phone_number,
             email=payload.email,
             password_hash=hash_password(payload.password),
-            phone_number=payload.phone_number,
         )
         await self.repo.create(user)
         await StoreService(self.db).create_default_for_user(user.id)
 
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-        expires_at = datetime.now(UTC) + timedelta(hours=24)
+        if payload.email is not None:
+            raw_token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+            expires_at = datetime.now(UTC) + timedelta(hours=24)
 
-        await self.email_verification_repo.create(
-            user_id=user.id,
-            token_hash=token_hash,
-            expires_at=expires_at,
-        )
-        # Best-effort : un échec SMTP ne doit pas bloquer l'inscription.
-        # Le token reste en DB, l'email peut être renvoyé plus tard.
-        try:
-            await self.email_service.send_verification_email(
-                to_email=user.email,
-                user_name=user.email,
-                raw_token=raw_token,
+            await self.email_verification_repo.create(
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=expires_at,
             )
-        except Exception:
-            logger.exception("verification_email_send_failed", user_id=str(user.id))
+            # Best-effort : un échec SMTP ne doit pas bloquer l'inscription.
+            try:
+                await self.email_service.send_verification_email(
+                    to_email=payload.email,
+                    user_name=payload.email,
+                    raw_token=raw_token,
+                )
+            except Exception:
+                logger.exception("verification_email_send_failed", user_id=str(user.id))
 
         return user
 
     async def login(self, payload: schemas.LoginRequest) -> schemas.TokenResponse:
         """Vérifie les credentials et retourne les tokens."""
-        user = await self.repo.get_by_email(payload.email)
+        phone = payload.phone_number.strip()
+        if re.match(r'^0\d{9}$', phone):
+            phone = '+225' + phone
+        user = await self.repo.get_by_phone(phone)
         if user is None or not verify_password(payload.password, user.password_hash):
-            # Message volontairement vague pour ne pas révéler si l'email existe
-            raise UnauthorizedError("Invalid email or password.")
+            # Message volontairement vague pour ne pas révéler si le numéro existe
+            raise UnauthorizedError("Invalid phone number or password.")
 
         if not user.is_active:
             raise UnauthorizedError("Account is disabled.")
@@ -123,10 +132,10 @@ class AuthService:
         )
 
     async def send_password_reset(self, email: EmailStr) -> None:
-        """Envoie un email de réinitialisation. Silencieux si l'email n'existe pas."""
+        """Envoie un email de réinitialisation. Silencieux si l'email n'existe pas ou n'est pas renseigné."""
         user = await self.repo.get_by_email(email)
-        if user is None:
-            # Ne révèle pas l'existence de l'email
+        if user is None or user.email is None:
+            # Ne révèle ni l'existence du compte ni l'absence d'email
             return
 
         raw_token = secrets.token_urlsafe(32)

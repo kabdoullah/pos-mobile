@@ -2,16 +2,16 @@ import '../entities/user.dart';
 
 /// Interface du repository auth. Implémenté dans la couche `data`.
 abstract class AuthRepository {
-  /// Crée un compte utilisateur.
+  /// Crée un compte utilisateur. Email optionnel (récupération de compte uniquement).
   Future<User> register({
-    required String email,
-    required String password,
     required String phoneNumber,
+    required String password,
+    String? email,
   });
 
-  /// Authentifie via email + mot de passe.
+  /// Authentifie via numéro de téléphone + mot de passe.
   /// Stocke les tokens en secure storage.
-  Future<User> login({required String email, required String password});
+  Future<User> login({required String phoneNumber, required String password});
 
   /// Définit le PIN local après la première connexion.
   Future<void> setupPin(String pin);

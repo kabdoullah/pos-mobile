@@ -2,9 +2,11 @@ import 'api_exception.dart';
 
 const _detailMap = <String, String>{
   // Auth
-  'This email is already registered.': 'Cet email est déjà enregistré',
-  'Invalid email or password.': 'Email ou mot de passe incorrect',
-  'Account is disabled.': 'Le compte est désactivé',
+  'This phone number is already registered.': 'Ce numéro est déjà enregistré.',
+  'This email is already registered.': 'Cet email est déjà enregistré.',
+  'Invalid phone number or password.': 'Numéro ou mot de passe incorrect.',
+  'Invalid email or password.': 'Email ou mot de passe incorrect.',
+  'Account is disabled.': 'Le compte est désactivé.',
   'Invalid or expired refresh token.':
       'Session expirée, veuillez vous reconnecter',
   'User not found or disabled.': 'Utilisateur introuvable ou désactivé',

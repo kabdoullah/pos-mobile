@@ -120,19 +120,19 @@ class Auth extends _$Auth {
     }
   }
 
-  /// Authenticate user with email + password.
+  /// Authenticate user with phone number + password.
   ///
   /// Calls backend login endpoint, saves JWT tokens to secure storage.
   /// Then checks PIN config: if yes → PinRequired (verify existing PIN), if no → PinSetupRequired (create new PIN).
   /// Errors are automatically captured in `AsyncError` via [AsyncValue.guard].
-  Future<void> login(String email, String password) async {
-    _logger.i('[Auth.login] Starting for $email');
+  Future<void> login(String phoneNumber, String password) async {
+    _logger.i('[Auth.login] Starting for $phoneNumber');
     state = const AsyncLoading<AuthStatus>();
 
     state = await AsyncValue.guard(() async {
       try {
         final repo = ref.read(authRepositoryProvider);
-        await repo.login(email: email, password: password);
+        await repo.login(phoneNumber: phoneNumber, password: password);
         _logger.i('[Auth.login] Backend login succeeded');
 
         final hasPinSetup = await repo.hasPinSetup();
@@ -151,26 +151,26 @@ class Auth extends _$Auth {
     });
   }
 
-  /// Register a new user account (email + password + phone).
+  /// Register a new user account (phone + password, email optionnel).
   ///
   /// Creates account on backend, saves tokens to secure storage.
   /// Transitions to `StoreSetupRequired` (user must configure store name, address, VAT status).
   /// After store setup → `PinSetupRequired`.
   Future<void> register(
-    String email,
-    String password,
     String phoneNumber,
-  ) async {
-    _logger.i('[Auth.register] Starting for $email');
+    String password, {
+    String? email,
+  }) async {
+    _logger.i('[Auth.register] Starting for $phoneNumber');
     state = const AsyncLoading<AuthStatus>();
 
     state = await AsyncValue.guard(() async {
       try {
         final repo = ref.read(authRepositoryProvider);
         await repo.register(
-          email: email,
-          password: password,
           phoneNumber: phoneNumber,
+          password: password,
+          email: email,
         );
         _logger.i('[Auth.register] Backend registration succeeded');
         return const AuthStoreSetupRequired();

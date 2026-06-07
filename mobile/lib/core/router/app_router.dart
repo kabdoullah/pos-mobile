@@ -9,7 +9,7 @@ import '../../features/auth/presentation/pages/splash_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/auth/presentation/pages/pin_setup_page.dart';
 import '../../features/auth/presentation/pages/pin_login_page.dart';
-import '../../features/auth/presentation/pages/email_login_page.dart';
+import '../../features/auth/presentation/pages/phone_login_page.dart';
 import '../../features/auth/presentation/pages/store_setup_page.dart';
 import '../../features/onboarding/presentation/pages/tutorial_page.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
@@ -180,7 +180,7 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: Routes.emailLogin,
         pageBuilder: (context, state) =>
-            PageTransitions.fade(context, state, const EmailLoginPage()),
+            PageTransitions.fade(context, state, const PhoneLoginPage()),
       ),
       GoRoute(
         path: Routes.pinSetup,

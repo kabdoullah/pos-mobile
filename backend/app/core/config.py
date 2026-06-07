@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: str = ""
 
+    # Super admin seed (optionnel — laissez vide pour ne pas créer de compte au démarrage)
+    superadmin_phone: str = ""
+    superadmin_password: SecretStr = SecretStr("")
+    superadmin_email: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Convertit la string CSV en liste."""

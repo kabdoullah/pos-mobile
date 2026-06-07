@@ -28,40 +28,35 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<User> register({
-    required String email,
-    required String password,
     required String phoneNumber,
+    required String password,
+    String? email,
   }) async {
     try {
-      // Register account.
       final registerRes = await dataSource.register(
         RegisterRequestDto(
-          email: email,
-          password: password,
           phoneNumber: phoneNumber,
+          password: password,
+          email: email,
         ),
       );
 
       // Auto-login after registration.
       final tokenRes = await dataSource.login(
-        LoginRequestDto(email: email, password: password),
+        LoginRequestDto(phoneNumber: phoneNumber, password: password),
       );
 
-      // Store tokens.
       await tokenStorage.saveTokens(
         accessToken: tokenRes.accessToken,
         refreshToken: tokenRes.refreshToken,
       );
+      await tokenStorage.savePhone(phoneNumber);
 
-      // Store email for later retrieval.
-      await tokenStorage.saveEmail(email);
-
-      // Return user constructed from JWT claims.
       final userId = await tokenStorage.getUserId();
       return User(
         id: userId ?? registerRes.userId,
-        email: email,
         phoneNumber: phoneNumber,
+        email: email,
         storeId: await tokenStorage.getStoreId(),
       );
     } on DioException catch (e) {
@@ -70,19 +65,20 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<User> login({required String email, required String password}) async {
+  Future<User> login({
+    required String phoneNumber,
+    required String password,
+  }) async {
     try {
       final tokenRes = await dataSource.login(
-        LoginRequestDto(email: email, password: password),
+        LoginRequestDto(phoneNumber: phoneNumber, password: password),
       );
 
       await tokenStorage.saveTokens(
         accessToken: tokenRes.accessToken,
         refreshToken: tokenRes.refreshToken,
       );
-
-      // Store email for later retrieval.
-      await tokenStorage.saveEmail(email);
+      await tokenStorage.savePhone(phoneNumber);
 
       final userId = await tokenStorage.getUserId();
       if (userId == null) {
@@ -90,8 +86,7 @@ class AuthRepositoryImpl implements AuthRepository {
       }
       return User(
         id: userId,
-        email: email,
-        phoneNumber: '',
+        phoneNumber: phoneNumber,
         storeId: await tokenStorage.getStoreId(),
       );
     } on DioException catch (e) {
@@ -141,8 +136,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
     return User(
       id: userId,
-      email: await tokenStorage.getEmail() ?? '',
-      phoneNumber: '',
+      phoneNumber: await tokenStorage.getPhone() ?? '',
       storeId: await tokenStorage.getStoreId(),
     );
   }

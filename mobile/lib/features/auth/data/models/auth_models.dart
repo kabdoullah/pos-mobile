@@ -8,9 +8,9 @@ part 'auth_models.g.dart';
 sealed class RegisterRequestDto with _$RegisterRequestDto {
   /// Creates a RegisterRequestDto.
   const factory RegisterRequestDto({
-    required String email,
-    required String password,
     @JsonKey(name: 'phone_number') required String phoneNumber,
+    required String password,
+    String? email,
   }) = _RegisterRequestDto;
 
   factory RegisterRequestDto.fromJson(Map<String, dynamic> json) =>
@@ -23,7 +23,7 @@ sealed class RegisterResponseDto with _$RegisterResponseDto {
   /// Creates a RegisterResponseDto.
   const factory RegisterResponseDto({
     @JsonKey(name: 'user_id') required String userId,
-    required String email,
+    @JsonKey(name: 'phone_number') required String phoneNumber,
     required String message,
   }) = _RegisterResponseDto;
 
@@ -36,7 +36,7 @@ sealed class RegisterResponseDto with _$RegisterResponseDto {
 sealed class LoginRequestDto with _$LoginRequestDto {
   /// Creates a LoginRequestDto.
   const factory LoginRequestDto({
-    required String email,
+    @JsonKey(name: 'phone_number') required String phoneNumber,
     required String password,
   }) = _LoginRequestDto;
 

@@ -15,7 +15,7 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: binding);
   AppConfig.setup(
     flavor: AppFlavor.dev,
-    apiUrl: 'http://192.168.1.121:8000',
+    apiUrl: 'http://10.0.2.2:8000',
   );
   await initializeDateFormatting('fr_FR');
   runApp(

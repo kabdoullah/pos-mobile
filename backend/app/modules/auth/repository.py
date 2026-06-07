@@ -22,8 +22,14 @@ class UserRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_phone(self, phone: str) -> User | None:
+        """Retourne l'utilisateur par son numéro de téléphone, ou None."""
+        stmt = select(User).where(User.phone_number == phone)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_by_email(self, email: EmailStr) -> User | None:
-        """Retourne l'utilisateur par son email (insensible à la casse)."""
+        """Retourne l'utilisateur par son email (insensible à la casse), ou None."""
         stmt = select(User).where(User.email == email.lower())
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()

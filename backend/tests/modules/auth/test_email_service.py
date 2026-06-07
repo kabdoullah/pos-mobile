@@ -24,11 +24,14 @@ _PATCH_SEND = "app.core.email.EmailService._send"
 # ---------------------------------------------------------------------------
 
 
+_PHONE_COUNTER = iter(range(1000, 9999))
+
+
 async def _create_user(db: AsyncSession, email: str) -> User:
     user = User(
+        phone_number=f"+22507{next(_PHONE_COUNTER):07d}",
         email=email,
         password_hash=hash_password("OldPassword1"),
-        phone_number="0700000001",
     )
     return await UserRepository(db).create(user)
 
@@ -73,9 +76,9 @@ async def test_send_password_reset_email_calls_send() -> None:
 async def test_register_creates_verification_token(db_session: AsyncSession) -> None:
     """L'inscription crée un EmailVerificationToken valide en DB."""
     payload = schemas.RegisterRequest(
-        email="newuser@example.com",
+        phone_number="+2250700000002",
         password="SecurePass123",
-        phone_number="0700000002",
+        email="newuser@example.com",
     )
 
     with patch(_PATCH_SEND, new_callable=AsyncMock):
@@ -93,9 +96,9 @@ async def test_register_creates_verification_token(db_session: AsyncSession) -> 
 async def test_register_succeeds_when_email_send_fails(db_session: AsyncSession) -> None:
     """Best-effort : un échec SMTP ne bloque pas l'inscription, le token reste en DB."""
     payload = schemas.RegisterRequest(
-        email="smtpdown@example.com",
+        phone_number="+2250700000003",
         password="SecurePass123",
-        phone_number="0700000003",
+        email="smtpdown@example.com",
     )
 
     with patch(_PATCH_SEND, new_callable=AsyncMock, side_effect=Exception("SMTP down")):
