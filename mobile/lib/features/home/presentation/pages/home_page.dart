@@ -32,7 +32,7 @@ class HomePage extends ConsumerWidget {
     );
 
     return AppScaffold(
-      title: 'Bonjour',
+      title: storeName,
       actions: [
         IconButton(
           icon: const Icon(Icons.settings_outlined),
@@ -56,15 +56,6 @@ class HomePage extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    storeName,
-                    style: AppTypography.titleLarge.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     dateLabel,
                     style: AppTypography.bodySmall.copyWith(
@@ -246,7 +237,9 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme; // ✨ un seul lookup pour l'error block
+    final tt = Theme.of(
+      context,
+    ).textTheme; // ✨ un seul lookup pour l'error block
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
