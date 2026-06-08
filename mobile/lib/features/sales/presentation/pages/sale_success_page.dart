@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
@@ -17,7 +16,7 @@ import '../../../printing/domain/repositories/printer_repository.dart';
 import '../../../printing/presentation/providers/printer_provider.dart';
 
 /// SaleSuccessPage — confirmation screen after successful sale.
-class SaleSuccessPage extends ConsumerWidget {
+class SaleSuccessPage extends ConsumerStatefulWidget {
   /// Creates a [SaleSuccessPage].
   const SaleSuccessPage({required this.sale, required this.items, super.key});
 
@@ -28,7 +27,42 @@ class SaleSuccessPage extends ConsumerWidget {
   final List<CartItem> items;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SaleSuccessPage> createState() => _SaleSuccessPageState();
+}
+
+class _SaleSuccessPageState extends ConsumerState<SaleSuccessPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    );
+    unawaited(_controller.forward());
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final isOnlineAsync = ref.watch(isOnlineProvider);
     final isOnline = isOnlineAsync.when(
       data: (v) => v,
@@ -37,7 +71,6 @@ class SaleSuccessPage extends ConsumerWidget {
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(
@@ -51,40 +84,44 @@ class SaleSuccessPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: AppSpacing.xxxl),
-              // Success icon
+              // ✨ ScaleTransition + FadeTransition — entrée animée "pop" satisfaisante
               Center(
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: AppColors.successContainer,
-                    borderRadius: BorderRadius.circular(60),
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: AppColors.success,
-                    size: 64,
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: ScaleTransition(
+                    scale: _scaleAnimation,
+                    child: Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(60),
+                      ),
+                      child: Icon(
+                        Icons.check_rounded,
+                        color: cs.primary,
+                        size: 64,
+                      ),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
-              // Title
               const Text(
                 'Vente enregistrée',
                 style: AppTypography.displayMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.md),
-              // Message
               Text(
                 'La transaction a été complétée avec succès',
+                // ✨ cs.onSurfaceVariant — dark-mode safe, remplace AppColors.textSecondary
                 style: AppTypography.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+                  color: cs.onSurfaceVariant,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
-              // Summary card
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,7 +131,7 @@ class SaleSuccessPage extends ConsumerWidget {
                       children: [
                         const Text('Montant', style: AppTypography.bodyMedium),
                         AmountDisplay(
-                          amount: sale.totalAmount,
+                          amount: widget.sale.totalAmount,
                           size: AmountSize.large,
                         ),
                       ],
@@ -108,7 +145,7 @@ class SaleSuccessPage extends ConsumerWidget {
                           style: AppTypography.bodyMedium,
                         ),
                         Text(
-                          _paymentMethodLabel(sale.paymentMethod),
+                          _paymentMethodLabel(widget.sale.paymentMethod),
                           style: AppTypography.labelMedium,
                         ),
                       ],
@@ -117,30 +154,33 @@ class SaleSuccessPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
-              // Offline message
+              // ✨ cs.tertiaryContainer + cs.onTertiaryContainer — offline banner dark-mode safe
               if (!isOnline)
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.warningContainer,
+                    color: cs.tertiaryContainer,
                     borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                    border: Border.all(color: AppColors.warning, width: 1),
+                    border: Border.all(
+                      color: cs.tertiary.withValues(alpha: 0.5),
+                    ),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.cloud_off, color: AppColors.warning),
-                      SizedBox(width: AppSpacing.md),
+                      Icon(Icons.cloud_off, color: cs.onTertiaryContainer),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Text(
                           'Hors ligne. La vente sera envoyée au serveur au retour du réseau.',
-                          style: AppTypography.bodySmall,
+                          style: AppTypography.bodySmall.copyWith(
+                            color: cs.onTertiaryContainer,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               const SizedBox(height: AppSpacing.xl),
-              // Actions
               PrimaryButton(
                 label: 'Imprimer le reçu',
                 onPressed: () => _printReceipt(context, ref),
@@ -179,7 +219,9 @@ class SaleSuccessPage extends ConsumerWidget {
 
   Future<void> _printReceipt(BuildContext context, WidgetRef ref) async {
     try {
-      await ref.read(printerProvider.notifier).print(sale: sale, items: items);
+      await ref
+          .read(printerProvider.notifier)
+          .print(sale: widget.sale, items: widget.items);
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
@@ -193,7 +235,7 @@ class SaleSuccessPage extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Erreur impression: ${e.details}'),
-              backgroundColor: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
+              backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );
         }

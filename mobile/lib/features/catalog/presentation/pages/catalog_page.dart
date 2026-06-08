@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/responsive/responsive.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/sync/sync_orchestrator.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/illustrations.dart';
@@ -63,6 +62,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   Widget build(BuildContext context) {
     ref.watch(debouncedSearchProvider);
     final catalogState = ref.watch(catalogListProvider);
+    final cs = Theme.of(context).colorScheme;
 
     return AppScaffold(
       title: 'Catalogue',
@@ -87,7 +87,8 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.08),
+                    // ✨ cs.primary — dark-mode aware, remplace AppColors.primary hardcodé
+                    color: cs.primary.withValues(alpha: 0.08),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -126,8 +127,9 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
 
                 return RefreshIndicator(
                   onRefresh: _onRefresh,
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.primaryContainer,
+                  // ✨ cs.primary / cs.primaryContainer — dark-mode aware
+                  color: cs.primary,
+                  backgroundColor: cs.primaryContainer,
                   strokeWidth: 3,
                   child: ListView.builder(
                     padding: EdgeInsets.symmetric(
@@ -181,14 +183,19 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                                 const SizedBox(height: AppSpacing.sm),
                                 Text(
                                   'Code: ${product.barcode}',
-                                  style: AppTypography.bodySmall,
+                                  // ✨ onSurfaceVariant — info secondaire hiérarchisée
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
                                 ),
                               ],
                               if (product.currentStock != null) ...[
                                 const SizedBox(height: AppSpacing.sm),
                                 Text(
                                   'Stock: ${product.currentStock}',
-                                  style: AppTypography.bodySmall,
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
                                 ),
                               ],
                             ],

@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/network/error_mapper.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
@@ -30,6 +29,8 @@ class SaleDetailPage extends ConsumerWidget {
     final receiptNumber = sale.receiptNumber > 0
         ? '#${sale.receiptNumber}'
         : 'Provisoire';
+
+    final cs = Theme.of(context).colorScheme;
 
     return AppScaffold(
       title: 'Vente $receiptNumber',
@@ -100,22 +101,25 @@ class SaleDetailPage extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
 
-            // Warning card about items not available
+            // Info card about items not available
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.warningContainer,
+                // ✨ surfaceContainerHighest — info neutre, pas une alerte
+                color: cs.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
-                border: Border.all(color: AppColors.warning, width: 1),
+                border: Border.all(color: cs.outlineVariant),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: AppColors.warning),
-                  SizedBox(width: AppSpacing.md),
+                  Icon(Icons.info_outline, color: cs.onSurfaceVariant),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       'Le détail des articles n\'est disponible que pendant la session de vente.',
-                      style: AppTypography.bodySmall,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ],
@@ -145,7 +149,9 @@ class SaleDetailPage extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Reçu imprimé avec succès'),
-            duration: Duration(seconds: 2), // ✨ AppColors.secondary (#CA8A04)+blanc=3.4:1 fail WCAG — theme neutre
+            duration: Duration(
+              seconds: 2,
+            ), // ✨ AppColors.secondary (#CA8A04)+blanc=3.4:1 fail WCAG — theme neutre
           ),
         );
       }
@@ -165,7 +171,9 @@ class SaleDetailPage extends ConsumerWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Erreur d\'impression: ${e.details}'),
-              backgroundColor: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.error, // ✨ cs.error — dark-mode aware
             ),
           );
         }
@@ -175,7 +183,9 @@ class SaleDetailPage extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorToFrench(e)),
-            backgroundColor: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
+            backgroundColor: Theme.of(
+              context,
+            ).colorScheme.error, // ✨ cs.error — dark-mode aware
           ),
         );
       }

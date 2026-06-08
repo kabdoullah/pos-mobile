@@ -8,7 +8,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/illustrations.dart';
@@ -204,7 +203,6 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
     final cartState = ref.watch(cartProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -309,15 +307,16 @@ class _ScannerPanel extends StatelessWidget {
   }
 
   Widget _buildLoadingState() {
-    return Container(
-      color: AppColors.cameraBackground,
-      child: const Center(child: AppLoadingIndicator()),
+    // camera viewport is always dark regardless of app theme
+    return const ColoredBox(
+      color: Color(0xFF0C0906),
+      child: Center(child: AppLoadingIndicator()),
     );
   }
 
   Widget _buildPermissionDeniedState() {
     return Container(
-      color: AppColors.cameraBackground,
+      color: const Color(0xFF0C0906),
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: EmptyState(
         icon: Icons.no_photography_outlined,
@@ -331,20 +330,22 @@ class _ScannerPanel extends StatelessWidget {
 
   Widget _buildCameraOffState() {
     return Container(
-      color: AppColors.cameraBackground,
+      color: const Color(0xFF0C0906),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
             Icons.videocam_off_outlined,
             size: 48,
-            color: AppColors.textDisabled,
+            color: Color(0x61FFFFFF), // white38 — camera-specific disabled
           ),
           const SizedBox(height: AppSpacing.md),
-          Text(
+          const Text(
             'Caméra éteinte',
-            style: AppTypography.titleMedium.copyWith(
-              color: AppColors.textDisabled,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0x61FFFFFF),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -366,15 +367,17 @@ class _ScannerPanel extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         MobileScanner(controller: controller, onDetect: onBarcodeDetected),
+        // ✨ camera overlay — keep fixed dark scrim (camera-specific, not themed)
         const CustomPaint(
-          painter: _ScannerOverlayPainter(overlayColor: AppColors.scrim),
+          painter: _ScannerOverlayPainter(overlayColor: Color(0x991C1107)),
         ),
         const Center(
           child: SizedBox(
             width: 200,
             height: 200,
             child: CustomPaint(
-              painter: _ViewfinderCornersPainter(color: AppColors.secondary),
+              // ✨ secondary gold — viewfinder accent, themed indirectly
+              painter: _ViewfinderCornersPainter(color: Color(0xFFCA8A04)),
             ),
           ),
         ),
@@ -436,8 +439,10 @@ class _FloatingIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final button = Material(
-      color: AppColors.surface.withValues(alpha: 0.85),
+      // ✨ cs.surface — dark-mode aware, remplace AppColors.surface hardcodé
+      color: cs.surface.withValues(alpha: 0.85),
       borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
       child: InkWell(
         onTap: onPressed,
@@ -447,9 +452,10 @@ class _FloatingIconButton extends StatelessWidget {
           height: AppSpacing.iconButtonSize,
           child: Icon(
             icon,
+            // ✨ cs.onSurface / disabled alpha — dark-mode aware
             color: onPressed != null
-                ? AppColors.textPrimary
-                : AppColors.textDisabled,
+                ? cs.onSurface
+                : cs.onSurface.withValues(alpha: 0.38),
             size: 22,
           ),
         ),
@@ -480,17 +486,19 @@ class _CartPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        // ✨ cs.surface — dark-mode aware, remplace AppColors.surface hardcodé
+        color: cs.surface,
+        borderRadius: const BorderRadius.vertical(
           top: Radius.circular(AppSpacing.radiusLg),
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.scrim,
+            color: cs.scrim.withValues(alpha: 0.15),
             blurRadius: 8,
-            offset: Offset(0, -2),
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -502,7 +510,8 @@ class _CartPanel extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.border,
+                // ✨ cs.outlineVariant — dark-mode aware, remplace AppColors.border
+                color: cs.outlineVariant,
                 borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
               ),
             ),
@@ -546,13 +555,15 @@ class _CartPanel extends StatelessWidget {
                     icon: const Icon(Icons.delete_sweep_outlined),
                     tooltip: 'Vider le panier',
                     onPressed: onClearCart,
-                    color: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.error, // ✨ cs.error — dark-mode aware
                     visualDensity: VisualDensity.compact,
                   ),
               ],
             ),
           ),
-          const Divider(height: 1, color: AppColors.divider),
+          Divider(height: 1, color: cs.outlineVariant),
           Expanded(
             child: cartState.isEmpty
                 ? const EmptyStateIllustrated(
@@ -574,13 +585,12 @@ class _CartPanel extends StatelessWidget {
                         direction: DismissDirection.endToStart,
                         onDismissed: (_) => onRemoveItem(item.productId),
                         background: Container(
-                          color: Theme.of(context).colorScheme.error, // ✨ cs.error — dark-mode aware
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.error, // ✨ cs.error — dark-mode aware
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: AppSpacing.md),
-                          child: const Icon(
-                            Icons.delete,
-                            color: AppColors.textOnPrimary,
-                          ),
+                          child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -734,6 +744,7 @@ class _QuantityButtonState extends State<_QuantityButton> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTapDown: (_) {
         setState(() => _isPressed = true);
@@ -749,12 +760,13 @@ class _QuantityButtonState extends State<_QuantityButton> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: _isPressed ? AppColors.primary : AppColors.primaryContainer,
+          // ✨ cs.primary / cs.primaryContainer — dark-mode aware
+          color: _isPressed ? cs.primary : cs.primaryContainer,
           borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           boxShadow: _isPressed
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
+                    color: cs.primary.withValues(alpha: 0.3),
                     blurRadius: 8,
                   ),
                 ]
@@ -763,7 +775,7 @@ class _QuantityButtonState extends State<_QuantityButton> {
         child: Icon(
           widget.icon,
           size: 20,
-          color: _isPressed ? AppColors.textOnPrimary : AppColors.primary,
+          color: _isPressed ? cs.onPrimary : cs.primary,
         ),
       ),
     );

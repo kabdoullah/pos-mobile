@@ -33,8 +33,19 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
   static final _logger = Logger();
 
   static const _trivialPins = {
-    '0123', '1234', '2345', '3456', '4567', '5678', '6789',
-    '9876', '8765', '7654', '6543', '5432', '4321',
+    '0123',
+    '1234',
+    '2345',
+    '3456',
+    '4567',
+    '5678',
+    '6789',
+    '9876',
+    '8765',
+    '7654',
+    '6543',
+    '5432',
+    '4321',
   };
 
   bool _isTrivialPin(String pin) {
@@ -120,8 +131,9 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                         ),
                         decoration: BoxDecoration(
                           color: cs.errorContainer,
-                          borderRadius:
-                              BorderRadius.circular(AppSpacing.radiusSm),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusSm,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -144,37 +156,54 @@ class _PinSetupPageState extends ConsumerState<PinSetupPage> {
                       )
                     : const SizedBox.shrink(),
               ),
-              // Step icon — changes between create and confirm
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              // ✨ AnimatedSwitcher — transition douce entre les étapes create/confirm
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) => ScaleTransition(
+                  scale: animation,
+                  child: FadeTransition(opacity: animation, child: child),
                 ),
-                child: Icon(
-                  _step == 0
-                      ? Icons.add_moderator_rounded
-                      : Icons.check_circle_outline_rounded,
-                  size: 36,
-                  color: cs.onPrimaryContainer,
+                child: Container(
+                  key: ValueKey(_step),
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  ),
+                  child: Icon(
+                    _step == 0
+                        ? Icons.add_moderator_rounded
+                        : Icons.check_circle_outline_rounded,
+                    size: 36,
+                    color: cs.onPrimaryContainer,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
-              Text(
-                _step == 0 ? 'Créez votre PIN' : 'Confirmez votre PIN',
-                style: AppTypography.titleLarge.copyWith(color: cs.onSurface),
-                textAlign: TextAlign.center,
+              // ✨ AnimatedSwitcher sur le titre — transition visuelle cohérente
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  _step == 0 ? 'Créez votre PIN' : 'Confirmez votre PIN',
+                  key: ValueKey('title-$_step'),
+                  style: AppTypography.titleLarge.copyWith(color: cs.onSurface),
+                  textAlign: TextAlign.center,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
-              Text(
-                _step == 0
-                    ? 'Évitez les codes simples : 0000, 1234…'
-                    : 'Entrez à nouveau votre PIN pour confirmer',
-                style: AppTypography.bodyMedium.copyWith(
-                  color: cs.onSurfaceVariant,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: Text(
+                  _step == 0
+                      ? 'Évitez les codes simples : 0000, 1234…'
+                      : 'Entrez à nouveau votre PIN pour confirmer',
+                  key: ValueKey('subtitle-$_step'),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
               // Dot indicators

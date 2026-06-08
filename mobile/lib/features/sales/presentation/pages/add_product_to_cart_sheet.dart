@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/responsive/responsive.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
@@ -61,15 +60,18 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
       medium: AppSpacing.lg,
     );
 
+    final cs = Theme.of(context).colorScheme;
+
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.vertical(
+          decoration: BoxDecoration(
+            // ✨ cs.surface — dark-mode aware, remplace AppColors.background hardcodé
+            color: cs.surface,
+            borderRadius: const BorderRadius.vertical(
               top: Radius.circular(AppSpacing.radiusLg),
             ),
           ),
@@ -82,7 +84,8 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.border,
+                    // ✨ cs.outlineVariant — dark-mode aware, remplace AppColors.border
+                    color: cs.outlineVariant,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -174,14 +177,15 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
                                 Container(
                                   padding: const EdgeInsets.all(AppSpacing.sm),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primaryContainer,
+                                    // ✨ cs.primaryContainer — dark-mode aware
+                                    color: cs.primaryContainer,
                                     borderRadius: BorderRadius.circular(
                                       AppSpacing.radiusSm,
                                     ),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.add,
-                                    color: AppColors.primary,
+                                    color: cs.onPrimaryContainer,
                                     size: 20,
                                   ),
                                 ),
