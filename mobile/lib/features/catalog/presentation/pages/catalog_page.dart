@@ -104,33 +104,49 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
           ),
           // Product list
           Expanded(
-            child: catalogState.when(
-              loading: () => const AppLoadingScreen(),
-              error: (error, stack) => EmptyStateIllustrated(
-                illustration: Illustrations.errorState,
-                title: 'Erreur',
-                message: 'Impossible de charger le catalogue',
-                actionLabel: 'Réessayer',
-                onAction: _onRefresh,
-              ),
-              data: (products) {
-                if (products.isEmpty) {
-                  return EmptyStateIllustrated(
-                    illustration: Illustrations.emptyCatalog,
-                    title: 'Aucun produit',
-                    message: 'Commencez par ajouter votre premier produit',
-                    actionLabel: 'Ajouter un produit',
-                    onAction: _openProductForm,
-                  );
-                }
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: cs.primary,
+              backgroundColor: cs.primaryContainer,
+              strokeWidth: 3,
+              child: catalogState.when(
+                loading: () => const AppLoadingScreen(),
+                error: (error, stack) => LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: constraints.maxHeight,
+                      child: EmptyStateIllustrated(
+                        illustration: Illustrations.errorState,
+                        title: 'Erreur',
+                        message: 'Impossible de charger le catalogue',
+                        actionLabel: 'Réessayer',
+                        onAction: _onRefresh,
+                      ),
+                    ),
+                  ),
+                ),
+                data: (products) {
+                  if (products.isEmpty) {
+                    return LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: SizedBox(
+                          height: constraints.maxHeight,
+                          child: EmptyStateIllustrated(
+                            illustration: Illustrations.emptyCatalog,
+                            title: 'Aucun produit',
+                            message: 'Tirez vers le bas pour synchroniser'
+                                ' ou ajoutez votre premier produit',
+                            actionLabel: 'Ajouter un produit',
+                            onAction: _openProductForm,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
 
-                return RefreshIndicator(
-                  onRefresh: _onRefresh,
-                  // ✨ cs.primary / cs.primaryContainer — dark-mode aware
-                  color: cs.primary,
-                  backgroundColor: cs.primaryContainer,
-                  strokeWidth: 3,
-                  child: NotificationListener<ScrollNotification>(
+                  return NotificationListener<ScrollNotification>(
                     onNotification: (notification) {
                       if (notification is ScrollEndNotification) {
                         final px = notification.metrics.pixels;
@@ -144,71 +160,72 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                       return false;
                     },
                     child: ListView.builder(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: responsiveValue(
-                        context,
-                        small: AppSpacing.md,
-                        medium: AppSpacing.lg,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: responsiveValue(
+                          context,
+                          small: AppSpacing.md,
+                          medium: AppSpacing.lg,
+                        ),
+                        vertical: AppSpacing.sm,
                       ),
-                      vertical: AppSpacing.sm,
-                    ),
-                    itemCount: products.length,
-                    itemBuilder: (context, index) {
-                      final product = products[index];
+                      itemCount: products.length,
+                      itemBuilder: (context, index) {
+                        final product = products[index];
 
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: AppCard(
-                          onTap: () => _openProductForm(productId: product.id),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      product.name,
-                                      style: AppTypography.titleMedium,
-                                      overflow: TextOverflow.ellipsis,
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: AppCard(
+                            onTap: () =>
+                                _openProductForm(productId: product.id),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        product.name,
+                                        style: AppTypography.titleMedium,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                    AmountDisplay(
+                                      amount: product.unitPrice,
+                                      size: AmountSize.medium,
+                                    ),
+                                  ],
+                                ),
+                                if (product.barcode != null) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Text(
+                                    'Code: ${product.barcode}',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: cs.onSurfaceVariant,
                                     ),
                                   ),
-                                  const SizedBox(width: AppSpacing.md),
-                                  AmountDisplay(
-                                    amount: product.unitPrice,
-                                    size: AmountSize.medium,
+                                ],
+                                if (product.currentStock != null) ...[
+                                  const SizedBox(height: AppSpacing.sm),
+                                  Text(
+                                    'Stock: ${product.currentStock}',
+                                    style: AppTypography.bodySmall.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
                                   ),
                                 ],
-                              ),
-                              if (product.barcode != null) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  'Code: ${product.barcode}',
-                                  // ✨ onSurfaceVariant — info secondaire hiérarchisée
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
                               ],
-                              if (product.currentStock != null) ...[
-                                const SizedBox(height: AppSpacing.sm),
-                                Text(
-                                  'Stock: ${product.currentStock}',
-                                  style: AppTypography.bodySmall.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  ),
-                  ),
-                );
-              },
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ],

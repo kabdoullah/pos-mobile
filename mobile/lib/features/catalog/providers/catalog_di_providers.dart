@@ -10,7 +10,7 @@ part 'catalog_di_providers.g.dart';
 @riverpod
 CatalogRepository catalogRepository(Ref ref) {
   return CatalogRepositoryImpl(
-    db: ref.read(databaseProvider),
-    syncQueue: ref.read(syncQueueRepositoryProvider),
+    db: ref.watch(databaseProvider),
+    syncQueue: ref.watch(syncQueueRepositoryProvider),
   );
 }

@@ -23,7 +23,7 @@ class CatalogList extends _$CatalogList {
 
     // Refresh catalog when a sync cycle completes.
     ref.listen<SyncStatus>(syncOrchestratorProvider, (prev, next) {
-      if (prev is SyncStatusSyncing && next is SyncStatusIdle) {
+      if (next is SyncStatusIdle) {
         ref.invalidateSelf();
       }
     });

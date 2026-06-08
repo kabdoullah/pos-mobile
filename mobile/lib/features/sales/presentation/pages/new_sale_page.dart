@@ -138,8 +138,7 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
     final rawValue = capture.barcodes.firstOrNull?.rawValue;
     if (rawValue == null || !mounted) return;
     // Normalize before scan and before passing to product form.
-    final code =
-        rawValue.trim().replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+    final code = rawValue.trim().replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
     if (code.isEmpty) return;
 
     final result = await ref.read(scanControllerProvider.notifier).scan(code);

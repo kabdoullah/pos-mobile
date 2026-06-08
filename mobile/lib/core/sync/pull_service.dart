@@ -60,7 +60,7 @@ class PullService {
               final deletedAt = productDto.deletedAt != null
                   ? DateTime.parse(productDto.deletedAt!)
                   : null;
-              batch.replace(
+              batch.insert(
                 _db.products,
                 ProductsCompanion(
                   id: drift.Value(productDto.id),
@@ -72,6 +72,7 @@ class PullService {
                   updatedAt: drift.Value(DateTime.parse(productDto.updatedAt)),
                   deletedAt: drift.Value(deletedAt),
                 ),
+                mode: drift.InsertMode.insertOrReplace,
               );
             }
           });
@@ -81,7 +82,7 @@ class PullService {
         if (response.sales.isNotEmpty) {
           await _db.batch((batch) {
             for (final saleDto in response.sales) {
-              batch.replace(
+              batch.insert(
                 _db.sales,
                 SalesCompanion(
                   id: drift.Value(saleDto.id),
@@ -91,6 +92,7 @@ class PullService {
                   paymentMethod: drift.Value(saleDto.paymentMethod),
                   createdAt: drift.Value(DateTime.parse(saleDto.createdAt)),
                 ),
+                mode: drift.InsertMode.insertOrReplace,
               );
             }
           });

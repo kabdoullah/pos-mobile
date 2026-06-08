@@ -33,8 +33,10 @@ class ScanController extends _$ScanController {
   /// Process a scanned barcode: check cooldown, look up in catalog, update cart.
   Future<ScanResult> scan(String barcode) async {
     // Normalize: strip whitespace and GS1 control characters before any lookup.
-    final normalized =
-        barcode.trim().replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
+    final normalized = barcode.trim().replaceAll(
+      RegExp(r'[\x00-\x1F\x7F]'),
+      '',
+    );
     if (normalized.isEmpty) return ScanResult.notFound;
 
     final now = DateTime.now();
@@ -43,9 +45,7 @@ class ScanController extends _$ScanController {
       return ScanResult.cooldown;
     }
     _lastScanTimes[normalized] = now;
-    _lastScanTimes.removeWhere(
-      (_, t) => now.difference(t) > _scanCooldown,
-    );
+    _lastScanTimes.removeWhere((_, t) => now.difference(t) > _scanCooldown);
 
     final repo = ref.read(catalogRepositoryProvider);
     final product = await repo.getByBarcode(normalized);

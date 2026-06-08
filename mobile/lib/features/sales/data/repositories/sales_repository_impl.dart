@@ -186,23 +186,24 @@ class SalesRepositoryImpl implements SalesRepository {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
 
-    final row = await db.customSelect(
-      'SELECT '
-      '  COUNT(*) AS sale_count, '
-      '  COALESCE(SUM(CAST(total_amount AS REAL)), 0) AS total, '
-      '  COALESCE(SUM(CASE WHEN payment_method = ? THEN CAST(total_amount AS REAL) ELSE 0 END), 0) AS cash_total, '
-      '  COALESCE(SUM(CASE WHEN payment_method != ? THEN CAST(total_amount AS REAL) ELSE 0 END), 0) AS mobile_total '
-      'FROM sales WHERE created_at >= ?',
-      variables: [
-        drift.Variable.withString('cash'),
-        drift.Variable.withString('cash'),
-        drift.Variable.withDateTime(todayStart),
-      ],
-      readsFrom: {db.sales},
-    ).getSingle();
+    final row = await db
+        .customSelect(
+          'SELECT '
+          '  COUNT(*) AS sale_count, '
+          '  COALESCE(SUM(CAST(total_amount AS REAL)), 0) AS total, '
+          '  COALESCE(SUM(CASE WHEN payment_method = ? THEN CAST(total_amount AS REAL) ELSE 0 END), 0) AS cash_total, '
+          '  COALESCE(SUM(CASE WHEN payment_method != ? THEN CAST(total_amount AS REAL) ELSE 0 END), 0) AS mobile_total '
+          'FROM sales WHERE created_at >= ?',
+          variables: [
+            drift.Variable.withString('cash'),
+            drift.Variable.withString('cash'),
+            drift.Variable.withDateTime(todayStart),
+          ],
+          readsFrom: {db.sales},
+        )
+        .getSingle();
 
-    Decimal fromDouble(double v) =>
-        Decimal.parse(v.toStringAsFixed(0));
+    Decimal fromDouble(double v) => Decimal.parse(v.toStringAsFixed(0));
 
     return (
       saleCount: row.read<int>('sale_count'),

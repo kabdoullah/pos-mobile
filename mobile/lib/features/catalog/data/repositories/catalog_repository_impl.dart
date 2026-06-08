@@ -132,8 +132,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final now = DateTime.now();
     final updatedName = name ?? current.name;
     final updatedPrice = unitPrice ?? current.unitPrice;
-    final updatedBarcode =
-        barcode != null ? _normalizeBarcode(barcode) : current.barcode;
+    final updatedBarcode = barcode != null
+        ? _normalizeBarcode(barcode)
+        : current.barcode;
     final updatedStock = currentStock ?? current.currentStock;
 
     // Update drift

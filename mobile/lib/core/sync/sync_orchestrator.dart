@@ -65,12 +65,26 @@ class SyncOrchestrator extends _$SyncOrchestrator with WidgetsBindingObserver {
       }
     });
 
+    // Sync immediately after PIN verification or any transition to Authenticated.
+    // The startup timer fires before PIN entry completes, so sync is skipped then;
+    // this listener catches the moment auth actually succeeds.
+    ref.listen<AsyncValue<AuthStatus>>(authProvider, (previous, next) {
+      final wasAuthenticated = previous?.value is AuthAuthenticated;
+      final isNowAuthenticated = next.value is AuthAuthenticated;
+      if (!wasAuthenticated && isNowAuthenticated) {
+        _logger.d('User authenticated, scheduling post-auth sync');
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(seconds: 1), syncNow);
+      }
+    });
+
     _startPeriodicSync();
 
     // Reset failed entries on startup to retry them (for recoverable errors like timezone bugs).
     _resetFailedEntries();
 
     // Initial sync on app startup (after 3s delay for app stabilization).
+    // Runs only if already authenticated (e.g. app reopen with valid session + no PIN required).
     _startupTimer = Timer(const Duration(seconds: 3), () {
       final isOnlineAsync = ref.read(isOnlineProvider);
       final isOnline = isOnlineAsync.value ?? false;

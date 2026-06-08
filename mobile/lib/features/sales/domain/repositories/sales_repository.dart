@@ -4,8 +4,12 @@ import '../entities/cart_item.dart';
 import '../entities/sale.dart';
 
 /// Aggregated totals for a single day — computed in SQL.
-typedef DailyStats =
-    ({int saleCount, Decimal totalAmount, Decimal cashTotal, Decimal mobileMoneyTotal});
+typedef DailyStats = ({
+  int saleCount,
+  Decimal totalAmount,
+  Decimal cashTotal,
+  Decimal mobileMoneyTotal,
+});
 
 /// Abstract repository for sales operations.
 abstract class SalesRepository {
