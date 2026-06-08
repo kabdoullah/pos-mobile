@@ -161,5 +161,17 @@ class Printer extends _$Printer {
     }
 
     await service.printReceipt(store: store, sale: sale, items: items);
+    // Libère le lien BT immédiatement après impression.
+    await service.disconnect();
+    state = PrinterDisconnected(
+      savedMac: switch (state) {
+        PrinterConnected(:final mac) => mac,
+        _ => null,
+      },
+      savedName: switch (state) {
+        PrinterConnected(:final name) => name,
+        _ => null,
+      },
+    );
   }
 }

@@ -18,8 +18,8 @@ Dio buildDio({
   final refreshDio = Dio(
     BaseOptions(
       baseUrl: AppConfig.apiUrl,
-      connectTimeout: const Duration(seconds: AppConfig.httpTimeoutSeconds),
-      receiveTimeout: const Duration(seconds: AppConfig.httpTimeoutSeconds),
+      connectTimeout: Duration(seconds: AppConfig.httpConnectTimeoutSeconds),
+      receiveTimeout: Duration(seconds: AppConfig.httpReceiveTimeoutSeconds),
       contentType: 'application/json',
       validateStatus: null,
     ),
@@ -63,8 +63,8 @@ Dio buildDio({
   final dio = Dio(
     BaseOptions(
       baseUrl: AppConfig.apiUrl,
-      connectTimeout: const Duration(seconds: AppConfig.httpTimeoutSeconds),
-      receiveTimeout: const Duration(seconds: AppConfig.httpTimeoutSeconds),
+      connectTimeout: Duration(seconds: AppConfig.httpConnectTimeoutSeconds),
+      receiveTimeout: Duration(seconds: AppConfig.httpReceiveTimeoutSeconds),
       contentType: 'application/json',
       validateStatus: (status) =>
           status != null && status >= 200 && status < 300,

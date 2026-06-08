@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
 import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -41,15 +42,18 @@ class SyncStatusError extends SyncStatus {
 /// Orchestrates bidirectional sync: monitors connectivity, triggers periodic syncs,
 /// and coordinates push-before-pull sequencing to prevent data loss.
 @Riverpod(keepAlive: true)
-class SyncOrchestrator extends _$SyncOrchestrator {
+class SyncOrchestrator extends _$SyncOrchestrator with WidgetsBindingObserver {
   bool _isSyncing = false;
   Timer? _periodicTimer;
   Timer? _debounceTimer;
+  Timer? _startupTimer;
   final _logger = Logger();
 
   /// Initializes sync orchestrator with network monitoring and periodic sync.
   @override
   SyncStatus build() {
+    WidgetsBinding.instance.addObserver(this);
+
     ref.listen<AsyncValue<bool>>(isOnlineProvider, (previous, next) {
       final wasOnline = previous?.value ?? true;
       final isNowOnline = next.value ?? false;
@@ -67,7 +71,7 @@ class SyncOrchestrator extends _$SyncOrchestrator {
     _resetFailedEntries();
 
     // Initial sync on app startup (after 3s delay for app stabilization).
-    Timer(const Duration(seconds: 3), () {
+    _startupTimer = Timer(const Duration(seconds: 3), () {
       final isOnlineAsync = ref.read(isOnlineProvider);
       final isOnline = isOnlineAsync.value ?? false;
       if (isOnline && !_isSyncing) {
@@ -77,11 +81,34 @@ class SyncOrchestrator extends _$SyncOrchestrator {
     });
 
     ref.onDispose(() {
+      WidgetsBinding.instance.removeObserver(this);
       _periodicTimer?.cancel();
       _debounceTimer?.cancel();
+      _startupTimer?.cancel();
     });
 
     return const SyncStatusIdle();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        _periodicTimer?.cancel();
+        _periodicTimer = null;
+        _logger.d('Periodic sync paused (app in background)');
+      case AppLifecycleState.resumed:
+        if (_periodicTimer == null) {
+          _startPeriodicSync();
+          final isOnline = ref.read(isOnlineProvider).value ?? false;
+          if (isOnline && !_isSyncing) unawaited(syncNow());
+          _logger.d('Periodic sync resumed (app in foreground)');
+        }
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.hidden:
+        break;
+    }
   }
 
   /// Reset failed sync queue entries to pending so they can be retried.
