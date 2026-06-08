@@ -86,7 +86,7 @@ Dio buildDio({
   if (kDebugMode) {
     dio.interceptors.add(
       LogInterceptor(
-        requestBody: true,
+        requestBody: false,
         responseBody: true,
         responseHeader: false,
         logPrint: (obj) {

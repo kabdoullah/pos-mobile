@@ -1,32 +1,12 @@
+import 'dart:async';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../../core/sync/sync_orchestrator.dart';
 import '../../providers/catalog_di_providers.dart';
 import '../../domain/entities/product.dart';
 
 part 'catalog_providers.g.dart';
-
-/// Current search query state - managed internally by the notifier.
-@riverpod
-class SearchQuery extends _$SearchQuery {
-  @override
-  String build() => '';
-
-  /// Update the current search query state.
-  void updateQuery(String query) => state = query;
-}
-
-/// Debounced search - automatically triggered when search query changes.
-/// Riverpod's cancellation mechanism handles debouncing when query updates arrive within 300ms.
-@riverpod
-Future<void> debouncedSearch(Ref ref) async {
-  final query = ref.watch(searchQueryProvider);
-
-  // Debounce: delay before executing search
-  await Future<void>.delayed(const Duration(milliseconds: 300));
-
-  // Trigger the catalog list search
-  await ref.read(catalogListProvider.notifier).search(query);
-}
 
 /// CatalogListNotifier manages product list with pagination and search.
 @riverpod
@@ -35,14 +15,33 @@ class CatalogList extends _$CatalogList {
   String? _nextCursor;
   bool _hasMore = true;
   int _lastLoadMoreListLength = 0;
+  Timer? _debounceTimer;
 
   @override
   Future<List<Product>> build() async {
+    ref.onDispose(() => _debounceTimer?.cancel());
+
+    // Refresh catalog when a sync cycle completes.
+    ref.listen<SyncStatus>(syncOrchestratorProvider, (prev, next) {
+      if (prev is SyncStatusSyncing && next is SyncStatusIdle) {
+        ref.invalidateSelf();
+      }
+    });
+
     final repo = ref.watch(catalogRepositoryProvider);
     final page = await repo.getProducts();
     _nextCursor = page.nextCursor;
     _hasMore = page.hasMore;
     return page.items;
+  }
+
+  /// Debounced search entry-point called from the UI.
+  void setSearchQuery(String query) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(
+      const Duration(milliseconds: 300),
+      () => search(query),
+    );
   }
 
   /// Search products by name.

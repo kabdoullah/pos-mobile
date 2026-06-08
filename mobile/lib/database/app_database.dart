@@ -82,11 +82,6 @@ class SaleItems extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
-
-  @override
-  List<Set<Column>> get uniqueKeys => [
-    {saleId, productId},
-  ];
 }
 
 /// Métadonnées de synchronisation — stocke les timestamps du dernier pull.
@@ -142,7 +137,45 @@ class AppDatabase extends _$AppDatabase {
 
   /// Version courante du schéma drift.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 3) {
+        // Pre-production schemas: drop all and recreate.
+        await customStatement('DROP TABLE IF EXISTS sale_items');
+        await customStatement('DROP TABLE IF EXISTS sales');
+        await customStatement('DROP TABLE IF EXISTS products');
+        await customStatement('DROP TABLE IF EXISTS sync_queue');
+        await customStatement('DROP TABLE IF EXISTS sync_metadata');
+        await m.createAll();
+      } else {
+        // v3 → v4: remove (saleId, productId) unique constraint from sale_items.
+        // SQLite cannot drop constraints in-place — rebuild via temp table.
+        await customStatement(
+          'CREATE TABLE sale_items_new ('
+          '  id TEXT NOT NULL PRIMARY KEY,'
+          '  sale_id TEXT NOT NULL,'
+          '  product_id TEXT NOT NULL,'
+          '  product_name TEXT NOT NULL,'
+          '  unit_price TEXT NOT NULL,'
+          '  quantity INTEGER NOT NULL,'
+          '  line_total TEXT NOT NULL'
+          ')',
+        );
+        await customStatement(
+          'INSERT INTO sale_items_new SELECT id, sale_id, product_id,'
+          ' product_name, unit_price, quantity, line_total FROM sale_items',
+        );
+        await customStatement('DROP TABLE sale_items');
+        await customStatement(
+          'ALTER TABLE sale_items_new RENAME TO sale_items',
+        );
+      }
+    },
+  );
 
   static QueryExecutor _openConnection() {
     return driftDatabase(name: 'pos_mobile');

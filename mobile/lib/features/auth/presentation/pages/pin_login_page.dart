@@ -8,7 +8,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/auth_providers.dart';
-import '../providers/store_provider.dart';
+import '../../providers/store_provider.dart';
 import '../widgets/pin_numpad.dart';
 
 /// Daily PIN login screen with custom numpad.

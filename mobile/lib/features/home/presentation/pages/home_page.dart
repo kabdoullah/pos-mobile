@@ -9,7 +9,7 @@ import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
-import '../../../auth/presentation/providers/store_provider.dart';
+import '../../../auth/providers/store_provider.dart';
 import '../providers/home_providers.dart';
 
 /// Premium financial dashboard with asymmetric layout and refined aesthetics.

@@ -111,7 +111,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   bool _isValidEmail(String email) {
-    return email.contains('@') && email.contains('.');
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
 
   Future<void> _register() async {

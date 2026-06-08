@@ -38,6 +38,9 @@ class ScanController extends _$ScanController {
       return ScanResult.cooldown;
     }
     _lastScanTimes[barcode] = now;
+    _lastScanTimes.removeWhere(
+      (_, t) => now.difference(t) > _scanCooldown,
+    );
 
     final repo = ref.read(catalogRepositoryProvider);
     final product = await repo.getByBarcode(barcode);

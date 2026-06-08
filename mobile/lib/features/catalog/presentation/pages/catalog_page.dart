@@ -39,7 +39,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
   }
 
   void _onSearchChanged(String query) {
-    ref.read(searchQueryProvider.notifier).updateQuery(query);
+    ref.read(catalogListProvider.notifier).setSearchQuery(query);
   }
 
   Future<void> _onRefresh() async {
@@ -60,7 +60,6 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(debouncedSearchProvider);
     final catalogState = ref.watch(catalogListProvider);
     final cs = Theme.of(context).colorScheme;
 
@@ -131,7 +130,20 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                   color: cs.primary,
                   backgroundColor: cs.primaryContainer,
                   strokeWidth: 3,
-                  child: ListView.builder(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification is ScrollEndNotification) {
+                        final px = notification.metrics.pixels;
+                        final max = notification.metrics.maxScrollExtent;
+                        if (max > 0 && px >= max - 300) {
+                          unawaited(
+                            ref.read(catalogListProvider.notifier).loadMore(),
+                          );
+                        }
+                      }
+                      return false;
+                    },
+                    child: ListView.builder(
                     padding: EdgeInsets.symmetric(
                       horizontal: responsiveValue(
                         context,
@@ -143,16 +155,6 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                     itemCount: products.length,
                     itemBuilder: (context, index) {
                       final product = products[index];
-                      // Load more on scroll near end
-                      if (index == products.length - 5) {
-                        unawaited(
-                          Future.microtask(
-                            () => ref
-                                .read(catalogListProvider.notifier)
-                                .loadMore(),
-                          ),
-                        );
-                      }
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -203,6 +205,7 @@ class _CatalogPageState extends ConsumerState<CatalogPage> {
                         ),
                       );
                     },
+                  ),
                   ),
                 );
               },

@@ -1,9 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../data/models/store_mappers.dart';
-import '../../domain/entities/store.dart';
-import '../../providers/auth_di_providers.dart';
+import '../data/models/store_mappers.dart';
+import '../domain/entities/store.dart';
+import 'auth_di_providers.dart';
 
 part 'store_provider.g.dart';
 

@@ -6,7 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../domain/repositories/printer_repository.dart';
 import '../../providers/printing_di_providers.dart';
-import '../../../auth/presentation/providers/store_provider.dart';
+import '../../../auth/providers/store_provider.dart';
 import '../../../sales/domain/entities/cart_item.dart';
 import '../../../sales/domain/entities/sale.dart';
 

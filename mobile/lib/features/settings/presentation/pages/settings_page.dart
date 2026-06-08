@@ -14,7 +14,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/theme_mode_provider.dart';
 import '../../../../shared/widgets/index.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
-import '../../../auth/presentation/providers/store_provider.dart';
+import '../../../auth/providers/store_provider.dart';
 import '../../../auth/presentation/pages/store_setup_page.dart';
 import '../../../printing/presentation/providers/printer_provider.dart';
 import '../../../sales/domain/entities/sale.dart';

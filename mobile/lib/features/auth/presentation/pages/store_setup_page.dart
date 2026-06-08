@@ -9,7 +9,7 @@ import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../shared/widgets/index.dart';
 import '../providers/auth_providers.dart';
-import '../providers/store_provider.dart';
+import '../../providers/store_provider.dart';
 import '../widgets/registration_stepper.dart';
 import '../../domain/entities/store.dart';
 

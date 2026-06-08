@@ -36,7 +36,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
   late AnimationController _formAnimationController;
   String? _nameError;
   String? _priceError;
+  String? _stockError;
   bool _isLoading = false;
+  bool _prefilled = false;
 
   @override
   void initState() {
@@ -72,9 +74,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
   }
 
   bool _validate() {
-    // ✨ un seul setState — pas de rebuild intermédiaire inutile
     String? nameError;
     String? priceError;
+    String? stockError;
 
     if (_nameController.text.trim().isEmpty) {
       nameError = 'Le nom est obligatoire';
@@ -86,12 +88,18 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
       priceError = 'Entrez un montant valide';
     }
 
+    final stockText = _stockController.text.trim();
+    if (stockText.isNotEmpty && int.tryParse(stockText) == null) {
+      stockError = 'Entrez un nombre entier valide';
+    }
+
     setState(() {
       _nameError = nameError;
       _priceError = priceError;
+      _stockError = stockError;
     });
 
-    return nameError == null && priceError == null;
+    return nameError == null && priceError == null && stockError == null;
   }
 
   Future<void> _submit() async {
@@ -105,7 +113,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
       final barcode = _barcodeController.text.trim();
       final stock = _stockController.text.trim().isEmpty
           ? null
-          : int.parse(_stockController.text.trim());
+          : int.tryParse(_stockController.text.trim());
 
       if (widget.productId == null) {
         // Create mode
@@ -189,12 +197,11 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
         ? ref.watch(productProvider(widget.productId!))
         : null;
 
-    // Load form data when in edit mode
-    if (productAsync != null) {
+    // Load form data when in edit mode — once only, regardless of future rebuilds.
+    if (productAsync != null && !_prefilled) {
       productAsync.whenData((product) {
-        if (product != null &&
-            _nameController.text.isEmpty &&
-            _priceController.text.isEmpty) {
+        if (product != null) {
+          _prefilled = true;
           _nameController.text = product.name;
           _priceController.text = product.unitPrice.toString();
           if (product.barcode != null) {
@@ -291,6 +298,7 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
                   hint: 'Optionnel',
                   controller: _stockController,
                   keyboardType: TextInputType.number,
+                  errorText: _stockError,
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),

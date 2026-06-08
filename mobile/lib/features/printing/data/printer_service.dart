@@ -1,14 +1,11 @@
 import 'package:logger/logger.dart';
 import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../auth/domain/entities/store.dart';
 import '../../sales/domain/entities/cart_item.dart';
 import '../../sales/domain/entities/sale.dart';
 import '../domain/repositories/printer_repository.dart';
 import 'receipt_formatter.dart';
-
-part 'printer_service.g.dart';
 
 /// Orchestrates BT discovery, connection, and data transmission.
 ///
@@ -86,7 +83,3 @@ class PrinterService implements PrinterRepository {
     _log.i('Receipt printed successfully');
   }
 }
-
-/// Provides a singleton [PrinterService].
-@riverpod
-PrinterService printerService(Ref ref) => const PrinterService();

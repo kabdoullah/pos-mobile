@@ -86,7 +86,7 @@ class PinStorage {
     }
 
     final computedHash = _hashPin(pin, storedSalt);
-    final isCorrect = computedHash == storedHash;
+    final isCorrect = _constantTimeEquals(computedHash, storedHash);
 
     if (!isCorrect) {
       // Increment attempts.
@@ -238,6 +238,16 @@ class PinStorage {
       bytes.add(int.parse(hex.substring(i, i + 2), radix: 16));
     }
     return bytes;
+  }
+
+  /// Constant-time string equality — prevents timing-based attacks on PIN hashes.
+  bool _constantTimeEquals(String a, String b) {
+    if (a.length != b.length) return false;
+    var result = 0;
+    for (var i = 0; i < a.length; i++) {
+      result |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+    }
+    return result == 0;
   }
 
   /// Generates a cryptographically random hex string of [bytes] length.

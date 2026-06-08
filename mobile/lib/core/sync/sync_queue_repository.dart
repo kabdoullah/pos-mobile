@@ -160,11 +160,12 @@ class SyncQueueRepository {
     return (_db.delete(_db.syncQueue)).go();
   }
 
-  /// Reset failed entries to pending (for retries after code fixes).
+  /// Reset failed and stuck-syncing entries to pending.
+  /// Stuck-syncing entries occur when the app crashes between markSyncing and markSynced/markFailed.
   Future<int> resetFailedEntries() async {
     return (_db.update(
       _db.syncQueue,
-    )..where((t) => t.status.equals('failed'))).write(
+    )..where((t) => t.status.isIn(['failed', 'syncing']))).write(
       const SyncQueueCompanion(
         status: drift.Value('pending'),
         retryCount: drift.Value(0),

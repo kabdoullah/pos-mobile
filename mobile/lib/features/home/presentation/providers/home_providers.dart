@@ -1,7 +1,6 @@
 import 'package:decimal/decimal.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../sales/domain/entities/sale.dart';
 import '../../../sales/providers/sales_di_providers.dart';
 
 part 'home_providers.g.dart';
@@ -37,29 +36,16 @@ class DailySummary {
   );
 }
 
-/// Loads daily summary from local Drift Sales table.
+/// Loads today's sales summary via a single SQL aggregation query (O(1)).
 @riverpod
 Future<DailySummary> dailySummary(Ref ref) async {
   final repo = ref.watch(salesRepositoryProvider);
-  final sales = await repo.getTodaySales();
-
-  var total = Decimal.zero;
-  var cash = Decimal.zero;
-  var mobileMoney = Decimal.zero;
-
-  for (final sale in sales) {
-    total += sale.totalAmount;
-    if (sale.paymentMethod == PaymentMethod.cash) {
-      cash += sale.totalAmount;
-    } else {
-      mobileMoney += sale.totalAmount;
-    }
-  }
+  final stats = await repo.getTodayStats();
 
   return DailySummary(
-    totalAmount: total,
-    saleCount: sales.length,
-    cashTotal: cash,
-    mobileMoneyTotal: mobileMoney,
+    totalAmount: stats.totalAmount,
+    saleCount: stats.saleCount,
+    cashTotal: stats.cashTotal,
+    mobileMoneyTotal: stats.mobileMoneyTotal,
   );
 }

@@ -184,7 +184,7 @@ class Auth extends _$Auth {
 
   /// Verify user's 4-digit PIN for daily session unlock.
   ///
-  /// Checks PIN against bcrypt hash in local secure storage.
+  /// Checks PIN against PBKDF2-HMAC-SHA256 hash in local secure storage.
   /// On success: fetches current user from token → `Authenticated`.
   /// On PIN mismatch: throws "PIN incorrect".
   /// On 4th failed attempt: local storage auto-lockout for 5 minutes.
