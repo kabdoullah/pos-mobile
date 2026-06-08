@@ -182,17 +182,17 @@ class SalesRepositoryImpl implements SalesRepository {
   }
 
   @override
-  Future<DailyStats> getTodayStats() async {
+  Stream<DailyStats> watchTodayStats() {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
 
-    final row = await db
+    return db
         .customSelect(
           'SELECT '
           '  COUNT(*) AS sale_count, '
-          '  COALESCE(SUM(CAST(total_amount AS REAL)), 0) AS total, '
-          '  COALESCE(SUM(CASE WHEN payment_method = ? THEN CAST(total_amount AS REAL) ELSE 0 END), 0) AS cash_total, '
-          '  COALESCE(SUM(CASE WHEN payment_method != ? THEN CAST(total_amount AS REAL) ELSE 0 END), 0) AS mobile_total '
+          '  COALESCE(SUM(CAST(total_amount AS INTEGER)), 0) AS total, '
+          '  COALESCE(SUM(CASE WHEN payment_method = ? THEN CAST(total_amount AS INTEGER) ELSE 0 END), 0) AS cash_total, '
+          '  COALESCE(SUM(CASE WHEN payment_method != ? THEN CAST(total_amount AS INTEGER) ELSE 0 END), 0) AS mobile_total '
           'FROM sales WHERE created_at >= ?',
           variables: [
             drift.Variable.withString('cash'),
@@ -201,16 +201,16 @@ class SalesRepositoryImpl implements SalesRepository {
           ],
           readsFrom: {db.sales},
         )
-        .getSingle();
-
-    Decimal fromDouble(double v) => Decimal.parse(v.toStringAsFixed(0));
-
-    return (
-      saleCount: row.read<int>('sale_count'),
-      totalAmount: fromDouble(row.read<double>('total')),
-      cashTotal: fromDouble(row.read<double>('cash_total')),
-      mobileMoneyTotal: fromDouble(row.read<double>('mobile_total')),
-    );
+        .watchSingle()
+        .map((row) {
+          Decimal fromInt(int v) => Decimal.fromInt(v);
+          return (
+            saleCount: row.read<int>('sale_count'),
+            totalAmount: fromInt(row.read<int>('total')),
+            cashTotal: fromInt(row.read<int>('cash_total')),
+            mobileMoneyTotal: fromInt(row.read<int>('mobile_total')),
+          );
+        });
   }
 
   /// Converts domain PaymentMethod to drift string format.

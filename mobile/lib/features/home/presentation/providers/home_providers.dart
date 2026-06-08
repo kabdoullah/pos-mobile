@@ -36,16 +36,15 @@ class DailySummary {
   );
 }
 
-/// Loads today's sales summary via a single SQL aggregation query (O(1)).
+/// Streams today's sales summary — re-emits automatically on every new sale.
 @riverpod
-Future<DailySummary> dailySummary(Ref ref) async {
-  final repo = ref.watch(salesRepositoryProvider);
-  final stats = await repo.getTodayStats();
-
-  return DailySummary(
-    totalAmount: stats.totalAmount,
-    saleCount: stats.saleCount,
-    cashTotal: stats.cashTotal,
-    mobileMoneyTotal: stats.mobileMoneyTotal,
+Stream<DailySummary> dailySummary(Ref ref) {
+  return ref.watch(salesRepositoryProvider).watchTodayStats().map(
+    (stats) => DailySummary(
+      totalAmount: stats.totalAmount,
+      saleCount: stats.saleCount,
+      cashTotal: stats.cashTotal,
+      mobileMoneyTotal: stats.mobileMoneyTotal,
+    ),
   );
 }

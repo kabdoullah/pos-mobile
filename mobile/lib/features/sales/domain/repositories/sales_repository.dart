@@ -32,8 +32,8 @@ abstract class SalesRepository {
   /// Returns all sales created today (local device timezone).
   Future<List<Sale>> getTodaySales();
 
-  /// Returns aggregated totals for today computed in SQL (O(1) in SQLite).
-  Future<DailyStats> getTodayStats();
+  /// Watches aggregated totals for today — re-emits on every INSERT into sales.
+  Stream<DailyStats> watchTodayStats();
 
   /// Returns all sales created on the given date (local device timezone).
   Future<List<Sale>> getSalesByDate(DateTime date);
