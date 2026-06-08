@@ -138,34 +138,39 @@ class _QuickActionsSection extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: _QuickActionCard(
-                  icon: Icons.shopping_bag_outlined,
-                  label: 'Catalogue',
-                  onTap: () =>
-                      ref.read(bottomNavIndexProvider.notifier).setIndex(1),
+          // ✨ IntrinsicHeight + stretch — toutes les cartes à la même hauteur
+          // quelle que soit la longueur du label (ex: "Nouveau produit" sur 2 lignes)
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _QuickActionCard(
+                    icon: Icons.shopping_bag_outlined,
+                    label: 'Catalogue',
+                    onTap: () =>
+                        ref.read(bottomNavIndexProvider.notifier).setIndex(1),
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _QuickActionCard(
-                  icon: Icons.history_outlined,
-                  label: 'Historique',
-                  onTap: () =>
-                      ref.read(bottomNavIndexProvider.notifier).setIndex(2),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _QuickActionCard(
+                    icon: Icons.history_outlined,
+                    label: 'Historique',
+                    onTap: () =>
+                        ref.read(bottomNavIndexProvider.notifier).setIndex(2),
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: _QuickActionCard(
-                  icon: Icons.add_box_outlined,
-                  label: 'Nouveau produit',
-                  onTap: () => context.push(Routes.productNew),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: _QuickActionCard(
+                    icon: Icons.add_box_outlined,
+                    label: 'Nouveau produit',
+                    onTap: () => context.push(Routes.productNew),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -192,7 +197,8 @@ class _QuickActionCard extends StatelessWidget {
       onTap: onTap,
       padding: AppSpacing.md,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        // ✨ mainAxisAlignment center — contenu centré quand la carte s'étire
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
             width: 40,
