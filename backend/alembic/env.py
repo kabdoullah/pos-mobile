@@ -9,7 +9,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import settings
-from app.core.db import Base
+from app.core.db import Base, _asyncpg_url_and_ssl
 
 # Import explicite des modèles pour que Alembic les détecte
 # Ajouter ici chaque nouveau module avec des modèles
@@ -19,7 +19,8 @@ from app.modules.sales import models as sales_models
 from app.modules.stores import models as stores_models
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_url)
+_clean_url, _ssl_connect_args = _asyncpg_url_and_ssl(settings.database_url)
+config.set_main_option("sqlalchemy.url", _clean_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -55,6 +56,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=_ssl_connect_args,
     )
 
     async with connectable.connect() as connection:

@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from typing import Annotated
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from uuid import UUID  # noqa: TC003
 
 from fastapi import Depends, Request
@@ -15,8 +16,25 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
+
+def _asyncpg_url_and_ssl(url: str) -> tuple[str, dict]:
+    """Retire sslmode (paramètre psycopg2) et le convertit en connect_args asyncpg."""
+    parsed = urlparse(url)
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    ssl_mode = (params.pop("sslmode", [None])[0] or "").lower()
+    new_query = urlencode({k: v[0] for k, v in params.items()})
+    clean_url = urlunparse(parsed._replace(query=new_query))
+    connect_args: dict = {}
+    if ssl_mode in ("require", "verify-ca", "verify-full"):
+        connect_args["ssl"] = "require"
+    return clean_url, connect_args
+
+
+_db_url, _connect_args = _asyncpg_url_and_ssl(settings.database_url)
+
 engine = create_async_engine(
-    settings.database_url,
+    _db_url,
+    connect_args=_connect_args,
     pool_size=settings.database_pool_size,
     max_overflow=settings.database_max_overflow,
     pool_pre_ping=True,
