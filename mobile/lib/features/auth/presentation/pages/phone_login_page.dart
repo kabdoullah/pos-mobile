@@ -166,125 +166,129 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
     );
 
     return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: spacing,
-            right: spacing,
-            top: spacing,
-            bottom: spacing + MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // ✨ Hero icon — ancre visuelle inspirée du design de référence
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+      // ✨ resizeToAvoidBottomInset: true (défaut) — Scaffold rétrécit nativement,
+      // SingleChildScrollView absorbe le débordement sans viewInsets manuel.
+      body: SafeArea(
+        // ✨ SafeArea — empêche l'icône de remonter derrière la status bar
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing,
+              vertical: spacing,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // ✨ Hero icon — ancre visuelle inspirée du design de référence
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: cs.primaryContainer,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                  ),
+                  child: Icon(
+                    Icons.lock_open_outlined,
+                    size: 36,
+                    color: cs.onPrimaryContainer,
+                  ),
                 ),
-                child: Icon(
-                  Icons.lock_open_outlined,
-                  size: 36,
-                  color: cs.onPrimaryContainer,
+                const SizedBox(height: AppSpacing.md),
+                Text('Se connecter', style: tt.titleLarge),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Accédez à votre espace marchand',
+                  style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text('Se connecter', style: tt.titleLarge),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Accédez à votre espace marchand',
-                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              // ✨ AnimatedSwitcher + liveRegion — cohérent avec RegisterPage
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: errorMessage != null
-                    ? Semantics(
-                        liveRegion: true,
-                        key: ValueKey(errorMessage),
-                        child: Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: AppSpacing.lg),
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          decoration: BoxDecoration(
-                            color: cs.errorContainer,
-                            border: Border.all(color: cs.error),
-                            borderRadius: BorderRadius.circular(
-                              AppSpacing.radiusMd,
+                const SizedBox(height: AppSpacing.lg),
+                // ✨ AnimatedSwitcher + liveRegion — cohérent avec RegisterPage
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: errorMessage != null
+                      ? Semantics(
+                          liveRegion: true,
+                          key: ValueKey(errorMessage),
+                          child: Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.only(
+                              bottom: AppSpacing.lg,
                             ),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                Icons.error_outline_rounded,
-                                color: cs.onErrorContainer,
-                                size: 20,
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            decoration: BoxDecoration(
+                              color: cs.errorContainer,
+                              border: Border.all(color: cs.error),
+                              borderRadius: BorderRadius.circular(
+                                AppSpacing.radiusMd,
                               ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Text(
-                                  errorMessage,
-                                  style: tt.bodyMedium?.copyWith(
-                                    color: cs.onErrorContainer,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  color: cs.onErrorContainer,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    errorMessage,
+                                    style: tt.bodyMedium?.copyWith(
+                                      color: cs.onErrorContainer,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-              AppTextField(
-                label: 'Téléphone',
-                hint: '07 00 00 00 00',
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                inputFormatters: const [SpacedPhoneFormatter()],
-                errorText: _phoneError,
-                prefixIcon: Icons.phone_outlined,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AppTextField(
-                label: 'Mot de passe',
-                controller: _passwordController,
-                obscureText: true,
-                errorText: _passwordError,
-                prefixIcon: Icons.lock_outlined,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () => _showForgotPasswordDialog(context),
-                  child: const Text('Mot de passe oublié ?'),
+                        )
+                      : const SizedBox.shrink(),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              PrimaryButton(
-                label: 'Se connecter',
-                onPressed: isLoading ? null : _login,
-                isLoading: isLoading,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Pas de compte ? ', style: tt.bodyMedium),
-                  TextButton(
-                    onPressed: () => context.go(Routes.register),
-                    child: const Text('Inscrivez-vous'),
+                AppTextField(
+                  label: 'Téléphone',
+                  hint: '07 00 00 00 00',
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: const [SpacedPhoneFormatter()],
+                  errorText: _phoneError,
+                  prefixIcon: Icons.phone_outlined,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AppTextField(
+                  label: 'Mot de passe',
+                  controller: _passwordController,
+                  obscureText: true,
+                  errorText: _passwordError,
+                  prefixIcon: Icons.lock_outlined,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => _showForgotPasswordDialog(context),
+                    child: const Text('Mot de passe oublié ?'),
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                PrimaryButton(
+                  label: 'Se connecter',
+                  onPressed: isLoading ? null : _login,
+                  isLoading: isLoading,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('Pas de compte ? ', style: tt.bodyMedium),
+                    TextButton(
+                      onPressed: () => context.go(Routes.register),
+                      child: const Text('Inscrivez-vous'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
