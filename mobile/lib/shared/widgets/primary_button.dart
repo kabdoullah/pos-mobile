@@ -17,6 +17,7 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.icon,
+    this.trailingIcon,
     super.key,
   });
 
@@ -31,6 +32,9 @@ class PrimaryButton extends StatelessWidget {
 
   /// Optional leading icon.
   final IconData? icon;
+
+  /// Optional trailing icon (e.g. arrow for directional CTAs).
+  final IconData? trailingIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +94,10 @@ class PrimaryButton extends StatelessWidget {
                           ),
                           textAlign: TextAlign.center,
                         ),
+                        if (trailingIcon != null) ...[
+                          const SizedBox(width: AppSpacing.sm),
+                          Icon(trailingIcon, color: cs.onPrimary, size: 20),
+                        ],
                       ],
                     ),
             ),

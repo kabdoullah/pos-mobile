@@ -181,25 +181,69 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // ✨ Hero icon — ancre visuelle inspirée du design de référence
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                ),
+                child: Icon(
+                  Icons.lock_open_outlined,
+                  size: 36,
+                  color: cs.onPrimaryContainer,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
               Text('Se connecter', style: tt.titleLarge),
               const SizedBox(height: AppSpacing.xs),
-              Text('Accédez à votre espace marchand', style: tt.bodyMedium),
+              Text(
+                'Accédez à votre espace marchand',
+                style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
               const SizedBox(height: AppSpacing.lg),
-              if (errorMessage != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: cs.errorContainer,
-                    border: Border.all(color: cs.error),
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
-                  ),
-                  child: Text(
-                    errorMessage,
-                    style: tt.bodyMedium?.copyWith(color: cs.onErrorContainer),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
-              ],
+              // ✨ AnimatedSwitcher + liveRegion — cohérent avec RegisterPage
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: errorMessage != null
+                    ? Semantics(
+                        liveRegion: true,
+                        key: ValueKey(errorMessage),
+                        child: Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          decoration: BoxDecoration(
+                            color: cs.errorContainer,
+                            border: Border.all(color: cs.error),
+                            borderRadius: BorderRadius.circular(
+                              AppSpacing.radiusMd,
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.error_outline_rounded,
+                                color: cs.onErrorContainer,
+                                size: 20,
+                              ),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(
+                                child: Text(
+                                  errorMessage,
+                                  style: tt.bodyMedium?.copyWith(
+                                    color: cs.onErrorContainer,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
               AppTextField(
                 label: 'Téléphone',
                 hint: '07 00 00 00 00',
@@ -228,6 +272,7 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
                 label: 'Se connecter',
+                trailingIcon: Icons.arrow_forward_rounded,
                 onPressed: isLoading ? null : _login,
                 isLoading: isLoading,
               ),
