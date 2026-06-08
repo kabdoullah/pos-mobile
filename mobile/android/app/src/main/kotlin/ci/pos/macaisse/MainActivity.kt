@@ -1,4 +1,4 @@
-package com.example.mobile
+package ci.pos.macaisse
 
 import io.flutter.embedding.android.FlutterActivity
 

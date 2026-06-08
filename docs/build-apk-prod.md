@@ -188,7 +188,7 @@ make build-apk
 
 Paramètres importants :
 - `--release` : minification, obfuscation Dart, optimisations (supprime le banner debug, active R8)
-- `--flavor prod` : `applicationId = "com.example.mobile"`, `app_name = "POS"`
+- `--flavor prod` : `applicationId = "ci.pos.macaisse"`, `app_name = "Ma Caisse"`
 - `-t lib/main_prod.dart` : point d'entrée avec `AppFlavor.prod` et l'URL API prod
 
 ### Build APK dev (pour comparaison)
@@ -198,7 +198,7 @@ make build-apk-dev
 # = flutter build apk --flavor dev -t lib/main.dart
 ```
 
-Flavor "dev" : `applicationId = "com.example.mobile.dev"`, `app_name = "POS Dev"`, API sur `http://10.0.2.2:8000`. Les deux APKs peuvent coexister sur le même appareil.
+Flavor "dev" : `applicationId = "ci.pos.macaisse.dev"`, `app_name = "Ma Caisse Dev"`, API sur `http://10.0.2.2:8000`. Les deux APKs peuvent coexister sur le même appareil.
 
 ### Build par architecture (distribution sideload optimisée)
 
@@ -242,9 +242,9 @@ $ANDROID_HOME/build-tools/<version>/aapt dump badging \
 ```
 
 Valeurs attendues :
-- `package='com.example.mobile'` (pas `.dev`)
+- `package='ci.pos.macaisse'` (pas `.dev`)
 - `versionCode='1'` et `versionName='1.0.0'`
-- `application-label:'POS'`
+- `application-label:'Ma Caisse'`
 
 ### 6.2 Vérifier la signature
 
@@ -256,7 +256,7 @@ keytool -printcert -jarfile \
 ### 6.3 Installer et smoke test
 
 ```bash
-adb uninstall com.example.mobile
+adb uninstall ci.pos.macaisse
 adb install mobile/build/app/outputs/flutter-apk/app-prod-release.apk
 ```
 
@@ -310,7 +310,7 @@ Cause : mauvais point d'entrée utilisé. Toujours utiliser `make build-apk` qui
 [ ] make format             — aucun diff de formatage
 [ ] make analyze            — 0 erreur
 [ ] make build-apk          — build réussi
-[ ] aapt dump badging       — applicationId = com.example.mobile (pas .dev)
+[ ] aapt dump badging       — applicationId = ci.pos.macaisse (pas .dev)
 [ ] keytool -printcert      — signature vérifiée
 [ ] adb install + smoke     — login, PIN, réseau prod OK
 ```

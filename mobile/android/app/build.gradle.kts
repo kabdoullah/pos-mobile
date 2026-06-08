@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.mobile"
+    namespace = "ci.pos.macaisse"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.mobile"
+        applicationId = "ci.pos.macaisse"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -34,11 +34,11 @@ android {
             dimension = "env"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
-            resValue("string", "app_name", "POS Dev")
+            resValue("string", "app_name", "Ma Caisse Dev")
         }
         create("prod") {
             dimension = "env"
-            resValue("string", "app_name", "POS")
+            resValue("string", "app_name", "Ma Caisse")
         }
     }
 
