@@ -250,43 +250,15 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.xl),
-                  // Payment methods
+                  const SizedBox(height: AppSpacing.sm),
+                  // Payment methods — compact chips to keep input fields visible
                   const Text(
                     'Mode de paiement',
                     style: AppTypography.titleMedium,
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildPaymentMethodButton(
-                    PaymentMethod.cash,
-                    'Espèces',
-                    Icons.payments_outlined,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildPaymentMethodButton(
-                    PaymentMethod.orangeMoney,
-                    'Orange Money',
-                    Icons.smartphone_outlined,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildPaymentMethodButton(
-                    PaymentMethod.mtn,
-                    'MTN',
-                    Icons.phone_android,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildPaymentMethodButton(
-                    PaymentMethod.wave,
-                    'Wave',
-                    Icons.contactless,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildPaymentMethodButton(
-                    PaymentMethod.mixed,
-                    'Mixte',
-                    Icons.multiple_stop,
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
+                  const SizedBox(height: AppSpacing.sm),
+                  _buildMethodSelector(),
+                  const SizedBox(height: AppSpacing.sm),
                   // Dynamic fields based on payment method
                   if (_selectedMethod == PaymentMethod.cash) ...[
                     AppTextField(
@@ -296,7 +268,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                       errorText: _cashReceivedError,
                       onChanged: (_) => setState(() {}),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: AppSpacing.sm),
                     if (change > Decimal.zero)
                       AppCard(
                         child: Row(
@@ -352,56 +324,36 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
     );
   }
 
-  Widget _buildPaymentMethodButton(
-    PaymentMethod method,
-    String label,
-    IconData icon,
-  ) {
-    final isSelected = _selectedMethod == method;
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-    final radius = BorderRadius.circular(AppSpacing.radiusMd);
-    // ✨ Semantics pour screen readers (selected state déclaré)
-    return Semantics(
-      button: true,
-      selected: isSelected,
-      label: label,
-      child: Material(
-        color: isSelected ? cs.primaryContainer : cs.surface,
-        borderRadius: radius,
-        child: InkWell(
-          onTap: () => _selectMethod(method),
-          borderRadius: radius,
-          child: Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              border: Border.all(
-                color: isSelected ? cs.primary : cs.outlineVariant,
-                width: isSelected ? 2 : 1,
-              ),
-              borderRadius: radius,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  color: isSelected ? cs.primary : cs.onSurface,
-                  size: 28,
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Text(
-                  label,
-                  style: tt.titleMedium?.copyWith(
-                    color: isSelected ? cs.primary : cs.onSurface,
-                  ),
-                ),
-                const Spacer(),
-                if (isSelected) Icon(Icons.check_circle, color: cs.primary),
-              ],
-            ),
-          ),
-        ),
-      ),
+  static const _paymentMethods = [
+    (
+      method: PaymentMethod.cash,
+      label: 'Espèces',
+      icon: Icons.payments_outlined,
+    ),
+    (
+      method: PaymentMethod.orangeMoney,
+      label: 'Orange Money',
+      icon: Icons.smartphone_outlined,
+    ),
+    (method: PaymentMethod.mtn, label: 'MTN', icon: Icons.phone_android),
+    (method: PaymentMethod.wave, label: 'Wave', icon: Icons.contactless),
+    (method: PaymentMethod.mixed, label: 'Mixte', icon: Icons.multiple_stop),
+  ];
+
+  Widget _buildMethodSelector() {
+    return Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: _paymentMethods.map((entry) {
+        final isSelected = _selectedMethod == entry.method;
+        return ChoiceChip(
+          avatar: Icon(entry.icon, size: 18),
+          label: Text(entry.label),
+          selected: isSelected,
+          onSelected: (_) => _selectMethod(entry.method),
+          showCheckmark: false,
+        );
+      }).toList(),
     );
   }
 }
