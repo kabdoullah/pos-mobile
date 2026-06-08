@@ -270,7 +270,6 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
               const SizedBox(height: AppSpacing.lg),
               PrimaryButton(
                 label: 'Se connecter',
-                trailingIcon: Icons.arrow_forward_rounded,
                 onPressed: isLoading ? null : _login,
                 isLoading: isLoading,
               ),

@@ -13,7 +13,7 @@ void main() async {
   FlutterNativeSplash.preserve(widgetsBinding: binding);
   AppConfig.setup(
     flavor: AppFlavor.prod,
-    apiUrl: 'https://api.pos-mobile-ci.com',
+    apiUrl: 'https://pos-mobile-vkuh.onrender.com',
   );
   await initializeDateFormatting('fr_FR');
   runApp(
