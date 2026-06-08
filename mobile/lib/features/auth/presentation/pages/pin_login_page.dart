@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -120,7 +121,14 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage>
       }
     });
 
-    return Scaffold(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
+      child: Scaffold(
       resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Padding(
@@ -205,6 +213,9 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage>
           ),
         ),
       ),
+    ),
     );
   }
 }
+
+
