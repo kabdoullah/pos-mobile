@@ -3,6 +3,7 @@ import 'package:logger/logger.dart';
 
 import '../../database/app_database.dart';
 import '../../features/sync/data/datasources/sync_remote_datasource.dart';
+import '../utils/barcode_utils.dart';
 
 /// Service for pulling changes from server and writing to local drift database.
 class PullService {
@@ -65,7 +66,7 @@ class PullService {
                 ProductsCompanion(
                   id: drift.Value(productDto.id),
                   name: drift.Value(productDto.name),
-                  barcode: drift.Value(productDto.barcode),
+                  barcode: drift.Value(normalizeBarcode(productDto.barcode)),
                   unitPrice: drift.Value(productDto.unitPrice),
                   currentStock: drift.Value(productDto.currentStock),
                   dirty: const drift.Value(false),

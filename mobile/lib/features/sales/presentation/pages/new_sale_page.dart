@@ -203,6 +203,9 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Keep ScanController alive while page is mounted — prevents autoDispose
+    // during the async getByBarcode() gap when called via ref.read().
+    ref.watch(scanControllerProvider);
     final cartState = ref.watch(cartProvider);
 
     return Scaffold(

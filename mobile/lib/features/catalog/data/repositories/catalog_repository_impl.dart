@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/network/api_models/sync_changes_dto.dart';
 import '../../../../core/sync/sync_queue_repository.dart';
+import '../../../../core/utils/barcode_utils.dart';
 import '../../../../database/app_database.dart' hide Product;
 import '../../domain/entities/product.dart' as product_domain;
 import '../../domain/entities/product_page.dart';
@@ -65,7 +66,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
     String? barcode,
     int? currentStock,
   }) async {
-    final normalizedBarcode = _normalizeBarcode(barcode);
+    final normalizedBarcode = normalizeBarcode(barcode);
     final id = const Uuid().v4();
     final now = DateTime.now();
     final product = product_domain.Product(
@@ -133,7 +134,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
     final updatedName = name ?? current.name;
     final updatedPrice = unitPrice ?? current.unitPrice;
     final updatedBarcode = barcode != null
-        ? _normalizeBarcode(barcode)
+        ? normalizeBarcode(barcode)
         : current.barcode;
     final updatedStock = currentStock ?? current.currentStock;
 
@@ -141,9 +142,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
     await (db.update(db.products)..where((p) => p.id.equals(id))).write(
       ProductsCompanion(
         name: drift.Value(updatedName),
-        barcode: updatedBarcode != null
-            ? drift.Value(updatedBarcode)
-            : const drift.Value.absent(),
+        barcode: drift.Value(updatedBarcode),
         unitPrice: drift.Value(updatedPrice),
         currentStock: updatedStock != null
             ? drift.Value(updatedStock)
@@ -221,8 +220,9 @@ class CatalogRepositoryImpl implements CatalogRepository {
 
   @override
   Future<product_domain.Product?> getByBarcode(String barcode) async {
-    final normalized = _normalizeBarcode(barcode);
+    final normalized = normalizeBarcode(barcode);
     if (normalized == null) return null;
+
     final record =
         await (db.select(db.products)
               ..where((p) => p.barcode.equals(normalized))
@@ -231,11 +231,4 @@ class CatalogRepositoryImpl implements CatalogRepository {
     return record?.toDomain();
   }
 
-  /// Strips whitespace and GS1 control characters from a barcode.
-  /// Returns null if the result is empty.
-  static String? _normalizeBarcode(String? raw) {
-    if (raw == null) return null;
-    final cleaned = raw.trim().replaceAll(RegExp(r'[\x00-\x1F\x7F]'), '');
-    return cleaned.isEmpty ? null : cleaned;
-  }
 }

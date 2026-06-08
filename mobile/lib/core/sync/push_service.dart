@@ -4,6 +4,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:logger/logger.dart';
 
 import '../../core/network/api_models/product_dto.dart';
+import '../utils/barcode_utils.dart';
 import '../../core/network/api_models/sale_dto.dart';
 import '../../core/network/api_models/sync_changes_dto.dart';
 import '../../core/network/api_models/sync_responses_dto.dart';
@@ -220,7 +221,7 @@ class PushService {
           ProductsCompanion(
             id: drift.Value(serverState.id),
             name: drift.Value(serverState.name),
-            barcode: drift.Value(serverState.barcode),
+            barcode: drift.Value(normalizeBarcode(serverState.barcode)),
             unitPrice: drift.Value(serverState.unitPrice),
             currentStock: drift.Value(serverState.currentStock),
             dirty: const drift.Value(false), // Mark clean after sync
