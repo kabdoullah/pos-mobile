@@ -41,9 +41,7 @@ class RegistrationStepper extends StatelessWidget {
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
                   height: 2,
-                  color: (i + 1) < currentStep
-                      ? cs.primary
-                      : cs.outlineVariant,
+                  color: (i + 1) < currentStep ? cs.primary : cs.outlineVariant,
                 ),
               ),
           ],

@@ -145,9 +145,7 @@ class _PhoneLoginPageState extends ConsumerState<PhoneLoginPage> {
 
     final e164 = toE164Ci(_phoneController.text.trim())!;
     _logger.i('[PhoneLogin] Login clicked: $e164');
-    await ref
-        .read(authProvider.notifier)
-        .login(e164, _passwordController.text);
+    await ref.read(authProvider.notifier).login(e164, _passwordController.text);
     if (ref.read(authProvider) is AsyncData) {
       _logger.i('[PhoneLogin] Login succeeded, router should redirect');
     }

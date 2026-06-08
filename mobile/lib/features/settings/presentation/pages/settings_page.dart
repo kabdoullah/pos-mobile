@@ -260,9 +260,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         'Erreur: $msg',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          color: cs.error,
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: cs.error),
       ),
       _ => const Text('Non configurée'),
     };
@@ -468,7 +468,8 @@ class _SettingsTile extends StatelessWidget {
           )
         : Icon(icon, color: cs.onSurfaceVariant);
 
-    final Widget? trailing = trailingWidget ??
+    final Widget? trailing =
+        trailingWidget ??
         (busy
             ? const SizedBox(
                 width: 20,
@@ -476,7 +477,11 @@ class _SettingsTile extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : isNavigation
-            ? Icon(Icons.arrow_forward_ios, size: 16, color: cs.onSurfaceVariant)
+            ? Icon(
+                Icons.arrow_forward_ios,
+                size: 16,
+                color: cs.onSurfaceVariant,
+              )
             : null);
 
     return ListTile(

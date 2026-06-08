@@ -137,7 +137,10 @@ class _SaleCard extends ConsumerWidget {
         title: Text(receiptLabel),
         subtitle: Text('$timeLabel • $paymentLabel'),
         // ✨ amount seul — paymentLabel déjà dans subtitle, chip supprimé (redondant)
-        trailing: AmountDisplay(amount: sale.totalAmount, size: AmountSize.small),
+        trailing: AmountDisplay(
+          amount: sale.totalAmount,
+          size: AmountSize.small,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.xs,

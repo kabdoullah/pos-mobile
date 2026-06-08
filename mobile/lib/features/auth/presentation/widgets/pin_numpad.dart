@@ -7,11 +7,7 @@ import '../../../../core/theme/app_spacing.dart';
 /// Each dot fills (primary color) as digits are entered.
 class PinDots extends StatelessWidget {
   /// Creates a PIN dots indicator.
-  const PinDots({
-    super.key,
-    required this.filledCount,
-    this.length = 4,
-  });
+  const PinDots({super.key, required this.filledCount, this.length = 4});
 
   /// Number of filled dots (digits entered).
   final int filledCount;
@@ -148,10 +144,7 @@ class _NumpadKey extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         onTap: onTap,
-        child: SizedBox(
-          height: 64,
-          child: Center(child: child),
-        ),
+        child: SizedBox(height: 64, child: Center(child: child)),
       ),
     );
   }

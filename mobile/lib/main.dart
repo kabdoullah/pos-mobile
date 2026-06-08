@@ -13,10 +13,7 @@ import 'core/network/network_providers.dart';
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: binding);
-  AppConfig.setup(
-    flavor: AppFlavor.dev,
-    apiUrl: 'http://10.0.2.2:8000',
-  );
+  AppConfig.setup(flavor: AppFlavor.dev, apiUrl: 'http://10.0.2.2:8000');
   await initializeDateFormatting('fr_FR');
   runApp(
     ProviderScope(

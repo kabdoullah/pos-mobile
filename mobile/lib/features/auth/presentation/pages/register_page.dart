@@ -206,7 +206,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   color: cs.errorContainer,
                                   border: Border.all(color: cs.error),
                                   borderRadius: BorderRadius.circular(
-                                    AppSpacing.radiusMd, // ✨ token replaces hardcoded 8
+                                    AppSpacing
+                                        .radiusMd, // ✨ token replaces hardcoded 8
                                   ),
                                 ),
                                 child: Row(
@@ -223,9 +224,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                       child: Text(
                                         errorMessage,
                                         // ✨ onErrorContainer — proper contrast on error bg
-                                        style: AppTypography.bodyMedium.copyWith(
-                                          color: cs.onErrorContainer,
-                                        ),
+                                        style: AppTypography.bodyMedium
+                                            .copyWith(
+                                              color: cs.onErrorContainer,
+                                            ),
                                       ),
                                     ),
                                   ],

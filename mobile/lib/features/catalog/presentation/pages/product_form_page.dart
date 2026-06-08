@@ -317,7 +317,9 @@ class _ProductFormPageState extends ConsumerState<ProductFormPage>
                       foregroundColor: cs.error,
                       side: BorderSide(color: cs.error),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                        borderRadius: BorderRadius.circular(
+                          AppSpacing.radiusMd,
+                        ),
                       ),
                     ),
                   ),

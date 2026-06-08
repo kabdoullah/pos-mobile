@@ -9,7 +9,7 @@ class AuthInterceptor extends Interceptor {
 
   /// Handles secure token retrieval.
   final TokenStorage tokenStorage;
-  
+
   static const _publicPaths = {
     '/api/v1/auth/register',
     '/api/v1/auth/login',

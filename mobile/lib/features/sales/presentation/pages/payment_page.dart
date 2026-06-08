@@ -122,8 +122,10 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
           }
         }
         if (isValid && total != _getCartTotal()) {
-          final formatted =
-              NumberFormat('#,##0', 'fr_FR').format(_getCartTotal().toDouble());
+          final formatted = NumberFormat(
+            '#,##0',
+            'fr_FR',
+          ).format(_getCartTotal().toDouble());
           cashError = 'Total doit être $formatted FCFA';
           mobileError = 'Total doit être $formatted FCFA';
           isValid = false;
@@ -240,7 +242,10 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                         // ✨ texte vide supprimé — amount seul, aligné à droite
                         Align(
                           alignment: Alignment.centerRight,
-                          child: AmountDisplay(amount: total, size: AmountSize.hero),
+                          child: AmountDisplay(
+                            amount: total,
+                            size: AmountSize.hero,
+                          ),
                         ),
                       ],
                     ),

@@ -74,7 +74,8 @@ class _BarcodeScannerPageState extends State<BarcodeScannerPage> {
           message:
               'Pour scanner des codes-barres, autorisez l\'accès à la caméra dans les paramètres.',
           actionLabel: 'Ouvrir les paramètres',
-          onAction: openAppSettings, // ✨ inline — wrapper _openSettings() supprimé
+          onAction:
+              openAppSettings, // ✨ inline — wrapper _openSettings() supprimé
         ),
       );
     }

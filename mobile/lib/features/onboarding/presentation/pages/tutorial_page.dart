@@ -136,8 +136,7 @@ class _TutorialPageState extends State<TutorialPage> {
                   _slides.length,
                   (index) => Semantics(
                     // ✨ annonce la position pour le lecteur d'écran
-                    label:
-                        'Diapositive ${index + 1} sur ${_slides.length}',
+                    label: 'Diapositive ${index + 1} sur ${_slides.length}',
                     selected: _currentPage == index,
                     excludeSemantics: true,
                     child: AnimatedContainer(
@@ -149,9 +148,7 @@ class _TutorialPageState extends State<TutorialPage> {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(4),
-                        color: _currentPage == index
-                            ? cs.primary
-                            : cs.outline,
+                        color: _currentPage == index ? cs.primary : cs.outline,
                       ),
                     ),
                   ),

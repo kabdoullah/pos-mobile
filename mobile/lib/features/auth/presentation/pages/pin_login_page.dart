@@ -36,32 +36,33 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage>
       duration: const Duration(milliseconds: 420),
       vsync: this,
     );
-    _shakeAnimation = TweenSequence<Offset>([
-      TweenSequenceItem(
-        tween: Tween(begin: Offset.zero, end: const Offset(0.04, 0)),
-        weight: 1,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: const Offset(0.04, 0),
-          end: const Offset(-0.04, 0),
-        ),
-        weight: 2,
-      ),
-      TweenSequenceItem(
-        tween: Tween(
-          begin: const Offset(-0.04, 0),
-          end: const Offset(0.02, 0),
-        ),
-        weight: 1,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: const Offset(0.02, 0), end: Offset.zero),
-        weight: 1,
-      ),
-    ]).animate(
-      CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut),
-    );
+    _shakeAnimation =
+        TweenSequence<Offset>([
+          TweenSequenceItem(
+            tween: Tween(begin: Offset.zero, end: const Offset(0.04, 0)),
+            weight: 1,
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: const Offset(0.04, 0),
+              end: const Offset(-0.04, 0),
+            ),
+            weight: 2,
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: const Offset(-0.04, 0),
+              end: const Offset(0.02, 0),
+            ),
+            weight: 1,
+          ),
+          TweenSequenceItem(
+            tween: Tween(begin: const Offset(0.02, 0), end: Offset.zero),
+            weight: 1,
+          ),
+        ]).animate(
+          CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut),
+        );
   }
 
   @override
@@ -152,9 +153,7 @@ class _PinLoginPageState extends ConsumerState<PinLoginPage>
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Entrez votre PIN',
-                style: AppTypography.titleLarge.copyWith(
-                  color: cs.onSurface,
-                ),
+                style: AppTypography.titleLarge.copyWith(color: cs.onSurface),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),

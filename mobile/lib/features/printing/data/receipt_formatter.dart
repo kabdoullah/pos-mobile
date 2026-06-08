@@ -57,7 +57,9 @@ class ReceiptFormatter {
 
     // --- DATE / RECEIPT INFO ---
     final dateFormatter = DateFormat('dd/MM/yyyy HH:mm', 'fr_FR');
-    bytes.addAll(generator.text('Date : ${dateFormatter.format(sale.createdAt)}'));
+    bytes.addAll(
+      generator.text('Date : ${dateFormatter.format(sale.createdAt)}'),
+    );
     bytes.addAll(
       generator.text(
         sale.receiptNumber > 0
@@ -88,8 +90,12 @@ class ReceiptFormatter {
     // --- TOTALS ---
     if (sale.vatAmount != Decimal.zero) {
       final htAmount = sale.totalAmount - sale.vatAmount;
-      bytes.addAll(generator.text(_padLine('Sous-total HT', _formatFcfa(htAmount))));
-      bytes.addAll(generator.text(_padLine('TVA', _formatFcfa(sale.vatAmount))));
+      bytes.addAll(
+        generator.text(_padLine('Sous-total HT', _formatFcfa(htAmount))),
+      );
+      bytes.addAll(
+        generator.text(_padLine('TVA', _formatFcfa(sale.vatAmount))),
+      );
       bytes.addAll(generator.text(_doubleSeparator));
       bytes.addAll(
         generator.text(
@@ -113,7 +119,8 @@ class ReceiptFormatter {
     bytes.addAll(generator.text(_separator));
 
     // --- FOOTER ---
-    if (store.receiptFooterText != null && store.receiptFooterText!.isNotEmpty) {
+    if (store.receiptFooterText != null &&
+        store.receiptFooterText!.isNotEmpty) {
       bytes.addAll(
         generator.text(
           store.receiptFooterText!,
@@ -142,10 +149,7 @@ class ReceiptFormatter {
       '  ${item.quantity} x ${_formatFcfa(item.unitPrice)}',
       _formatFcfa(item.lineTotal),
     );
-    return [
-      ...gen.text(name),
-      ...gen.text(detail),
-    ];
+    return [...gen.text(name), ...gen.text(detail)];
   }
 
   /// Left-right aligned text padded to [_lineWidth] characters.

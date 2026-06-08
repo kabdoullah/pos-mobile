@@ -60,8 +60,9 @@ class SpacedPhoneFormatter extends TextInputFormatter {
     TextEditingValue newValue,
   ) {
     final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
-    final truncated =
-        digits.length > _maxDigits ? digits.substring(0, _maxDigits) : digits;
+    final truncated = digits.length > _maxDigits
+        ? digits.substring(0, _maxDigits)
+        : digits;
 
     final buffer = StringBuffer();
     for (var i = 0; i < truncated.length; i++) {
