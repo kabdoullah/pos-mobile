@@ -208,56 +208,68 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
     ref.watch(scanControllerProvider);
     final cartState = ref.watch(cartProvider);
 
-    return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final availableHeight = constraints.maxHeight;
-            const overlapDp = 24.0;
-            final scannerHeight = availableHeight * 0.4 + overlapDp;
-            final cartTop = availableHeight * 0.4 - overlapDp;
+    // ✨ PopScope — Android system back goes to home when stack is empty
+    // (happens after SaleSuccessPage uses context.go which clears the stack)
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          context.canPop() ? context.pop() : context.go(Routes.home);
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availableHeight = constraints.maxHeight;
+              const overlapDp = 24.0;
+              final scannerHeight = availableHeight * 0.4 + overlapDp;
+              final cartTop = availableHeight * 0.4 - overlapDp;
 
-            return Stack(
-              children: [
-                // Scanner panel
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: scannerHeight,
-                  child: _ScannerPanel(
-                    controller: _controller,
-                    isCameraActive: _isCameraActive,
-                    isTorchOn: _isTorchOn,
-                    isPermissionGranted: _isPermissionGranted,
-                    isCheckingPermission: _isCheckingPermission,
-                    onBarcodeDetected: _onBarcodeDetected,
-                    onEnableCamera: _enableCamera,
-                    onDisableCamera: _disableCamera,
-                    onToggleTorch: _toggleTorch,
-                    onOpenSettings: () => context.push(Routes.settings),
-                    onBack: () => context.pop(),
-                    onOpenAppSettings: openAppSettings,
+              return Stack(
+                children: [
+                  // Scanner panel
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: scannerHeight,
+                    child: _ScannerPanel(
+                      controller: _controller,
+                      isCameraActive: _isCameraActive,
+                      isTorchOn: _isTorchOn,
+                      isPermissionGranted: _isPermissionGranted,
+                      isCheckingPermission: _isCheckingPermission,
+                      onBarcodeDetected: _onBarcodeDetected,
+                      onEnableCamera: _enableCamera,
+                      onDisableCamera: _disableCamera,
+                      onToggleTorch: _toggleTorch,
+                      onOpenSettings: () => context.push(Routes.settings),
+                      onBack: () => context.canPop()
+                          ? context.pop()
+                          : context.go(Routes.home),
+                      onOpenAppSettings: openAppSettings,
+                    ),
                   ),
-                ),
-                // Cart panel overlapping the scanner
-                Positioned(
-                  top: cartTop,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: _CartPanel(
-                    cartState: cartState,
-                    onUpdateQuantity: _updateQuantity,
-                    onRemoveItem: _removeItem,
-                    onCheckout: _checkout,
-                    onAddManually: _openAddManuallySheet,
-                    onClearCart: _clearCart,
+                  // Cart panel overlapping the scanner
+                  Positioned(
+                    top: cartTop,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _CartPanel(
+                      cartState: cartState,
+                      onUpdateQuantity: _updateQuantity,
+                      onRemoveItem: _removeItem,
+                      onCheckout: _checkout,
+                      onAddManually: _openAddManuallySheet,
+                      onClearCart: _clearCart,
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
