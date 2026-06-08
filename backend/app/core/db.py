@@ -18,10 +18,11 @@ from app.core.config import settings
 
 
 def _asyncpg_url_and_ssl(url: str) -> tuple[str, dict]:
-    """Retire sslmode (paramètre psycopg2) et le convertit en connect_args asyncpg."""
+    """Retire sslmode/channel_binding (params psycopg2) et convertit en connect_args asyncpg."""
     parsed = urlparse(url)
     params = parse_qs(parsed.query, keep_blank_values=True)
     ssl_mode = (params.pop("sslmode", [None])[0] or "").lower()
+    params.pop("channel_binding", None)  # asyncpg 0.30+ ne supporte plus ce paramètre
     new_query = urlencode({k: v[0] for k, v in params.items()})
     clean_url = urlunparse(parsed._replace(query=new_query))
     connect_args: dict = {}
