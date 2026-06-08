@@ -27,6 +27,8 @@ def _asyncpg_url_and_ssl(url: str) -> tuple[str, dict]:
     connect_args: dict = {}
     if ssl_mode in ("require", "verify-ca", "verify-full"):
         connect_args["ssl"] = "require"
+    else:
+        connect_args["ssl"] = False
     return clean_url, connect_args
 
 
