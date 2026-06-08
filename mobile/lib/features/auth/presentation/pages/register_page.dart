@@ -3,6 +3,7 @@
 // Flutter 3.x+ | Material 3 | Dart 3+ | POS Mobile
 // ============================================================
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -146,159 +147,167 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       medium: AppSpacing.lg,
     );
 
-    return Scaffold(
-      // ✨ Removed backgroundColor: AppColors.background — theme handles light/dark
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                spacing,
-                spacing,
-                spacing,
-                AppSpacing.lg,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const RegistrationStepper(currentStep: 1),
-                  const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'Créer votre compte',
-                    // ✨ Explicit onSurface — readable in both light and dark
-                    style: AppTypography.titleLarge.copyWith(
-                      color: cs.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Renseignez vos informations pour ouvrir votre espace marchand.',
-                    // ✨ colorScheme.onSurfaceVariant replaces AppColors.textSecondary — dark mode safe
-                    style: AppTypography.bodyMedium.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(spacing, 0, spacing, spacing),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  spacing,
+                  spacing,
+                  spacing,
+                  AppSpacing.lg,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ✨ AnimatedSwitcher — smooth 200ms entrance/exit, no layout jump
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: errorMessage != null
-                          ? Semantics(
-                              // ✨ liveRegion — screen reader announces error immediately
-                              liveRegion: true,
-                              key: const ValueKey('error-banner'),
-                              child: Container(
-                                margin: const EdgeInsets.only(
-                                  bottom: AppSpacing.lg,
-                                ),
-                                padding: const EdgeInsets.all(AppSpacing.md),
-                                decoration: BoxDecoration(
-                                  // ✨ M3 errorContainer — adapts to dark mode
-                                  color: cs.errorContainer,
-                                  border: Border.all(color: cs.error),
-                                  borderRadius: BorderRadius.circular(
-                                    AppSpacing
-                                        .radiusMd, // ✨ token replaces hardcoded 8
-                                  ),
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // ✨ Icon — don't rely on color alone (WCAG 1.4.1)
-                                    Icon(
-                                      Icons.error_outline,
-                                      color: cs.onErrorContainer,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: AppSpacing.sm),
-                                    Expanded(
-                                      child: Text(
-                                        errorMessage,
-                                        // ✨ onErrorContainer — proper contrast on error bg
-                                        style: AppTypography.bodyMedium
-                                            .copyWith(
-                                              color: cs.onErrorContainer,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                    AppTextField(
-                      label: 'Téléphone',
-                      hint: '07 00 00 00 00',
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: const [SpacedPhoneFormatter()],
-                      errorText: _phoneError,
-                      prefixIcon: Icons.phone_outlined,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'Mot de passe',
-                      hint: 'Au moins 8 caractères',
-                      controller: _passwordController,
-                      obscureText: true,
-                      errorText: _passwordError,
-                      prefixIcon: Icons.lock_outlined,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'Confirmer le mot de passe',
-                      controller: _confirmPasswordController,
-                      obscureText: true,
-                      errorText: _confirmPasswordError,
-                      prefixIcon: Icons.lock_outlined,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      label: 'Email (optionnel)',
-                      hint: 'Pour récupérer votre compte',
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      errorText: _emailError,
-                      prefixIcon: Icons.email_outlined,
-                    ),
+                    const RegistrationStepper(currentStep: 1),
                     const SizedBox(height: AppSpacing.lg),
-                    PrimaryButton(
-                      label: 'Créer mon compte',
-                      onPressed: isLoading ? null : _register,
-                      isLoading: isLoading,
+                    Text(
+                      'Créer votre compte',
+                      // ✨ Explicit onSurface — readable in both light and dark
+                      style: AppTypography.titleLarge.copyWith(
+                        color: cs.onSurface,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Vous avez un compte ? ',
-                          // ✨ onSurfaceVariant replaces implicit default — explicit dark mode safe
-                          style: AppTypography.bodyMedium.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => context.go(Routes.emailLogin),
-                          child: const Text('Connectez-vous'),
-                        ),
-                      ],
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Renseignez vos informations pour ouvrir votre espace marchand.',
+                      // ✨ colorScheme.onSurfaceVariant replaces AppColors.textSecondary — dark mode safe
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(spacing, 0, spacing, spacing),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // ✨ AnimatedSwitcher — smooth 200ms entrance/exit, no layout jump
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: errorMessage != null
+                            ? Semantics(
+                                // ✨ liveRegion — screen reader announces error immediately
+                                liveRegion: true,
+                                key: const ValueKey('error-banner'),
+                                child: Container(
+                                  margin: const EdgeInsets.only(
+                                    bottom: AppSpacing.lg,
+                                  ),
+                                  padding: const EdgeInsets.all(AppSpacing.md),
+                                  decoration: BoxDecoration(
+                                    // ✨ M3 errorContainer — adapts to dark mode
+                                    color: cs.errorContainer,
+                                    border: Border.all(color: cs.error),
+                                    borderRadius: BorderRadius.circular(
+                                      AppSpacing
+                                          .radiusMd, // ✨ token replaces hardcoded 8
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      // ✨ Icon — don't rely on color alone (WCAG 1.4.1)
+                                      Icon(
+                                        Icons.error_outline,
+                                        color: cs.onErrorContainer,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      Expanded(
+                                        child: Text(
+                                          errorMessage,
+                                          // ✨ onErrorContainer — proper contrast on error bg
+                                          style: AppTypography.bodyMedium
+                                              .copyWith(
+                                                color: cs.onErrorContainer,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                      AppTextField(
+                        label: 'Téléphone',
+                        hint: '07 00 00 00 00',
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: const [SpacedPhoneFormatter()],
+                        errorText: _phoneError,
+                        prefixIcon: Icons.phone_outlined,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Mot de passe',
+                        hint: 'Au moins 8 caractères',
+                        controller: _passwordController,
+                        obscureText: true,
+                        errorText: _passwordError,
+                        prefixIcon: Icons.lock_outlined,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Confirmer le mot de passe',
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        errorText: _confirmPasswordError,
+                        prefixIcon: Icons.lock_outlined,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      AppTextField(
+                        label: 'Email (optionnel)',
+                        hint: 'Pour récupérer votre compte',
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        errorText: _emailError,
+                        prefixIcon: Icons.email_outlined,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      PrimaryButton(
+                        label: 'Créer mon compte',
+                        onPressed: isLoading ? null : _register,
+                        isLoading: isLoading,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Vous avez un compte ? ',
+                            // ✨ onSurfaceVariant replaces implicit default — explicit dark mode safe
+                            style: AppTypography.bodyMedium.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => context.go(Routes.emailLogin),
+                            child: const Text('Connectez-vous'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
