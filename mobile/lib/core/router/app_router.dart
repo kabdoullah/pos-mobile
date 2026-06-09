@@ -113,7 +113,6 @@ GoRouter appRouter(Ref ref) {
         Routes.pinSetup,
         Routes.pinLogin,
         Routes.storeSetup,
-        Routes.tutorial,
       };
 
       // Redirect based on AsyncValue<AuthStatus> state.
