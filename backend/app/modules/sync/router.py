@@ -76,7 +76,7 @@ async def sync_product(
 )
 async def get_changes(
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
     since: datetime | None = Query(None),
     cursor: str | None = Query(None),
     limit: int = Query(200, ge=1, le=500),
@@ -90,4 +90,4 @@ async def get_changes(
     """
     if since is not None and since.tzinfo is None:
         raise ValidationError("since must be timezone-aware")
-    return await SyncService(db).get_changes(since=since, cursor=cursor, limit=limit)
+    return await SyncService(db).get_changes(store_id=store_id, since=since, cursor=cursor, limit=limit)

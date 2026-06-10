@@ -56,6 +56,7 @@ class ProductRepository:
 
     async def list_active(
         self,
+        store_id: UUID,
         cursor: str | None = None,
         limit: int = 50,
         search: str | None = None,
@@ -64,7 +65,7 @@ class ProductRepository:
 
         Tri par (created_at DESC, id DESC). Retourne (items, has_more).
         """
-        stmt = select(Product).where(Product.deleted_at.is_(None))
+        stmt = select(Product).where(Product.store_id == store_id, Product.deleted_at.is_(None))
 
         if search:
             stmt = stmt.where(Product.name.ilike(f"%{search}%"))

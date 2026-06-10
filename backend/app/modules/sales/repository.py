@@ -107,6 +107,7 @@ class SaleRepository:
 
     async def list_sales(
         self,
+        store_id: UUID,
         cursor: str | None = None,
         limit: int = 50,
         date_from: datetime | None = None,
@@ -116,7 +117,7 @@ class SaleRepository:
 
         Tri par (created_at DESC, id DESC). Retourne (items, has_more).
         """
-        stmt = select(Sale).options(selectinload(Sale.items))
+        stmt = select(Sale).options(selectinload(Sale.items)).where(Sale.store_id == store_id)
 
         if date_from is not None:
             stmt = stmt.where(Sale.created_at >= date_from)
@@ -140,18 +141,20 @@ class SaleRepository:
 
         return rows, has_more
 
-    async def list_sales_by_date_range(self, date_from: datetime, date_to: datetime) -> list[Sale]:
+    async def list_sales_by_date_range(
+        self, store_id: UUID, date_from: datetime, date_to: datetime
+    ) -> list[Sale]:
         """Variante non-paginée pour les résumés par période."""
         stmt = (
             select(Sale)
             .options(selectinload(Sale.items))
-            .where(Sale.created_at >= date_from, Sale.created_at < date_to)
+            .where(Sale.store_id == store_id, Sale.created_at >= date_from, Sale.created_at < date_to)
             .order_by(Sale.created_at.asc())
         )
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_daily_summary(self, target_date: date) -> DailySummaryResult:
+    async def get_daily_summary(self, store_id: UUID, target_date: date) -> DailySummaryResult:
         """Agrégations SQL pour le résumé du jour.
 
         Africa/Abidjan est UTC+0 donc target_date 00:00 == UTC 00:00.
@@ -162,7 +165,7 @@ class SaleRepository:
         totals_stmt = select(
             func.coalesce(func.sum(Sale.total_amount), Decimal("0")).label("total_amount"),
             func.count(Sale.id).label("sales_count"),
-        ).where(Sale.created_at >= date_start, Sale.created_at < date_end)
+        ).where(Sale.store_id == store_id, Sale.created_at >= date_start, Sale.created_at < date_end)
         totals = (await self.db.execute(totals_stmt)).one()
 
         by_pm_stmt = (
@@ -171,7 +174,7 @@ class SaleRepository:
                 func.sum(Sale.total_amount).label("amount"),
                 func.count(Sale.id).label("cnt"),
             )
-            .where(Sale.created_at >= date_start, Sale.created_at < date_end)
+            .where(Sale.store_id == store_id, Sale.created_at >= date_start, Sale.created_at < date_end)
             .group_by(Sale.payment_method)
         )
         by_pm_rows = (await self.db.execute(by_pm_stmt)).all()
@@ -183,7 +186,7 @@ class SaleRepository:
                 func.sum(SaleItem.line_total).label("revenue"),
             )
             .join(Sale, SaleItem.sale_id == Sale.id)
-            .where(Sale.created_at >= date_start, Sale.created_at < date_end)
+            .where(Sale.store_id == store_id, Sale.created_at >= date_start, Sale.created_at < date_end)
             .group_by(SaleItem.product_name_at_sale)
             .order_by(func.sum(SaleItem.quantity).desc())
             .limit(5)

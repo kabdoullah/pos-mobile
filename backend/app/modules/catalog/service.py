@@ -34,12 +34,13 @@ class ProductService:
 
     async def list_products(
         self,
+        store_id: UUID,
         cursor: str | None,
         limit: int,
         search: str | None,
     ) -> CursorPage[ProductResponse]:
         """Liste paginée des produits actifs de la boutique."""
-        rows, has_more = await self.repo.list_active(cursor=cursor, limit=limit, search=search)
+        rows, has_more = await self.repo.list_active(store_id=store_id, cursor=cursor, limit=limit, search=search)
         items = [ProductResponse.model_validate(p) for p in rows]
         next_cursor: str | None = None
         if has_more and rows:

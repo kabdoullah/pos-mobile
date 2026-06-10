@@ -89,6 +89,7 @@ class SaleService:
 
     async def list_sales(
         self,
+        store_id: UUID,
         cursor: str | None,
         limit: int,
         date_from: datetime | None,
@@ -96,7 +97,7 @@ class SaleService:
     ) -> CursorPage[SaleResponse]:
         """Liste paginée des ventes de la boutique."""
         rows, has_more = await self.repo.list_sales(
-            cursor=cursor, limit=limit, date_from=date_from, date_to=date_to
+            store_id=store_id, cursor=cursor, limit=limit, date_from=date_from, date_to=date_to
         )
         items = [SaleResponse.model_validate(s) for s in rows]
         next_cursor: str | None = None
@@ -107,10 +108,10 @@ class SaleService:
             )
         return CursorPage(items=items, next_cursor=next_cursor, has_more=has_more)
 
-    async def get_today_summary(self) -> DailySalesSummary:
+    async def get_today_summary(self, store_id: UUID) -> DailySalesSummary:
         """Résumé des ventes du jour dans le fuseau Africa/Abidjan."""
         today = datetime.now(_TZ_ABIDJAN).date()
-        raw = await self.repo.get_daily_summary(today)
+        raw = await self.repo.get_daily_summary(store_id=store_id, target_date=today)
 
         by_payment_method = {
             row["payment_method"]: PaymentMethodSummary(

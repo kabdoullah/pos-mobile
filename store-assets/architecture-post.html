@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Modular Monolith with FastAPI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0B1120;
+      color: #E2E8F0;
+      font-family: 'Inter', sans-serif;
+      width: 1280px;
+      padding: 44px 48px 36px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid #1E2D45;
+    }
+
+    .header-eyebrow {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: #4A6080;
+      margin-bottom: 8px;
+    }
+
+    .header-title {
+      font-size: 30px;
+      font-weight: 800;
+      background: linear-gradient(110deg, #60A5FA 0%, #A78BFA 45%, #F59E0B 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.15;
+    }
+
+    .header-subtitle {
+      font-size: 13.5px;
+      color: #5A7A9B;
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    .header-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .lang-badge {
+      background: #12233A;
+      color: #60A5FA;
+      border: 1px solid #1E3A5F;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.3px;
+    }
+
+    .version-badge {
+      background: #0d1e2e;
+      color: #94A3B8;
+      border: 1px solid #1E2D45;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Main grid ──────────────────────────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      gap: 22px;
+      align-items: start;
+    }
+
+    /* ── Cards ──────────────────────────────────────────────────── */
+    .card {
+      background: #111C2E;
+      border: 1px solid #1E2D45;
+      border-radius: 14px;
+      padding: 22px 22px 18px;
+    }
+
+    .card-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      color: #4A6080;
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #1E2D45;
+    }
+
+    /* ── Folder tree ─────────────────────────────────────────────── */
+    .tree {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.85;
+    }
+
+    .tree-root { color: #CBD5E1; font-weight: 700; font-size: 13.5px; }
+    .tree-conn { color: #2A3F57; user-select: none; }
+    .tree-dir  { color: #7A9CC0; font-weight: 600; }
+    .tree-comment { color: #2E4460; font-size: 11.5px; }
+
+    .f-router  { color: #60A5FA; font-weight: 500; }
+    .f-service { color: #A78BFA; font-weight: 500; }
+    .f-repo    { color: #FCD34D; font-weight: 500; }
+    .f-schemas { color: #34D399; font-weight: 500; }
+    .f-models  { color: #F472B6; font-weight: 500; }
+    .f-core    { color: #67E8F9; font-weight: 500; }
+    .f-dim     { color: #2E4460; }
+
+    .mod-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 12.5px;
+    }
+
+    .mod-auth    { color: #93C5FD; }
+    .mod-catalog { color: #86EFAC; }
+    .mod-sales   { color: #FCA5A5; }
+    .mod-stores  { color: #FDE68A; }
+    .mod-sync    { color: #C4B5FD; }
+
+    .spacer { height: 6px; }
+
+    /* ── Legend ─────────────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #1E2D45;
+    }
+
+    .leg { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #4A6080; }
+    .leg-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Flow diagram ────────────────────────────────────────────── */
+    .flow { display: flex; flex-direction: column; }
+
+    .flow-step {
+      display: flex;
+      align-items: stretch;
+      gap: 14px;
+    }
+
+    .flow-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 40px;
+      flex-shrink: 0;
+    }
+
+    .flow-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .flow-arrow {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3px 0;
+    }
+
+    .flow-arrow-line {
+      width: 1.5px;
+      flex: 1;
+      background: linear-gradient(to bottom, #1E2D45, #243548);
+    }
+
+    .flow-arrow-head {
+      color: #2E4460;
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    .flow-body {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid #1E2D45;
+      background: #0B1120;
+      margin-bottom: 4px;
+    }
+
+    .flow-tag {
+      display: inline-flex;
+      align-items: center;
+      font-size: 9.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-bottom: 5px;
+    }
+
+    .flow-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .flow-desc {
+      font-size: 11.5px;
+      color: #4A6080;
+      line-height: 1.5;
+    }
+
+    .flow-desc code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10.5px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #0d1929;
+      color: #F59E0B;
+    }
+
+    /* ── Rules ──────────────────────────────────────────────────── */
+    .rules {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .rule {
+      padding: 13px 14px;
+      border-radius: 10px;
+      border: 1px solid;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .rule-icon { font-size: 20px; line-height: 1; }
+    .rule-title { font-size: 12px; font-weight: 700; line-height: 1.3; }
+    .rule-body  { font-size: 11px; color: #4A6080; line-height: 1.45; }
+
+    /* ── Footer ─────────────────────────────────────────────────── */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid #131F30;
+    }
+
+    .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      padding: 4px 11px;
+      border-radius: 20px;
+      border: 1px solid;
+      line-height: 1;
+    }
+
+    .footer-quote {
+      font-size: 12px;
+      font-style: italic;
+      color: #2E4460;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <div class="header">
+    <div>
+      <div class="header-eyebrow">Backend Architecture Pattern</div>
+      <div class="header-title">Modular Monolith with FastAPI</div>
+      <div class="header-subtitle">Un seul process · Modules isolés · Scalable quand la douleur est réelle</div>
+    </div>
+    <div class="header-meta">
+      <span class="lang-badge">Python 3.12 · FastAPI 0.111</span>
+      <span class="version-badge">SQLAlchemy 2.0 · PostgreSQL 16</span>
+    </div>
+  </div>
+
+  <!-- ── Main ───────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Left: folder tree -->
+    <div class="card">
+      <div class="card-title">📁 Project structure — app/</div>
+      <div class="tree">
+        <div><span class="tree-root">app/</span></div>
+        <div><span class="tree-conn">├── </span><span class="f-core">main.py</span></div>
+        <div><span class="tree-conn">│</span></div>
+        <div><span class="tree-conn">├── </span><span class="tree-dir">core/</span> <span class="tree-comment"># cross-cutting concerns</span></div>
+        <div><span class="tree-conn">│   ├── </span><span class="f-core">config.py</span>        <span class="tree-comment"># settings, env</span></div>
+        <div><span class="tree-conn">│   ├── </span><span class="f-core">db.py</span>           <span class="tree-comment"># session + RLS injection</span></div>
+        <div><span class="tree-conn">│   ├── </span><span class="f-core">middleware.py</span>    <span class="tree-comment"># JWT decode → store_id</span></div>
+        <div><span class="tree-conn">│   ├── </span><span class="f-core">security.py</span>     <span class="tree-comment"># Argon2, JWT sign/verify</span></div>
+        <div><span class="tree-conn">│   ├── </span><span class="f-core">exceptions.py</span>   <span class="tree-comment"># AppError hierarchy</span></div>
+        <div><span class="tree-conn">│   └── </span><span class="f-core">dependencies.py</span> <span class="tree-comment"># type aliases for Depends</span></div>
+        <div><span class="tree-conn">│</span></div>
+        <div><span class="tree-conn">└── </span><span class="tree-dir">modules/</span></div>
+
+        <div class="spacer"></div>
+
+        <div><span class="tree-conn">    ├── </span><span class="mod-name mod-auth">auth/</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-router">router.py</span>     <span class="f-dim">├── </span><span class="f-service">service.py</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-repo">repository.py</span> <span class="f-dim">├── </span><span class="f-schemas">schemas.py</span></div>
+        <div><span class="tree-conn">    │   └── </span><span class="f-models">models.py</span></div>
+
+        <div class="spacer"></div>
+
+        <div><span class="tree-conn">    ├── </span><span class="mod-name mod-catalog">catalog/</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-router">router.py</span>     <span class="f-dim">├── </span><span class="f-service">service.py</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-repo">repository.py</span> <span class="f-dim">├── </span><span class="f-schemas">schemas.py</span></div>
+        <div><span class="tree-conn">    │   └── </span><span class="f-models">models.py</span></div>
+
+        <div class="spacer"></div>
+
+        <div><span class="tree-conn">    ├── </span><span class="mod-name mod-sales">sales/</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-router">router.py</span>     <span class="f-dim">├── </span><span class="f-service">service.py</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-repo">repository.py</span> <span class="f-dim">├── </span><span class="f-schemas">schemas.py</span></div>
+        <div><span class="tree-conn">    │   └── </span><span class="f-models">models.py</span></div>
+
+        <div class="spacer"></div>
+
+        <div><span class="tree-conn">    ├── </span><span class="mod-name mod-stores">stores/</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-router">router.py</span>     <span class="f-dim">├── </span><span class="f-service">service.py</span></div>
+        <div><span class="tree-conn">    │   ├── </span><span class="f-repo">repository.py</span> <span class="f-dim">├── </span><span class="f-schemas">schemas.py</span></div>
+        <div><span class="tree-conn">    │   └── </span><span class="f-models">models.py</span></div>
+
+        <div class="spacer"></div>
+
+        <div><span class="tree-conn">    └── </span><span class="mod-name mod-sync">sync/</span></div>
+        <div><span class="tree-conn">        ├── </span><span class="f-router">router.py</span>     <span class="f-dim">├── </span><span class="f-service">service.py</span></div>
+        <div><span class="tree-conn">        ├── </span><span class="f-repo">repository.py</span> <span class="f-dim">├── </span><span class="f-schemas">schemas.py</span></div>
+        <div><span class="tree-conn">        └── </span><span class="f-models">models.py</span></div>
+      </div>
+
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:#60A5FA"></div>router.py</div>
+        <div class="leg"><div class="leg-dot" style="background:#A78BFA"></div>service.py</div>
+        <div class="leg"><div class="leg-dot" style="background:#FCD34D"></div>repository.py</div>
+        <div class="leg"><div class="leg-dot" style="background:#34D399"></div>schemas.py</div>
+        <div class="leg"><div class="leg-dot" style="background:#F472B6"></div>models.py</div>
+        <div class="leg"><div class="leg-dot" style="background:#67E8F9"></div>core/</div>
+      </div>
+    </div>
+
+    <!-- Right: flow + rules -->
+    <div style="display:flex;flex-direction:column;gap:14px;">
+
+      <div class="card">
+        <div class="card-title">⚡ HTTP Request Flow</div>
+
+        <div class="flow">
+
+          <!-- Step 1 -->
+          <div class="flow-step">
+            <div class="flow-left">
+              <div class="flow-icon" style="background:#0d1929;border:1px solid #1E3A5F;">📡</div>
+              <div class="flow-arrow"><div class="flow-arrow-line"></div><div class="flow-arrow-head">▼</div></div>
+            </div>
+            <div class="flow-body" style="border-color:#1E3A5F;border-left:3px solid #3B82F6;">
+              <div class="flow-tag" style="background:#0d1929;color:#60A5FA;">Incoming</div>
+              <div class="flow-name" style="color:#60A5FA;">HTTP Request</div>
+              <div class="flow-desc">Any endpoint — <code>GET /products</code>, <code>POST /sales</code>…</div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="flow-step">
+            <div class="flow-left">
+              <div class="flow-icon" style="background:#061a1f;border:1px solid #164E5A;">🔐</div>
+              <div class="flow-arrow"><div class="flow-arrow-line"></div><div class="flow-arrow-head">▼</div></div>
+            </div>
+            <div class="flow-body" style="border-color:#164E5A;border-left:3px solid #06B6D4;">
+              <div class="flow-tag" style="background:#061a1f;color:#67E8F9;">core / middleware</div>
+              <div class="flow-name" style="color:#67E8F9;">middleware.py</div>
+              <div class="flow-desc">Decode JWT → extract <code>store_id</code> → inject via <code>SET LOCAL app.current_store_id</code> into session</div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="flow-step">
+            <div class="flow-left">
+              <div class="flow-icon" style="background:#0d1929;border:1px solid #1E3A5F;">🚦</div>
+              <div class="flow-arrow"><div class="flow-arrow-line"></div><div class="flow-arrow-head">▼</div></div>
+            </div>
+            <div class="flow-body" style="border-color:#1E3A5F;border-left:3px solid #3B82F6;">
+              <div class="flow-tag" style="background:#0d1929;color:#60A5FA;">module / router</div>
+              <div class="flow-name" style="color:#60A5FA;">router.py</div>
+              <div class="flow-desc">Pydantic schema validation · declare <code>response_model</code> + <code>status_code</code> · delegate to service</div>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="flow-step">
+            <div class="flow-left">
+              <div class="flow-icon" style="background:#150f2a;border:1px solid #3B2D6F;">⚙️</div>
+              <div class="flow-arrow"><div class="flow-arrow-line"></div><div class="flow-arrow-head">▼</div></div>
+            </div>
+            <div class="flow-body" style="border-color:#3B2D6F;border-left:3px solid #8B5CF6;">
+              <div class="flow-tag" style="background:#150f2a;color:#A78BFA;">module / service</div>
+              <div class="flow-name" style="color:#A78BFA;">service.py</div>
+              <div class="flow-desc">Business logic · can call <strong>other module services</strong> · NEVER another module's repository</div>
+            </div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="flow-step">
+            <div class="flow-left">
+              <div class="flow-icon" style="background:#1a1608;border:1px solid #52400C;">🗄️</div>
+              <div class="flow-arrow"><div class="flow-arrow-line"></div><div class="flow-arrow-head">▼</div></div>
+            </div>
+            <div class="flow-body" style="border-color:#52400C;border-left:3px solid #F59E0B;">
+              <div class="flow-tag" style="background:#1a1608;color:#FCD34D;">module / repository</div>
+              <div class="flow-name" style="color:#FCD34D;">repository.py</div>
+              <div class="flow-desc">SQLAlchemy 2.0 async · <code>flush()</code> only — <code>commit()</code> centralized in <code>get_db()</code></div>
+            </div>
+          </div>
+
+          <!-- Step 6 -->
+          <div class="flow-step">
+            <div class="flow-left">
+              <div class="flow-icon" style="background:#061810;border:1px solid #0A3D20;">🐘</div>
+            </div>
+            <div class="flow-body" style="border-color:#0A3D20;border-left:3px solid #10B981;">
+              <div class="flow-tag" style="background:#061810;color:#34D399;">Database</div>
+              <div class="flow-name" style="color:#34D399;">PostgreSQL 16 + Row-Level Security</div>
+              <div class="flow-desc">RLS policy enforces tenant isolation at DB level — last line of defense</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Rules -->
+      <div class="rules">
+        <div class="rule" style="background:#0d1929;border-color:#1E3A5F;">
+          <div class="rule-icon">📦</div>
+          <div class="rule-title" style="color:#60A5FA;">Services talk<br>to Services</div>
+          <div class="rule-body">Module A can import Module B's <em>service</em> — never its <em>repository</em> or <em>models</em>.</div>
+        </div>
+        <div class="rule" style="background:#061810;border-color:#0A3D20;">
+          <div class="rule-icon">🔒</div>
+          <div class="rule-title" style="color:#34D399;">RLS as<br>defense-in-depth</div>
+          <div class="rule-body">PostgreSQL enforces tenant isolation even if application code has a bug.</div>
+        </div>
+        <div class="rule" style="background:#150f2a;border-color:#3B2D6F;">
+          <div class="rule-icon">🚀</div>
+          <div class="rule-title" style="color:#A78BFA;">Monolith until<br>it hurts</div>
+          <div class="rule-body">Modular structure enables extraction to microservices — no rewrite needed.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Footer ─────────────────────────────────────────────────── -->
+  <div class="footer">
+    <div class="pills">
+      <span class="pill" style="color:#60A5FA;border-color:#1E3A5F;background:#0d1929;">FastAPI</span>
+      <span class="pill" style="color:#A78BFA;border-color:#2d1e4f;background:#100d1e;">SQLAlchemy 2.0</span>
+      <span class="pill" style="color:#34D399;border-color:#0A3D20;background:#061810;">PostgreSQL 16</span>
+      <span class="pill" style="color:#FCD34D;border-color:#52400C;background:#1a1608;">Alembic</span>
+      <span class="pill" style="color:#67E8F9;border-color:#164E5A;background:#061a1f;">Python 3.12</span>
+      <span class="pill" style="color:#F472B6;border-color:#4a1a30;background:#1a0d18;">Pydantic v2</span>
+      <span class="pill" style="color:#94A3B8;border-color:#1E2D45;background:#0B1120;">uv · ruff · mypy</span>
+    </div>
+    <div class="footer-quote">"Monolithic until it hurts, modular from day one"</div>
+  </div>
+
+</body>
+</html>

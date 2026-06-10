@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#7A3408"/>
+      <stop offset="100%" stop-color="#4A1E04"/>
+    </linearGradient>
+    <linearGradient id="iconBg" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#FEF9EE"/>
+      <stop offset="100%" stop-color="#FDE8C0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="500" fill="url(#bg)"/>
+
+  <!-- Decorative bg circles -->
+  <circle cx="0"    cy="0"   r="200" fill="#92400E" fill-opacity="0.45"/>
+  <circle cx="1024" cy="500" r="220" fill="#3D1803" fill-opacity="0.7"/>
+  <circle cx="1000" cy="30"  r="90"  fill="#CA8A04" fill-opacity="0.08"/>
+  <circle cx="490"  cy="250" r="380" fill="#92400E" fill-opacity="0.12"/>
+
+  <!-- Subtle dot grid (left zone decoration) -->
+  <g fill="#CA8A04" fill-opacity="0.12">
+    <circle cx="40"  cy="160" r="3"/>
+    <circle cx="70"  cy="160" r="3"/>
+    <circle cx="40"  cy="190" r="3"/>
+    <circle cx="70"  cy="190" r="3"/>
+    <circle cx="40"  cy="220" r="3"/>
+    <circle cx="70"  cy="220" r="3"/>
+    <circle cx="40"  cy="340" r="3"/>
+    <circle cx="70"  cy="340" r="3"/>
+    <circle cx="40"  cy="370" r="3"/>
+    <circle cx="70"  cy="370" r="3"/>
+  </g>
+
+  <!-- ─────────────────────────────── -->
+  <!-- LEFT: Icon                      -->
+  <!-- ─────────────────────────────── -->
+
+  <!-- Outer glow -->
+  <circle cx="248" cy="252" r="200" fill="#CA8A04" fill-opacity="0.07"/>
+
+  <!-- Icon circle -->
+  <circle cx="248" cy="252" r="175" fill="url(#iconBg)" stroke="#92400E" stroke-width="11"/>
+  <!-- Inner ring -->
+  <circle cx="248" cy="252" r="161" fill="none" stroke="#CA8A04" stroke-width="2" stroke-opacity="0.45"/>
+
+  <!-- Shop: base -->
+  <rect x="137" y="310" width="218" height="16" rx="8" fill="#CA8A04"/>
+
+  <!-- Shop: 3 columns -->
+  <rect x="152" y="256" width="46" height="56" rx="5" fill="#A85C30"/>
+  <rect x="213" y="256" width="46" height="56" rx="5" fill="#A85C30"/>
+  <rect x="274" y="256" width="46" height="56" rx="5" fill="#A85C30"/>
+
+  <!-- Shop: awning -->
+  <rect x="130" y="232" width="228" height="32" rx="8" fill="#CA8A04"/>
+
+  <!-- Coin badge -->
+  <circle cx="345" cy="214" r="36" fill="#CA8A04" stroke="#6B2E07" stroke-width="5"/>
+  <circle cx="345" cy="214" r="28" fill="#B8780A"/>
+  <text x="345" y="223"
+        text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="28" font-weight="bold" fill="#FEF3C7">&#8355;</text>
+
+  <!-- ─────────────────────────────── -->
+  <!-- Vertical divider                -->
+  <!-- ─────────────────────────────── -->
+  <line x1="492" y1="55" x2="492" y2="445"
+        stroke="#CA8A04" stroke-width="1" stroke-opacity="0.25"
+        stroke-dasharray="6 5"/>
+
+  <!-- ─────────────────────────────── -->
+  <!-- RIGHT: Text                     -->
+  <!-- ─────────────────────────────── -->
+
+  <!-- App name -->
+  <text x="762" y="158"
+        text-anchor="middle"
+        font-family="'Roboto', 'Arial Black', Arial, Helvetica, sans-serif"
+        font-size="82" font-weight="900"
+        fill="#FEF3C7" letter-spacing="-2">Ma Caisse</text>
+
+  <!-- Gold underline -->
+  <rect x="562" y="178" width="400" height="3.5" rx="2" fill="#CA8A04"/>
+
+  <!-- Tagline -->
+  <text x="762" y="222"
+        text-anchor="middle"
+        font-family="'Roboto', Arial, Helvetica, sans-serif"
+        font-size="20" fill="#FEF3C7" fill-opacity="0.82" letter-spacing="0.4">
+    La caisse des commer&#231;ants ivoiriens
+  </text>
+
+  <!-- Feature pills — row 1 -->
+  <!-- Pill bg fill -->
+  <rect x="562" y="258" width="178" height="40" rx="20" fill="#CA8A04" fill-opacity="0.18" stroke="#CA8A04" stroke-width="1.5" stroke-opacity="0.6"/>
+  <text x="651" y="283" text-anchor="middle"
+        font-family="'Roboto', Arial, sans-serif" font-size="15" fill="#FEF3C7" fill-opacity="0.92">
+    Fonctionne offline
+  </text>
+
+  <rect x="756" y="258" width="166" height="40" rx="20" fill="#CA8A04" fill-opacity="0.18" stroke="#CA8A04" stroke-width="1.5" stroke-opacity="0.6"/>
+  <text x="839" y="283" text-anchor="middle"
+        font-family="'Roboto', Arial, sans-serif" font-size="15" fill="#FEF3C7" fill-opacity="0.92">
+    Mobile Money
+  </text>
+
+  <!-- Feature pills — row 2 -->
+  <rect x="562" y="314" width="166" height="40" rx="20" fill="#CA8A04" fill-opacity="0.18" stroke="#CA8A04" stroke-width="1.5" stroke-opacity="0.6"/>
+  <text x="645" y="339" text-anchor="middle"
+        font-family="'Roboto', Arial, sans-serif" font-size="15" fill="#FEF3C7" fill-opacity="0.92">
+    Re&#231;us Bluetooth
+  </text>
+
+  <rect x="744" y="314" width="178" height="40" rx="20" fill="#CA8A04" fill-opacity="0.18" stroke="#CA8A04" stroke-width="1.5" stroke-opacity="0.6"/>
+  <text x="833" y="339" text-anchor="middle"
+        font-family="'Roboto', Arial, sans-serif" font-size="15" fill="#FEF3C7" fill-opacity="0.92">
+    Scan codes-barres
+  </text>
+
+</svg>

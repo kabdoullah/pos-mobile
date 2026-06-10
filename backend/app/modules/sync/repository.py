@@ -19,6 +19,7 @@ class SyncRepository:
 
     async def list_changed_products(
         self,
+        store_id: UUID,
         since: datetime | None,
         limit: int,
         cursor_after_id: UUID | None = None,
@@ -29,7 +30,7 @@ class SyncRepository:
         Inclut les produits supprimés (pas de filtre deleted_at IS NULL).
         Tri ASC pour que le client puisse rejouer les changements dans l'ordre.
         """
-        stmt = select(Product)
+        stmt = select(Product).where(Product.store_id == store_id)
 
         if since is not None:
             stmt = stmt.where(
@@ -56,6 +57,7 @@ class SyncRepository:
 
     async def list_changed_sales(
         self,
+        store_id: UUID,
         since: datetime | None,
         limit: int,
         cursor_after_id: UUID | None = None,
@@ -66,7 +68,7 @@ class SyncRepository:
         Utilise synced_at (horloge serveur) et non created_at (horloge client)
         pour garantir que le client ne rate aucune vente malgré le drift d'horloge.
         """
-        stmt = select(Sale).options(selectinload(Sale.items))
+        stmt = select(Sale).options(selectinload(Sale.items)).where(Sale.store_id == store_id)
 
         if since is not None:
             stmt = stmt.where(Sale.synced_at > since)

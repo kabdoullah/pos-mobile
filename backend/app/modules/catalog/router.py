@@ -20,13 +20,13 @@ router = APIRouter()
 )
 async def list_products(
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     search: str | None = Query(None),
 ) -> CursorPage[ProductResponse]:
     """Liste paginée des produits actifs de la boutique."""
-    return await ProductService(db).list_products(cursor=cursor, limit=limit, search=search)
+    return await ProductService(db).list_products(store_id=store_id, cursor=cursor, limit=limit, search=search)
 
 
 @router.post(

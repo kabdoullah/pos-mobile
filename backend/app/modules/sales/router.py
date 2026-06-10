@@ -37,7 +37,7 @@ async def create_sale(
 )
 async def list_sales(
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
     cursor: str | None = Query(None),
     limit: int = Query(50, ge=1, le=100),
     date_from: datetime | None = Query(None),
@@ -45,7 +45,7 @@ async def list_sales(
 ) -> CursorPage[SaleResponse]:
     """Liste paginée des ventes de la boutique, triées par date décroissante."""
     return await SaleService(db).list_sales(
-        cursor=cursor, limit=limit, date_from=date_from, date_to=date_to
+        store_id=store_id, cursor=cursor, limit=limit, date_from=date_from, date_to=date_to
     )
 
 
@@ -58,10 +58,10 @@ async def list_sales(
 )
 async def get_today_summary(
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
 ) -> DailySalesSummary:
     """Résumé agrégé des ventes du jour (total, par moyen de paiement, top produits)."""
-    return await SaleService(db).get_today_summary()
+    return await SaleService(db).get_today_summary(store_id=store_id)
 
 
 @router.get(

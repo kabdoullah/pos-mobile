@@ -195,6 +195,7 @@ class SyncService:
 
     async def get_changes(
         self,
+        store_id: UUID,
         since: datetime | None,
         cursor: str | None,
         limit: int,
@@ -230,6 +231,7 @@ class SyncService:
 
         if phase == "products":
             products, products_has_more = await self.sync_repo.list_changed_products(
+                store_id=store_id,
                 since=since,
                 limit=limit,
                 cursor_after_id=cursor_after_id,
@@ -254,6 +256,7 @@ class SyncService:
                     next_cursor = encode_cursor({"phase": "sales"})
                 else:
                     sales, sales_has_more = await self.sync_repo.list_changed_sales(
+                        store_id=store_id,
                         since=since,
                         limit=remaining,
                         cursor_after_id=None,
@@ -272,6 +275,7 @@ class SyncService:
 
         else:  # phase == "sales"
             sales, sales_has_more = await self.sync_repo.list_changed_sales(
+                store_id=store_id,
                 since=since,
                 limit=limit,
                 cursor_after_id=cursor_after_id,
