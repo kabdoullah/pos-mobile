@@ -210,11 +210,53 @@ class PushService {
             e.response!.data as Map<String, dynamic>,
           );
           if (conflictResponse.serverState != null) {
-            await _updateProductFromServerState(conflictResponse.serverState!);
-            _logger?.i(
-              'Product ${entry.entityId} conflict resolved (server won)',
+            final storedPayload =
+                jsonDecode(entry.payload) as Map<String, dynamic>;
+            final clientUpdatedAt = DateTime.parse(
+              storedPayload['client_updated_at'] as String,
             );
-            await _queueRepository.markSynced(entry.id);
+            final serverUpdatedAt = DateTime.parse(
+              conflictResponse.serverState!.updatedAt,
+            );
+
+            if (serverUpdatedAt.isBefore(clientUpdatedAt)) {
+              // Client was newer (timestamp-wise) but barcode was rejected
+              // because it's already used by another product.
+              // Strip barcode and retry to preserve other field changes.
+              final sentBarcode = storedPayload['barcode'] as String?;
+              if (sentBarcode != null) {
+                final stripped = Map<String, dynamic>.from(storedPayload)
+                  ..['barcode'] = null;
+                await (_db.update(_db.products)
+                      ..where((p) => p.id.equals(entry.entityId)))
+                    .write(const ProductsCompanion(barcode: drift.Value(null)));
+                await _queueRepository.resetWithPayload(
+                  entry.id,
+                  jsonEncode(stripped),
+                );
+                _logger?.w(
+                  'Product ${entry.entityId}: barcode "$sentBarcode" '
+                  'rejected (taken by another product) — stripped, will retry',
+                );
+              } else {
+                // No barcode in payload but still got a timestamp-based conflict.
+                await _updateProductFromServerState(
+                  conflictResponse.serverState!,
+                );
+                await _queueRepository.markSynced(entry.id);
+                _logger?.w(
+                  'Product ${entry.entityId}: unexpected barcode conflict '
+                  '(no barcode in payload) — server state applied',
+                );
+              }
+            } else {
+              // Server genuinely has a newer version — accept it.
+              await _updateProductFromServerState(conflictResponse.serverState!);
+              _logger?.i(
+                'Product ${entry.entityId} conflict resolved (server won)',
+              );
+              await _queueRepository.markSynced(entry.id);
+            }
           } else {
             // No server_state = new product whose barcode is taken by another product.
             // Strip the barcode and retry so the product still gets created.
