@@ -37,4 +37,7 @@ abstract class SalesRepository {
 
   /// Returns all sales created on the given date (local device timezone).
   Future<List<Sale>> getSalesByDate(DateTime date);
+
+  /// Watches all sales created on the given date — re-emits on every change.
+  Stream<List<Sale>> watchSalesByDate(DateTime date);
 }

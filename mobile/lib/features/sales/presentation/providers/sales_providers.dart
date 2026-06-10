@@ -32,11 +32,11 @@ Future<sale_entity.Sale> submitSale(
   return sale;
 }
 
-/// Loads sales for a specific date from local Drift DB.
+/// Watches sales for a specific date — re-emits on every drift change.
 @riverpod
-Future<List<sale_entity.Sale>> salesHistory(
+Stream<List<sale_entity.Sale>> salesHistory(
   Ref ref, {
   required DateTime date,
-}) async {
-  return ref.read(salesRepositoryProvider).getSalesByDate(date);
+}) {
+  return ref.watch(salesRepositoryProvider).watchSalesByDate(date);
 }

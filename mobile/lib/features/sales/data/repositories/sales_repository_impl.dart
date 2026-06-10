@@ -168,6 +168,27 @@ class SalesRepositoryImpl implements SalesRepository {
   }
 
   @override
+  Stream<List<sale_entity.Sale>> watchSalesByDate(DateTime date) {
+    final dayStart = DateTime(date.year, date.month, date.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+
+    return (db.select(db.sales)
+          ..where(
+            (t) =>
+                t.createdAt.isBiggerOrEqualValue(dayStart) &
+                t.createdAt.isSmallerThanValue(dayEnd),
+          )
+          ..orderBy([
+            (t) => drift.OrderingTerm(
+              expression: t.createdAt,
+              mode: drift.OrderingMode.desc,
+            ),
+          ]))
+        .watch()
+        .map((rows) => rows.map((s) => s.toDomain()).toList());
+  }
+
+  @override
   Future<sale_entity.Sale?> getSale(String id) async {
     final sale = await (db.select(
       db.sales,

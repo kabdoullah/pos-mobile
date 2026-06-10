@@ -88,21 +88,26 @@ class _SalesHistoryPageState extends ConsumerState<SalesHistoryPage> {
                     message: 'Pas de vente enregistrée ce jour.',
                   );
                 }
-                return ListView.separated(
-                  padding: EdgeInsets.all(
-                    responsiveValue(
-                      context,
-                      small: AppSpacing.md,
-                      medium: AppSpacing.lg,
-                    ),
+                return RefreshIndicator(
+                  onRefresh: () async => ref.invalidate(
+                    salesHistoryProvider(date: _selectedDate),
                   ),
-                  itemCount: sales.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, index) {
-                    final sale = sales[index];
-                    return _SaleCard(sale: sale);
-                  },
+                  child: ListView.separated(
+                    padding: EdgeInsets.all(
+                      responsiveValue(
+                        context,
+                        small: AppSpacing.md,
+                        medium: AppSpacing.lg,
+                      ),
+                    ),
+                    itemCount: sales.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, index) {
+                      final sale = sales[index];
+                      return _SaleCard(sale: sale);
+                    },
+                  ),
                 );
               },
             ),
