@@ -53,10 +53,10 @@ async def create_product(
 async def get_product_by_barcode(
     barcode: str,
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
 ) -> ProductResponse:
     """Retourne un produit par son code-barres. Utilisé lors du scan mobile."""
-    product = await ProductService(db).get_by_barcode(barcode)
+    product = await ProductService(db).get_by_barcode(barcode, store_id)
     return ProductResponse.model_validate(product)
 
 
@@ -68,10 +68,10 @@ async def get_product_by_barcode(
 async def get_product(
     product_id: UUID,
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
 ) -> ProductResponse:
     """Retourne un produit par son id."""
-    product = await ProductService(db).get_by_id(product_id)
+    product = await ProductService(db).get_by_id(product_id, store_id)
     return ProductResponse.model_validate(product)
 
 
@@ -84,10 +84,10 @@ async def update_product(
     product_id: UUID,
     payload: ProductUpdate,
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
 ) -> ProductResponse:
     """Met à jour les champs fournis (PATCH partiel). 404 / 409 selon le cas."""
-    product = await ProductService(db).update_product(product_id, payload)
+    product = await ProductService(db).update_product(product_id, store_id, payload)
     return ProductResponse.model_validate(product)
 
 
@@ -99,7 +99,7 @@ async def update_product(
 async def delete_product(
     product_id: UUID,
     db: TenantDbSession,
-    _store_id: CurrentStoreId,
+    store_id: CurrentStoreId,
 ) -> None:
     """Supprime un produit (soft delete). Transparent pour le client."""
-    await ProductService(db).delete_product(product_id)
+    await ProductService(db).delete_product(product_id, store_id)

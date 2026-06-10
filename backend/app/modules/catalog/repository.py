@@ -36,19 +36,21 @@ class ProductRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def get_active_by_id(self, product_id: UUID) -> Product | None:
+    async def get_active_by_id(self, product_id: UUID, store_id: UUID) -> Product | None:
         """Retourne un produit actif par son id, ou None."""
         stmt = select(Product).where(
             Product.id == product_id,
+            Product.store_id == store_id,
             Product.deleted_at.is_(None),
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_active_by_barcode(self, barcode: str) -> Product | None:
+    async def get_active_by_barcode(self, barcode: str, store_id: UUID) -> Product | None:
         """Retourne un produit actif par son code-barres, ou None."""
         stmt = select(Product).where(
             Product.barcode == barcode,
+            Product.store_id == store_id,
             Product.deleted_at.is_(None),
         )
         result = await self.db.execute(stmt)

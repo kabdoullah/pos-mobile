@@ -18,16 +18,16 @@ class ProductService:
         self.db = db
         self.repo = ProductRepository(db)
 
-    async def get_by_id(self, product_id: UUID) -> Product:
+    async def get_by_id(self, product_id: UUID, store_id: UUID) -> Product:
         """Retourne un produit actif ou lève NotFoundError."""
-        product = await self.repo.get_active_by_id(product_id)
+        product = await self.repo.get_active_by_id(product_id, store_id)
         if product is None:
             raise NotFoundError("Product not found.")
         return product
 
-    async def get_by_barcode(self, barcode: str) -> Product:
+    async def get_by_barcode(self, barcode: str, store_id: UUID) -> Product:
         """Retourne un produit actif par barcode ou lève NotFoundError."""
-        product = await self.repo.get_active_by_barcode(barcode)
+        product = await self.repo.get_active_by_barcode(barcode, store_id)
         if product is None:
             raise NotFoundError("Product not found.")
         return product
@@ -53,7 +53,7 @@ class ProductService:
     async def create_product(self, store_id: UUID, payload: ProductCreate) -> Product:
         """Crée un produit. ConflictError si le barcode est déjà utilisé."""
         if payload.barcode is not None:
-            existing = await self.repo.get_active_by_barcode(payload.barcode)
+            existing = await self.repo.get_active_by_barcode(payload.barcode, store_id)
             if existing is not None:
                 raise ConflictError("A product with this barcode already exists.", field="barcode")
         product = Product(
@@ -65,18 +65,18 @@ class ProductService:
         )
         return await self.repo.create(product)
 
-    async def update_product(self, product_id: UUID, payload: ProductUpdate) -> Product:
+    async def update_product(self, product_id: UUID, store_id: UUID, payload: ProductUpdate) -> Product:
         """Met à jour les champs fournis (PATCH). ConflictError si nouveau barcode déjà pris."""
-        product = await self.get_by_id(product_id)
+        product = await self.get_by_id(product_id, store_id)
         updates = payload.model_dump(exclude_unset=True)
         new_barcode = updates.get("barcode")
         if new_barcode is not None and new_barcode != product.barcode:
-            existing = await self.repo.get_active_by_barcode(new_barcode)
+            existing = await self.repo.get_active_by_barcode(new_barcode, store_id)
             if existing is not None:
                 raise ConflictError("A product with this barcode already exists.", field="barcode")
         return await self.repo.update(product, updates)
 
-    async def delete_product(self, product_id: UUID) -> None:
+    async def delete_product(self, product_id: UUID, store_id: UUID) -> None:
         """Soft delete d'un produit. NotFoundError si absent."""
-        product = await self.get_by_id(product_id)
+        product = await self.get_by_id(product_id, store_id)
         await self.repo.soft_delete(product)

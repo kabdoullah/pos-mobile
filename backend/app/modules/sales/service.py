@@ -48,7 +48,7 @@ class SaleService:
         for item_payload in payload.items:
             resolved_product_id: UUID | None = item_payload.product_id
             if item_payload.product_id is not None:
-                product = await self.product_repo.get_active_by_id(item_payload.product_id)
+                product = await self.product_repo.get_active_by_id(item_payload.product_id, store_id)
                 if product is None:
                     logger.warning(
                         "Product referenced in sale no longer exists, setting product_id to NULL",
