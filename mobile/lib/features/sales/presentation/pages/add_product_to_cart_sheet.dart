@@ -47,7 +47,16 @@ class _AddProductToCartSheetState extends ConsumerState<AddProductToCartSheet> {
   }
 
   void _addToCart(Product product) {
-    ref.read(cartProvider.notifier).addItem(product);
+    final added = ref.read(cartProvider.notifier).addItem(product);
+    if (!added) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stock insuffisant pour ce produit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     Navigator.of(context).pop();
   }
 

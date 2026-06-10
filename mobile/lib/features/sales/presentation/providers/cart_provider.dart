@@ -35,32 +35,43 @@ class Cart extends _$Cart {
   @override
   CartState build() => const CartState(items: []);
 
-  /// Add a product to cart (or increment qty if already exists).
-  void addItem(Product product) {
+  /// Add a product to cart (or increment qty if already in cart).
+  /// Returns false if stock would be exceeded, true otherwise.
+  bool addItem(Product product) {
     final existingIndex = state.items.indexWhere(
       (item) => item.productId == product.id,
     );
 
     if (existingIndex >= 0) {
       final existing = state.items[existingIndex];
+      final newQty = existing.quantity + 1;
+      if (product.currentStock != null && newQty > product.currentStock!) {
+        return false;
+      }
       final updated = CartItem(
         productId: existing.productId,
         productName: existing.productName,
         unitPrice: existing.unitPrice,
-        quantity: existing.quantity + 1,
+        quantity: newQty,
+        availableStock: product.currentStock ?? existing.availableStock,
       );
       final newItems = [...state.items];
       newItems[existingIndex] = updated;
       state = state.copyWith(items: newItems);
     } else {
+      if (product.currentStock != null && product.currentStock! < 1) {
+        return false;
+      }
       final newItem = CartItem(
         productId: product.id,
         productName: product.name,
         unitPrice: product.unitPrice,
         quantity: 1,
+        availableStock: product.currentStock,
       );
       state = state.copyWith(items: [...state.items, newItem]);
     }
+    return true;
   }
 
   /// Remove product from cart by product ID.
@@ -71,7 +82,7 @@ class Cart extends _$Cart {
     state = state.copyWith(items: newItems);
   }
 
-  /// Update quantity for a product (remove if qty ≤ 0).
+  /// Update quantity for a product (remove if qty ≤ 0, clamp to available stock).
   void updateQuantity(String productId, int qty) {
     if (qty <= 0) {
       removeItem(productId);
@@ -83,11 +94,15 @@ class Cart extends _$Cart {
     );
     if (itemIndex >= 0) {
       final item = state.items[itemIndex];
+      final clamped = item.availableStock != null
+          ? qty.clamp(1, item.availableStock!)
+          : qty;
       final updated = CartItem(
         productId: item.productId,
         productName: item.productName,
         unitPrice: item.unitPrice,
-        quantity: qty,
+        quantity: clamped,
+        availableStock: item.availableStock,
       );
       final newItems = [...state.items];
       newItems[itemIndex] = updated;

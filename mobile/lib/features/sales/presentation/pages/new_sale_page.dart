@@ -151,6 +151,16 @@ class _NewSalePageState extends ConsumerState<NewSalePage> {
       return;
     }
 
+    if (result == ScanResult.stockExceeded && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stock insuffisant pour ce produit'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     if (mounted) {
       final cs = Theme.of(context).colorScheme;
       final messenger = ScaffoldMessenger.of(context);
@@ -618,10 +628,13 @@ class _CartPanel extends StatelessWidget {
                               item.productId,
                               item.quantity - 1,
                             ),
-                            onIncrease: () => onUpdateQuantity(
-                              item.productId,
-                              item.quantity + 1,
-                            ),
+                            onIncrease: item.availableStock != null &&
+                                    item.quantity >= item.availableStock!
+                                ? null
+                                : () => onUpdateQuantity(
+                                    item.productId,
+                                    item.quantity + 1,
+                                  ),
                           ),
                         ),
                       );
@@ -665,11 +678,11 @@ class _CartItemRow extends StatelessWidget {
   const _CartItemRow({
     required this.item,
     required this.onDecrease,
-    required this.onIncrease,
+    this.onIncrease,
   });
   final CartItem item;
   final VoidCallback onDecrease;
-  final VoidCallback onIncrease;
+  final VoidCallback? onIncrease;
 
   @override
   Widget build(BuildContext context) {
@@ -745,13 +758,13 @@ class _CartItemRow extends StatelessWidget {
 /// Quantity increment/decrement button with haptic feedback.
 class _QuantityButton extends StatefulWidget {
   /// Creates a quantity button.
-  const _QuantityButton({required this.icon, required this.onTap});
+  const _QuantityButton({required this.icon, this.onTap});
 
   /// Button icon (add or remove).
   final IconData icon;
 
-  /// On tap callback.
-  final VoidCallback onTap;
+  /// On tap callback. Null disables the button.
+  final VoidCallback? onTap;
 
   @override
   State<_QuantityButton> createState() => _QuantityButtonState();
@@ -764,22 +777,31 @@ class _QuantityButtonState extends State<_QuantityButton> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return GestureDetector(
-      onTapDown: (_) {
-        setState(() => _isPressed = true);
-        unawaited(HapticFeedback.lightImpact());
-      },
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
+      onTapDown: widget.onTap != null
+          ? (_) {
+              setState(() => _isPressed = true);
+              unawaited(HapticFeedback.lightImpact());
+            }
+          : null,
+      onTapUp: widget.onTap != null
+          ? (_) {
+              setState(() => _isPressed = false);
+              widget.onTap!();
+            }
+          : null,
+      onTapCancel: widget.onTap != null
+          ? () => setState(() => _isPressed = false)
+          : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 100),
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          // ✨ cs.primary / cs.primaryContainer — dark-mode aware
-          color: _isPressed ? cs.primary : cs.primaryContainer,
+          color: widget.onTap == null
+              ? cs.surfaceContainerHighest
+              : _isPressed
+                  ? cs.primary
+                  : cs.primaryContainer,
           borderRadius: BorderRadius.circular(AppSpacing.radiusFull),
           boxShadow: _isPressed
               ? [
@@ -793,7 +815,11 @@ class _QuantityButtonState extends State<_QuantityButton> {
         child: Icon(
           widget.icon,
           size: 20,
-          color: _isPressed ? cs.onPrimary : cs.primary,
+          color: widget.onTap == null
+              ? cs.onSurface.withValues(alpha: 0.38)
+              : _isPressed
+                  ? cs.onPrimary
+                  : cs.primary,
         ),
       ),
     );

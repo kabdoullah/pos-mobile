@@ -55,6 +55,16 @@ class CreateSaleUseCase {
       throw CreateSaleException('Montant TVA invalide');
     }
 
+    // Validation: stock check
+    for (final item in items) {
+      if (item.availableStock != null && item.quantity > item.availableStock!) {
+        throw CreateSaleException(
+          'Stock insuffisant pour ${item.productName} : '
+          '${item.quantity} demandé(s), ${item.availableStock} disponible(s)',
+        );
+      }
+    }
+
     // Recalculate total from items as double-check
     final calculatedTotal = items.fold<Decimal>(
       Decimal.zero,

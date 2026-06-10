@@ -19,6 +19,9 @@ enum ScanResult {
 
   /// Same barcode scanned within cooldown window (2s).
   cooldown,
+
+  /// Product found but stock is exhausted.
+  stockExceeded,
 }
 
 /// Manages barcode scanning: cooldown deduplication, catalog lookup, cart dispatch.
@@ -58,7 +61,8 @@ class ScanController extends _$ScanController {
       (CartItem item) => item.productId == product.id,
     );
 
-    ref.read(cartProvider.notifier).addItem(product);
+    final added = ref.read(cartProvider.notifier).addItem(product);
+    if (!added) return ScanResult.stockExceeded;
     return alreadyInCart ? ScanResult.quantityIncremented : ScanResult.added;
   }
 }

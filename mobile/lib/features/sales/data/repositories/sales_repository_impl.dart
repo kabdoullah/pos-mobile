@@ -93,6 +93,20 @@ class SalesRepositoryImpl implements SalesRepository {
             );
       }
 
+      // Decrement stock for each item (products with null stock are unlimited)
+      for (final item in items) {
+        await db.customUpdate(
+          'UPDATE products '
+          'SET current_stock = current_stock - ?, dirty = 1 '
+          'WHERE id = ? AND current_stock IS NOT NULL',
+          variables: [
+            drift.Variable.withInt(item.quantity),
+            drift.Variable.withString(item.productId),
+          ],
+          updates: {db.products},
+        );
+      }
+
       // Enqueue for sync within same transaction (ensures atomicity)
       await syncQueue.enqueueSale(saleId: saleId, salePayload: salePayload);
     });
