@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:logger/logger.dart';
 
@@ -140,7 +141,12 @@ class PushService {
       final payload = jsonDecode(entry.payload) as Map<String, dynamic>;
       ProductSyncItemDto productItem;
       try {
-        productItem = ProductSyncItemDto.fromJson(payload);
+        final parsed = ProductSyncItemDto.fromJson(payload);
+        // Re-apply normalizeBarcode so any barcode stored before the pattern
+        // validation was added gets cleaned before reaching the server.
+        productItem = parsed.copyWith(
+          barcode: normalizeBarcode(parsed.barcode),
+        );
       } catch (_) {
         // Legacy payload used camelCase keys — repair from current drift state.
         final product = await (_db.select(
@@ -156,7 +162,7 @@ class PushService {
         productItem = ProductSyncItemDto(
           id: product.id,
           name: product.name,
-          barcode: product.barcode,
+          barcode: normalizeBarcode(product.barcode),
           unitPrice: product.unitPrice,
           currentStock: product.currentStock,
           clientUpdatedAt: product.updatedAt.toUtc().toIso8601String(),
@@ -194,13 +200,80 @@ class PushService {
           );
       }
     } catch (e) {
-      // Increment retry
+      // 409 conflict: server has a newer or conflicting state.
+      // Parse the body manually since Dio throws for non-2xx responses.
+      if (e is DioException &&
+          e.response?.statusCode == 409 &&
+          e.response?.data is Map<String, dynamic>) {
+        try {
+          final conflictResponse = ProductSyncResponseDto.fromJson(
+            e.response!.data as Map<String, dynamic>,
+          );
+          if (conflictResponse.serverState != null) {
+            await _updateProductFromServerState(conflictResponse.serverState!);
+            _logger?.i(
+              'Product ${entry.entityId} conflict resolved (server won)',
+            );
+            await _queueRepository.markSynced(entry.id);
+          } else {
+            // No server_state = new product whose barcode is taken by another product.
+            // Strip the barcode and retry so the product still gets created.
+            final storedPayload =
+                jsonDecode(entry.payload) as Map<String, dynamic>;
+            if (storedPayload['barcode'] != null) {
+              final stripped = Map<String, dynamic>.from(storedPayload)
+                ..['barcode'] = null;
+              await (_db.update(_db.products)
+                    ..where((p) => p.id.equals(entry.entityId)))
+                  .write(
+                    const ProductsCompanion(
+                      barcode: drift.Value(null),
+                    ),
+                  );
+              await _queueRepository.resetWithPayload(
+                entry.id,
+                jsonEncode(stripped),
+              );
+              _logger?.i(
+                'Product ${entry.entityId} barcode conflict — stripped barcode, will retry',
+              );
+            } else {
+              // Already no barcode and still 409: server-deleted version wins. Drop.
+              _logger?.i(
+                'Product ${entry.entityId} conflict — no server_state, dropping local change',
+              );
+              await _queueRepository.markSynced(entry.id);
+            }
+          }
+          return;
+        } catch (_) {
+          // Fall through to retry logic if parsing fails.
+        }
+      }
+
+      // Non-retriable client errors (4xx): log and mark failed immediately.
+      if (e is DioException &&
+          e.response?.statusCode != null &&
+          e.response!.statusCode! >= 400 &&
+          e.response!.statusCode! < 500) {
+        _logger?.w(
+          'Product ${entry.entityId} rejected by server '
+          '(${e.response!.statusCode}): ${e.response?.data} — marking failed',
+        );
+        await _queueRepository.markFailed(
+          entry.id,
+          'Server rejected: ${e.response!.statusCode} ${e.response?.data}',
+        );
+        return;
+      }
+
+      // Network / server error: increment retry.
       await _queueRepository.incrementRetry(entry.id);
 
       final retryEntry = await _queueRepository.getEntry(entry.id);
       if (retryEntry != null && retryEntry.retryCount >= 5) {
         _logger?.w(
-          'Product ${entry.entityId} failed permanently after 5 retries',
+          'Product ${entry.entityId} failed permanently after 5 retries: $e',
         );
         await _queueRepository.markFailed(entry.id, 'Max retries exceeded: $e');
       } else {

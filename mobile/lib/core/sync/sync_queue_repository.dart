@@ -173,6 +173,21 @@ class SyncQueueRepository {
     );
   }
 
+  /// Reset a queue entry to pending with an updated payload.
+  Future<bool> resetWithPayload(int id, String newPayload) async {
+    final rowsAffected = await (_db.update(
+      _db.syncQueue,
+    )..where((t) => t.id.equals(id))).write(
+      SyncQueueCompanion(
+        status: const drift.Value('pending'),
+        payload: drift.Value(newPayload),
+        retryCount: const drift.Value(0),
+        lastError: const drift.Value(null),
+      ),
+    );
+    return rowsAffected > 0;
+  }
+
   /// Get all pending/failed entries by entity type.
   Future<List<SyncQueueData>> getEntriesByType(String entityType) async {
     return (_db.select(_db.syncQueue)
