@@ -34,7 +34,7 @@ class PosMobileApp extends ConsumerWidget {
         return GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () {
-            FocusScope.of(context).unfocus();
+            FocusManager.instance.primaryFocus?.unfocus();
           },
           child: child ?? const SizedBox.shrink(),
         );
