@@ -7,6 +7,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../shared/providers/connectivity_provider.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 import '../../features/sync/presentation/providers/sync_providers.dart';
+import '../network/network_providers.dart';
+import 'pull_service.dart';
 
 part 'sync_orchestrator.g.dart';
 
@@ -174,6 +176,31 @@ class SyncOrchestrator extends _$SyncOrchestrator with WidgetsBindingObserver {
     _isSyncing = true;
     state = const SyncStatusSyncing();
 
+    // Garde changement de store : éviter la fuite cross-tenant.
+    // Si le store_id du token diffère du store actif local, wiper la DB
+    // métier AVANT de push (sinon on pousserait les données dirty de
+    // l'ancien store vers le nouveau), puis forcer un full pull.
+    var effectiveFullPull = forceFullPull;
+    try {
+      final db = ref.read(databaseProvider);
+      final tokenStorage = ref.read(tokenStorageProvider);
+      final currentStoreId = await tokenStorage.getStoreId();
+      if (currentStoreId != null) {
+        final metaStorage = SyncMetadataStorage(db);
+        final activeStoreId = await metaStorage.getActiveStoreId();
+        if (activeStoreId != currentStoreId) {
+          _logger.w(
+            'Store changed ($activeStoreId -> $currentStoreId): wiping local data',
+          );
+          await ref.read(localDataResetServiceProvider).wipeBusinessData();
+          await metaStorage.setActiveStoreId(currentStoreId);
+          effectiveFullPull = true;
+        }
+      }
+    } catch (e, st) {
+      _logger.e('Store-change guard failed', error: e, stackTrace: st);
+    }
+
     try {
       final pushService = ref.read(pushServiceProvider);
       final pullService = ref.read(pullServiceProvider);
@@ -185,7 +212,7 @@ class SyncOrchestrator extends _$SyncOrchestrator with WidgetsBindingObserver {
       await pushService.pushPendingProductChanges();
 
       _logger.d('Sync step: pull changes');
-      await pullService.pullChanges(forceFullPull: forceFullPull);
+      await pullService.pullChanges(forceFullPull: effectiveFullPull);
 
       _logger.d('Sync completed successfully');
       state = SyncStatusIdle(lastSyncAt: DateTime.now());

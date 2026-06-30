@@ -15,4 +15,7 @@ abstract interface class TokenStorage {
 
   /// Clears all stored tokens (logout).
   Future<void> clearTokens();
+
+  /// Retrieves the active store id, or null if not set.
+  Future<String?> getStoreId();
 }

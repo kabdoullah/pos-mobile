@@ -129,6 +129,30 @@ class SyncMetadataStorage {
   /// Key for storing last pull timestamp.
   static const String _lastPullKey = 'last_pull_at';
 
+  /// Clé du store actuellement actif dans la DB locale.
+  static const String _activeStoreKey = 'active_store_id';
+
+  /// Lit l'id du store actif. Null si jamais défini (DB fraîche/wipée).
+  Future<String?> getActiveStoreId() async {
+    final record = await (_db.select(
+      _db.syncMetadata,
+    )..where((t) => t.key.equals(_activeStoreKey))).getSingleOrNull();
+    return record?.value;
+  }
+
+  /// Persiste l'id du store actif (après un wipe, pour le nouveau store).
+  Future<void> setActiveStoreId(String storeId) async {
+    await _db
+        .into(_db.syncMetadata)
+        .insertOnConflictUpdate(
+          SyncMetadataCompanion(
+            key: const drift.Value(_activeStoreKey),
+            value: drift.Value(storeId),
+            updatedAt: drift.Value(DateTime.now()),
+          ),
+        );
+  }
+
   /// Reads last pull timestamp. Returns null if never pulled.
   Future<DateTime?> getLastPullAt() async {
     final record = await (_db.select(

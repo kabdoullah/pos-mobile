@@ -2,6 +2,7 @@ import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../../core/network/network_providers.dart';
+import '../../../../core/sync/local_data_reset_service.dart';
 import '../../../../core/sync/pull_service.dart';
 import '../../../../core/sync/push_service.dart';
 import '../../../../core/sync/sync_queue_repository.dart';
@@ -13,6 +14,12 @@ part 'sync_providers.g.dart';
 @Riverpod(keepAlive: true)
 AppDatabase database(Ref ref) {
   return AppDatabase();
+}
+
+/// Provides the local data reset service (wipe au changement de store).
+@riverpod
+LocalDataResetService localDataResetService(Ref ref) {
+  return LocalDataResetService(ref.read(databaseProvider));
 }
 
 /// Provides the pull service for syncing changes.

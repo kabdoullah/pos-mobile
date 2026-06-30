@@ -135,6 +135,9 @@ class AppDatabase extends _$AppDatabase {
   /// Constructor.
   AppDatabase() : super(_openConnection());
 
+  /// Constructor pour les tests : injecte un [QueryExecutor] (ex. mémoire).
+  AppDatabase.forTesting(super.executor);
+
   /// Version courante du schéma drift.
   @override
   int get schemaVersion => 4;

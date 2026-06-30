@@ -75,6 +75,7 @@ class SecureTokenStorage implements TokenStorage {
   Future<String?> getUserId() => _storage.read(key: _TokenStorageKeys.userId);
 
   /// Retrieves the stored store ID.
+  @override
   Future<String?> getStoreId() => _storage.read(key: _TokenStorageKeys.storeId);
 
   /// Saves the user phone number (called after successful login/registration).
