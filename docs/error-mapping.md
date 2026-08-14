@@ -225,4 +225,3 @@ Suggested French mapping structure:
   }
 }
 ```
-

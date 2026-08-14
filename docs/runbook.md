@@ -315,7 +315,7 @@ Symptômes : login renvoie une erreur, ou les ventes ne sont plus synchronisées
 3. Examiner les logs des dernières heures pour identifier les requêtes suspectes
 4. Vérifier que les politiques RLS sont bien actives :
    ```sql
-   SELECT schemaname, tablename, rowsecurity, forcerowsecurity 
+   SELECT schemaname, tablename, rowsecurity, forcerowsecurity
    FROM pg_tables WHERE schemaname='public';
    ```
 5. Si RLS désactivé sur une table tenant : c'est la cause probable, réactiver et redéployer

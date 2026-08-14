@@ -76,7 +76,7 @@ final int amount = 1500;
 
 ### Usecases (MVP)
 - **Par défaut** : `presentation → repository` direct, **pas de usecase**
-- **Usecase créé SEULEMENT si** : logique métier multi-repository, règles complexes, ou orchestration  
+- **Usecase créé SEULEMENT si** : logique métier multi-repository, règles complexes, ou orchestration
 - Exemple légitime : `CreateSaleUseCase` (valide stock + crée vente + enqueue sync)
 - Si usecase : fichier dans `domain/usecases/`, provider dans `providers/`
 
