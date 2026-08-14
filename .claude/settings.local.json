@@ -30,7 +30,10 @@
       "Bash(dart format *)",
       "Bash(make -C /home/kemogoha/Documents/Development/pos-mobile/mobile analyze)",
       "Bash(make makemigration *)",
-      "Bash(make migrate *)"
+      "Bash(make migrate *)",
+      "Bash(uv sync *)",
+      "Bash(gh auth *)",
+      "Bash(brew install *)"
     ]
   }
 }

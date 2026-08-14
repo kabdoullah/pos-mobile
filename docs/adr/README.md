@@ -22,6 +22,7 @@ Pourquoi écrire des ADRs :
 | [0003](0003-sync-hybride.md) | Synchronisation hybride événementiel + état | Accepté | 2026-04-29 |
 | [0004](0004-auth-email-pin.md) | Authentification email + mot de passe + PIN local | Accepté | 2026-04-29 |
 | [0005](0005-stack-flutter-fastapi.md) | Stack Flutter + FastAPI + PostgreSQL 100% open source | Accepté | 2026-04-29 |
+| [0007](0007-stock-movements.md) | Traçabilité du stock via un ledger append-only (stock_movements) | Accepté | 2026-08-02 |
 
 ## Comment écrire un nouvel ADR
 
