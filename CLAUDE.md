@@ -10,7 +10,7 @@ make dev             # uvicorn --reload sur :8000
 make format          # ruff format + ruff check --fix
 make lint            # ruff check (sans modifier)
 make type-check      # mypy strict
-make test            # pytest — nécessite Docker (pos-backend-postgres-1) en cours d'exécution
+make test            # pytest — nécessite Postgres accessible sur localhost:5432 (docker compose up -d postgres)
 make test-cov        # pytest + rapport HTML dans htmlcov/
 make migrate         # alembic upgrade head
 make makemigration MSG="desc"  # génère une migration

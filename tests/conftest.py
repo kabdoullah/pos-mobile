@@ -1,5 +1,6 @@
 """Configuration pytest globale."""
 
+import asyncio
 import os
 import subprocess
 from collections.abc import AsyncGenerator
@@ -16,6 +17,7 @@ from app.core.db import get_db, get_tenant_db
 from app.main import app
 
 _TEST_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/pos_test"
+_ADMIN_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/postgres"
 _BACKEND_DIR = Path(__file__).parent.parent
 
 # Tables dans l'ordre pour TRUNCATE (enfants avant parents)
@@ -32,58 +34,55 @@ _ALL_TABLES = (
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _migrate_test_db() -> None:
+async def _migrate_test_db() -> None:
     """Recrée pos_test de zéro et applique les migrations Alembic.
 
     Utilise DROP + CREATE DATABASE pour garantir un état propre incluant les
     politiques RLS, triggers et types définis dans les migrations (absents de
     create_all). Requis pour les tests d'isolation RLS.
+
+    Se connecte à PostgreSQL en TCP (pas via `docker exec` dans un conteneur
+    nommé) pour fonctionner aussi bien en local (docker compose) qu'en CI
+    (service container GitHub Actions, sans nom de conteneur prévisible) —
+    les deux exposent Postgres sur localhost:5432.
     """
-    pg_container = "pos-backend-postgres-1"
-    pg_user = "pos"
-    for sql in (
-        "DROP DATABASE IF EXISTS pos_test WITH (FORCE)",
-        "CREATE DATABASE pos_test WITH OWNER pos",
-    ):
-        subprocess.run(
-            ["docker", "exec", pg_container, "psql", "-U", pg_user, "-c", sql],
-            check=True,
-            capture_output=True,
-        )
+    admin_engine = create_async_engine(_ADMIN_DB_URL, isolation_level="AUTOCOMMIT")
+    try:
+        async with admin_engine.connect() as conn:
+            await conn.execute(text("DROP DATABASE IF EXISTS pos_test WITH (FORCE)"))
+            await conn.execute(text("CREATE DATABASE pos_test WITH OWNER pos"))
+    finally:
+        await admin_engine.dispose()
+
     env = {**os.environ, "DATABASE_URL": _TEST_DB_URL}
-    subprocess.run(
+    await asyncio.to_thread(
+        subprocess.run,
         ["uv", "run", "alembic", "upgrade", "head"],
         env=env,
         cwd=str(_BACKEND_DIR),
         check=True,
     )
+
     # pos is a superuser → bypasses RLS entirely. Create pos_app (non-superuser) so
     # tests can SET LOCAL ROLE pos_app to actually enforce RLS policies.
-    subprocess.run(
-        [
-            "docker",
-            "exec",
-            pg_container,
-            "psql",
-            "-U",
-            pg_user,
-            "-c",
-            "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'pos_app') "
-            "THEN CREATE ROLE pos_app NOLOGIN; END IF; END $$",
-        ],
-        check=True,
-        capture_output=True,
-    )
-    for sql in (
-        "GRANT CONNECT ON DATABASE pos_test TO pos_app",
-        "GRANT USAGE ON SCHEMA public TO pos_app",
-        "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pos_app",
-    ):
-        subprocess.run(
-            ["docker", "exec", pg_container, "psql", "-U", pg_user, "-d", "pos_test", "-c", sql],
-            check=True,
-            capture_output=True,
-        )
+    test_engine = create_async_engine(_TEST_DB_URL, isolation_level="AUTOCOMMIT")
+    try:
+        async with test_engine.connect() as conn:
+            await conn.execute(
+                text(
+                    "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'pos_app') "
+                    "THEN CREATE ROLE pos_app NOLOGIN; END IF; END $$"
+                )
+            )
+            await conn.execute(text("GRANT CONNECT ON DATABASE pos_test TO pos_app"))
+            await conn.execute(text("GRANT USAGE ON SCHEMA public TO pos_app"))
+            await conn.execute(
+                text(
+                    "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO pos_app"
+                )
+            )
+    finally:
+        await test_engine.dispose()
 
 
 @pytest.fixture(scope="session")

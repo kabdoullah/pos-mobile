@@ -17,7 +17,7 @@ from sqlalchemy.orm import DeclarativeBase
 from app.core.config import settings
 
 
-def _asyncpg_url_and_ssl(url: str) -> tuple[str, dict]:
+def _asyncpg_url_and_ssl(url: str) -> tuple[str, dict[str, str | bool]]:
     """Retire sslmode/channel_binding (params psycopg2) et convertit en connect_args asyncpg."""
     parsed = urlparse(url)
     params = parse_qs(parsed.query, keep_blank_values=True)
@@ -25,7 +25,7 @@ def _asyncpg_url_and_ssl(url: str) -> tuple[str, dict]:
     params.pop("channel_binding", None)  # asyncpg 0.30+ ne supporte plus ce paramètre
     new_query = urlencode({k: v[0] for k, v in params.items()})
     clean_url = urlunparse(parsed._replace(query=new_query))
-    connect_args: dict = {}
+    connect_args: dict[str, str | bool] = {}
     if ssl_mode in ("require", "verify-ca", "verify-full"):
         connect_args["ssl"] = "require"
     else:
