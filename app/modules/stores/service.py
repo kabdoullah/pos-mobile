@@ -6,8 +6,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError
+from app.core.images import LOGO_MAX_WIDTH, normalize_image
 from app.modules.stores import schemas
-from app.modules.stores.models import Store
+from app.modules.stores.models import Store, StoreLogo
 from app.modules.stores.repository import StoreRepository
 
 _DEFAULT_STORE_NAME = "Ma boutique"
@@ -61,3 +62,31 @@ class StoreService:
         store = await self.get_for_user(user_id)
         updates = payload.model_dump(exclude_unset=True)
         return await self.repo.update(store, updates)
+
+    async def set_logo_for_user(self, user_id: UUID, raw: bytes) -> Store:
+        """Normalise le logo (WebP, 384 px de large max, sans EXIF) et l'enregistre.
+
+        La hauteur n'est bornée que par le ratio (logos larges ou carrés). 413 au-delà
+        de 5 Mo, 422 si ce n'est pas une image JPEG/PNG/WebP.
+        """
+        store = await self.get_for_user(user_id)
+        image = normalize_image(raw, max_width=LOGO_MAX_WIDTH, max_height=LOGO_MAX_WIDTH * 2)
+        return await self.repo.upsert_logo(store, image)
+
+    async def get_logo_for_user(self, user_id: UUID) -> StoreLogo:
+        """Logo de la boutique, ou NotFoundError."""
+        store = await self.get_for_user(user_id)
+        logo = await self.repo.get_logo(store.id)
+        if logo is None:
+            raise NotFoundError("Store logo not found.")
+        return logo
+
+    async def delete_logo_for_user(self, user_id: UUID) -> Store:
+        """Retire le logo de la boutique."""
+        store = await self.get_for_user(user_id)
+        return await self.repo.delete_logo(store)
+
+    async def get_logo_content(self, store_id: UUID) -> bytes | None:
+        """Contenu du logo (pour le reçu PDF), ou None sans logo."""
+        logo = await self.repo.get_logo(store_id)
+        return logo.content if logo is not None else None

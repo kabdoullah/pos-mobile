@@ -1,11 +1,10 @@
 """Schémas Pydantic du module auth."""
 
-import re
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-_E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")
+from app.core.validators import validate_e164
 
 
 class RegisterRequest(BaseModel):
@@ -18,9 +17,7 @@ class RegisterRequest(BaseModel):
     @field_validator("phone_number")
     @classmethod
     def validate_phone_e164(cls, v: str) -> str:
-        if not _E164_RE.match(v):
-            raise ValueError("Phone number must be in E.164 format (e.g. +2250700000000).")
-        return v
+        return validate_e164(v)
 
 
 class RegisterResponse(BaseModel):
@@ -64,3 +61,28 @@ class ResetPasswordRequest(BaseModel):
 
     token: str
     new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class UserMeResponse(BaseModel):
+    """Profil de l'utilisateur connecté."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    phone_number: str
+    email: str | None
+    display_name: str | None = None
+
+
+class UserMeUpdate(BaseModel):
+    """Mise à jour du profil. `display_name` vide ou null = retiré du reçu."""
+
+    display_name: str | None = Field(None, max_length=80)
+
+    @field_validator("display_name", mode="before")
+    @classmethod
+    def blank_to_none(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip()
+            return v or None
+        return v

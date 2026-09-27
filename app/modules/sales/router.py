@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query, Response, status
 from app.core.db import TenantDbSession
 from app.core.dependencies import CurrentStoreId, CurrentUserId
 from app.core.pagination import CursorPage
+from app.modules.auth.service import UserService
 from app.modules.sales.receipt_pdf import build_receipt_pdf
 from app.modules.sales.schemas import DailySalesSummary, SaleCreate, SaleResponse
 from app.modules.sales.service import SaleService
@@ -99,8 +100,11 @@ async def download_sale_receipt(
 ) -> Response:
     """Génère un reçu PDF (format ticket de caisse) pour une vente. 404 si introuvable."""
     sale = await SaleService(db).get_sale(sale_id)
-    store = await StoreService(db).get_by_id(store_id)
-    content = build_receipt_pdf(sale, store)
+    stores = StoreService(db)
+    store = await stores.get_by_id(store_id)
+    logo = await stores.get_logo_content(store.id)
+    seller_name = await UserService(db).get_display_name(sale.created_by)
+    content = build_receipt_pdf(sale, store, logo=logo, seller_name=seller_name)
     filename = f"recu-{sale.receipt_number or sale.id}.pdf"
     return Response(
         content=content,

@@ -68,8 +68,8 @@ async def test_user_a_cannot_read_products_of_user_b(db_session: AsyncSession) -
     _, store_a = await _create_user_with_store(db_session, "user-a@test.com")
     _, store_b = await _create_user_with_store(db_session, "user-b@test.com")
 
-    product_a = Product(store_id=store_a.id, name="Pain de A", unit_price=Decimal("200.00"))
-    product_b = Product(store_id=store_b.id, name="Pain de B", unit_price=Decimal("300.00"))
+    product_a = Product(store_id=store_a.id, name="Pain de A", selling_price=Decimal("200.00"))
+    product_b = Product(store_id=store_b.id, name="Pain de B", selling_price=Decimal("300.00"))
     db_session.add_all([product_a, product_b])
     await db_session.flush()
 
@@ -122,7 +122,7 @@ async def test_user_a_cannot_update_product_of_user_b(db_session: AsyncSession) 
     _, store_a = await _create_user_with_store(db_session, "user-a@test.com")
     _, store_b = await _create_user_with_store(db_session, "user-b@test.com")
 
-    product_b = Product(store_id=store_b.id, name="Pain de B", unit_price=Decimal("300.00"))
+    product_b = Product(store_id=store_b.id, name="Pain de B", selling_price=Decimal("300.00"))
     db_session.add(product_b)
     await db_session.flush()
 
@@ -155,7 +155,7 @@ async def test_no_store_context_returns_empty(db_session: AsyncSession) -> None:
     await _reset_store_context(db_session)
 
     _, store_a = await _create_user_with_store(db_session, "user-a@test.com")
-    db_session.add(Product(store_id=store_a.id, name="Pain", unit_price=Decimal("200.00")))
+    db_session.add(Product(store_id=store_a.id, name="Pain", selling_price=Decimal("200.00")))
     await db_session.flush()
 
     # Switch to non-superuser role WITHOUT store_id. RLS evaluates

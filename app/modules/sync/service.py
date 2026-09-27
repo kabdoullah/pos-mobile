@@ -1,21 +1,24 @@
 """Logique métier du module sync."""
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import UUID
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import decode_cursor, encode_cursor
-from app.modules.catalog.models import Product
-from app.modules.catalog.repository import ProductRepository
-from app.modules.catalog.schemas import ProductResponse
+from app.modules.catalog.models import Category, Product
+from app.modules.catalog.repository import CategoryRepository, ProductRepository
+from app.modules.catalog.schemas import CategoryResponse, ProductResponse
+from app.modules.catalog.service import CategoryService
 from app.modules.inventory.service import InventoryService
 from app.modules.sales.schemas import SaleResponse
 from app.modules.sales.service import SaleService
 from app.modules.sync.repository import SyncRepository
 from app.modules.sync.schemas import (
+    CategorySyncRequest,
+    CategorySyncResponse,
     ProductSyncRequest,
     ProductSyncResponse,
     ProductSyncStatus,
@@ -26,10 +29,17 @@ from app.modules.sync.schemas import (
     SyncChangesResponse,
 )
 
-if TYPE_CHECKING:
-    from app.modules.sales.models import Sale
-
 _SYNC_TOLERANCE_MS = 1
+
+# Ordre du pull : une catégorie arrive toujours avant ses produits.
+_PHASES = ("categories", "products", "sales")
+
+
+def _phase_ts(phase: str, row: Any) -> datetime:
+    """Horodatage de tri d'une ligne selon sa phase (synced_at pour les ventes)."""
+    ts: datetime = row.synced_at if phase == "sales" else row.updated_at
+    return ts
+
 
 logger = structlog.get_logger()
 
@@ -50,6 +60,8 @@ class SyncService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
         self.product_repo = ProductRepository(db)
+        self.category_repo = CategoryRepository(db)
+        self.category_service = CategoryService(db)
         self.sale_service = SaleService(db)
         self.sync_repo = SyncRepository(db)
         self.inventory_service = InventoryService(db)
@@ -122,10 +134,18 @@ class SyncService:
         updates: dict[str, Any] = {
             "name": payload.name,
             "barcode": payload.barcode,
-            "unit_price": payload.unit_price,
+            "selling_price": payload.selling_price,
             "min_stock": payload.min_stock,
             "deleted_at": None,
         }
+        # Champ absent (ancienne app) : on ne touche pas au prix d'achat.
+        if "purchase_price" in payload.model_fields_set:
+            updates["purchase_price"] = payload.purchase_price
+        # Champ absent (ancienne app) : on ne touche pas à la catégorie.
+        if "category_id" in payload.model_fields_set:
+            updates["category_id"] = await self.category_service.resolve_for_product(
+                product.store_id, payload.category_id
+            )
         updated = await self.product_repo.update(product, updates)
         await self.inventory_service.record_catalog_update(
             updated.store_id, updated.id, payload.current_stock, user_id
@@ -161,15 +181,20 @@ class SyncService:
                         ProductSyncResponse(id=payload.id, status=ProductSyncStatus.conflict),
                         409,
                     )
+            category_id = await self.category_service.resolve_for_product(
+                store_id, payload.category_id
+            )
             created = await self.product_repo.create(
                 Product(
                     id=payload.id,
                     store_id=store_id,
                     name=payload.name,
                     barcode=payload.barcode,
-                    unit_price=payload.unit_price,
+                    selling_price=payload.selling_price,
+                    purchase_price=payload.purchase_price,
                     current_stock=None,
                     min_stock=payload.min_stock,
+                    category_id=category_id,
                     updated_at=payload.client_updated_at,
                 )
             )
@@ -207,6 +232,95 @@ class SyncService:
 
         return await self._apply_product_changes(product, payload, user_id)
 
+    def _category_conflict(
+        self, category_id: UUID, current: Category | None
+    ) -> tuple[CategorySyncResponse, int]:
+        """409 avec l'état serveur (s'il existe et n'est pas supprimé)."""
+        state = (
+            CategoryResponse.model_validate(current)
+            if current is not None and current.deleted_at is None
+            else None
+        )
+        return (
+            CategorySyncResponse(
+                id=category_id, status=ProductSyncStatus.conflict, server_state=state
+            ),
+            409,
+        )
+
+    async def _create_category_from_client(
+        self, store_id: UUID, payload: CategorySyncRequest
+    ) -> tuple[CategorySyncResponse, int]:
+        """Catégorie inconnue du serveur : création (ou rien si déjà supprimée)."""
+        if payload.deleted:
+            return CategorySyncResponse(id=payload.id, status=ProductSyncStatus.no_change), 200
+        if await self.category_repo.get_active_by_name_excluding(
+            payload.name, store_id, payload.id
+        ):
+            return self._category_conflict(payload.id, None)
+        created = await self.category_repo.create(
+            Category(
+                id=payload.id,
+                store_id=store_id,
+                name=payload.name,
+                updated_at=payload.client_updated_at,
+            )
+        )
+        return (
+            CategorySyncResponse(
+                id=created.id,
+                status=ProductSyncStatus.created,
+                server_state=CategoryResponse.model_validate(created),
+            ),
+            201,
+        )
+
+    async def _apply_category_changes(
+        self, store_id: UUID, category: Category, payload: CategorySyncRequest
+    ) -> tuple[CategorySyncResponse, int]:
+        """Applique l'état client sur une catégorie existante (le client gagne)."""
+        if payload.deleted:
+            await self.category_repo.soft_delete_and_detach_products(category)
+            return CategorySyncResponse(id=payload.id, status=ProductSyncStatus.deleted), 200
+        if await self.category_repo.get_active_by_name_excluding(
+            payload.name, store_id, payload.id
+        ):
+            return self._category_conflict(payload.id, category)
+        updated = await self.category_repo.update(
+            category, {"name": payload.name, "deleted_at": None}
+        )
+        return (
+            CategorySyncResponse(
+                id=updated.id,
+                status=ProductSyncStatus.updated,
+                server_state=CategoryResponse.model_validate(updated),
+            ),
+            200,
+        )
+
+    async def sync_category_state(
+        self, store_id: UUID, payload: CategorySyncRequest
+    ) -> tuple[CategorySyncResponse, int]:
+        """Applique l'état catégorie du client (last-write-wins, comme les produits).
+
+        Conflit (409) si l'état serveur est plus récent, ou si une autre
+        catégorie active porte déjà ce nom. Retourne (response, http_status_code).
+        """
+        category = await self.category_repo.get_by_id_including_deleted(payload.id)
+        if category is None:
+            return await self._create_category_from_client(store_id, payload)
+
+        server_deleted = category.deleted_at is not None
+        if (server_deleted and payload.deleted) or _ts_equal(
+            payload.client_updated_at, category.updated_at
+        ):
+            return CategorySyncResponse(id=payload.id, status=ProductSyncStatus.no_change), 200
+
+        if not _client_wins(payload.client_updated_at, category.updated_at):
+            return self._category_conflict(payload.id, category)
+
+        return await self._apply_category_changes(store_id, category, payload)
+
     async def get_changes(
         self,
         store_id: UUID,
@@ -216,12 +330,15 @@ class SyncService:
     ) -> SyncChangesResponse:
         """Retourne les changements depuis `since`, paginés.
 
-        Ordre stable : produits en premier (tri updated_at ASC), puis ventes (tri synced_at ASC).
-        Le cursor encode la phase courante et la position dans cette phase.
+        Phases dans un ordre stable : catégories puis produits (tri updated_at
+        ASC), puis ventes (tri synced_at ASC). Les catégories passent d'abord pour
+        qu'un produit n'arrive jamais avant sa catégorie. Le cursor encode la
+        phase courante et la position dans cette phase ; un cursor émis avant
+        l'ajout des catégories (phase « products » ou « sales ») reste valide.
         """
         server_time = datetime.now(UTC)
 
-        phase = "products"
+        phase = _PHASES[0]
         cursor_after_id: UUID | None = None
         cursor_after_ts: datetime | None = None
 
@@ -229,7 +346,8 @@ class SyncService:
             raw = decode_cursor(cursor)
             if raw is not None:
                 try:
-                    phase = str(raw.get("phase", "products"))
+                    raw_phase = str(raw.get("phase", _PHASES[0]))
+                    phase = raw_phase if raw_phase in _PHASES else _PHASES[0]
                     raw_id = raw.get("id")
                     raw_ts = raw.get("ts")
                     if raw_id is not None and raw_ts is not None:
@@ -238,78 +356,80 @@ class SyncService:
                 except (KeyError, ValueError):
                     pass
 
-        products: list[Product] = []
-        sales: list[Sale] = []
+        rows: dict[str, list[Any]] = {name: [] for name in _PHASES}
         has_more = False
         next_cursor: str | None = None
+        remaining = limit
 
-        if phase == "products":
-            products, products_has_more = await self.sync_repo.list_changed_products(
-                store_id=store_id,
-                since=since,
-                limit=limit,
-                cursor_after_id=cursor_after_id,
-                cursor_after_updated_at=cursor_after_ts,
+        for index in range(_PHASES.index(phase), len(_PHASES)):
+            name = _PHASES[index]
+            # La position du cursor ne vaut que pour la phase où il a été émis.
+            after_id = cursor_after_id if name == phase else None
+            after_ts = cursor_after_ts if name == phase else None
+            items, phase_has_more = await self._list_phase(
+                name, store_id, since, remaining, after_id, after_ts
             )
-            if products_has_more:
-                last_product = products[-1]
+            rows[name] = items
+
+            if phase_has_more:
+                last = items[-1]
                 has_more = True
                 next_cursor = encode_cursor(
-                    {
-                        "phase": "products",
-                        "id": str(last_product.id),
-                        "ts": last_product.updated_at.isoformat(),
-                    }
+                    {"phase": name, "id": str(last.id), "ts": _phase_ts(name, last).isoformat()}
                 )
-            else:
-                remaining = limit - len(products)
-                if remaining == 0:
-                    # Produits remplissent exactement le limit : on ne sait pas s'il y a des ventes.
-                    # On émet un cursor de transition vers la phase "sales" pour le prochain appel.
+                break
+
+            remaining -= len(items)
+            if remaining == 0:
+                # La page est pleine pile à la fin de cette phase : on ne sait pas
+                # si la suivante a des données. Cursor de transition vers elle.
+                if index + 1 < len(_PHASES):
                     has_more = True
-                    next_cursor = encode_cursor({"phase": "sales"})
-                else:
-                    sales, sales_has_more = await self.sync_repo.list_changed_sales(
-                        store_id=store_id,
-                        since=since,
-                        limit=remaining,
-                        cursor_after_id=None,
-                        cursor_after_synced_at=None,
-                    )
-                    if sales_has_more:
-                        last_sale = sales[-1]
-                        has_more = True
-                        next_cursor = encode_cursor(
-                            {
-                                "phase": "sales",
-                                "id": str(last_sale.id),
-                                "ts": last_sale.synced_at.isoformat(),
-                            }
-                        )
-
-        else:  # phase == "sales"
-            sales, sales_has_more = await self.sync_repo.list_changed_sales(
-                store_id=store_id,
-                since=since,
-                limit=limit,
-                cursor_after_id=cursor_after_id,
-                cursor_after_synced_at=cursor_after_ts,
-            )
-            if sales_has_more:
-                last_sale = sales[-1]
-                has_more = True
-                next_cursor = encode_cursor(
-                    {
-                        "phase": "sales",
-                        "id": str(last_sale.id),
-                        "ts": last_sale.synced_at.isoformat(),
-                    }
-                )
+                    next_cursor = encode_cursor({"phase": _PHASES[index + 1]})
+                break
 
         return SyncChangesResponse(
-            products=[ProductResponse.model_validate(p) for p in products],
-            sales=[SaleResponse.model_validate(s) for s in sales],
+            categories=[CategoryResponse.model_validate(c) for c in rows["categories"]],
+            products=[ProductResponse.model_validate(p) for p in rows["products"]],
+            sales=[SaleResponse.model_validate(s) for s in rows["sales"]],
             next_cursor=next_cursor,
             has_more=has_more,
             server_time=server_time,
         )
+
+    async def _list_phase(
+        self,
+        phase: str,
+        store_id: UUID,
+        since: datetime | None,
+        limit: int,
+        after_id: UUID | None,
+        after_ts: datetime | None,
+    ) -> tuple[list[Any], bool]:
+        """Lit une page d'une phase du pull."""
+        if phase == "categories":
+            categories, more = await self.sync_repo.list_changed_categories(
+                store_id=store_id,
+                since=since,
+                limit=limit,
+                cursor_after_id=after_id,
+                cursor_after_updated_at=after_ts,
+            )
+            return list(categories), more
+        if phase == "products":
+            products, more = await self.sync_repo.list_changed_products(
+                store_id=store_id,
+                since=since,
+                limit=limit,
+                cursor_after_id=after_id,
+                cursor_after_updated_at=after_ts,
+            )
+            return list(products), more
+        sales, more = await self.sync_repo.list_changed_sales(
+            store_id=store_id,
+            since=since,
+            limit=limit,
+            cursor_after_id=after_id,
+            cursor_after_synced_at=after_ts,
+        )
+        return list(sales), more

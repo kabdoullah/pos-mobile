@@ -6,7 +6,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.stores.models import Store
+from app.core.images import ProcessedImage
+from app.modules.stores.models import Store, StoreLogo
 
 
 class StoreRepository:
@@ -38,6 +39,36 @@ class StoreRepository:
         """Applique les champs fournis et persiste."""
         for field, value in updates.items():
             setattr(store, field, value)
+        await self.db.flush()
+        await self.db.refresh(store)
+        return store
+
+    async def get_logo(self, store_id: UUID) -> StoreLogo | None:
+        """Logo de la boutique, ou None."""
+        return await self.db.get(StoreLogo, store_id)
+
+    async def upsert_logo(self, store: Store, image: ProcessedImage) -> Store:
+        """Remplace le logo et met à jour sa version."""
+        row = await self.get_logo(store.id)
+        if row is None:
+            row = StoreLogo(store_id=store.id)
+            self.db.add(row)
+        row.content = image.content
+        row.content_type = image.content_type
+        row.width = image.width
+        row.height = image.height
+        row.sha256 = image.sha256
+        store.logo_version = image.sha256
+        await self.db.flush()
+        await self.db.refresh(store)
+        return store
+
+    async def delete_logo(self, store: Store) -> Store:
+        """Supprime le logo (sans erreur s'il n'y en a pas)."""
+        row = await self.get_logo(store.id)
+        if row is not None:
+            await self.db.delete(row)
+        store.logo_version = None
         await self.db.flush()
         await self.db.refresh(store)
         return store

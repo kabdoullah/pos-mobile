@@ -19,10 +19,17 @@ from app.modules.catalog.schemas import ProductCreate
 _MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
 _MAX_ROWS = 500
 
-TEMPLATE_COLUMNS = ("name", "barcode", "unit_price", "current_stock", "min_stock")
+TEMPLATE_COLUMNS = (
+    "name",
+    "barcode",
+    "purchase_price",
+    "selling_price",
+    "current_stock",
+    "min_stock",
+)
 _TEMPLATE_ROWS = (
-    ("Riz local 5kg", "", "3500.00", "50", "10"),
-    ("Savon Zest", "6191234567890", "500.00", "120", "20"),
+    ("Riz local 5kg", "", "2800.00", "3500.00", "50", "10"),
+    ("Savon Zest", "6191234567890", "", "500.00", "120", "20"),
 )
 
 # Ligne de données : (index, produit si valide, message d'erreur si invalide)
@@ -103,8 +110,13 @@ def _clean_str(value: object) -> str:
 def _parse_decimal(value: object) -> Decimal:
     text = _clean_str(value)
     if not text:
-        raise ValueError("unit_price is required")
+        raise ValueError("selling_price is required")
     return Decimal(text.replace(",", "."))
+
+
+def _parse_optional_decimal(value: object) -> Decimal | None:
+    text = _clean_str(value)
+    return Decimal(text.replace(",", ".")) if text else None
 
 
 def _parse_int(value: object) -> int | None:
@@ -119,7 +131,9 @@ def _row_to_product(index: int, row: dict[str, object]) -> ParsedRow:
         payload = {
             "name": _clean_str(row.get("name")),
             "barcode": _clean_str(row.get("barcode")) or None,
-            "unit_price": _parse_decimal(row.get("unit_price")),
+            # Ancienne colonne unit_price encore acceptée (ADR-0009).
+            "selling_price": _parse_decimal(row.get("selling_price", row.get("unit_price"))),
+            "purchase_price": _parse_optional_decimal(row.get("purchase_price")),
             "current_stock": _parse_int(row.get("current_stock")),
             "min_stock": _parse_int(row.get("min_stock")),
         }

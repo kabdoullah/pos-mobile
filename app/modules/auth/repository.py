@@ -41,6 +41,13 @@ class UserRepository:
         await self.db.refresh(user)
         return user
 
+    async def update_display_name(self, user: User, display_name: str | None) -> User:
+        """Met à jour le nom affiché sur les reçus."""
+        user.display_name = display_name
+        await self.db.flush()
+        await self.db.refresh(user)
+        return user
+
     async def update_password(self, user: User, new_password_hash: str) -> User:
         """Met à jour le mot de passe d'un utilisateur."""
         user.password_hash = new_password_hash

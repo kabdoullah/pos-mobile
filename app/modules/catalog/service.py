@@ -4,11 +4,22 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.images import PRODUCT_IMAGE_MAX_SIDE, normalize_image
 from app.core.pagination import CursorPage, encode_cursor
-from app.modules.catalog.models import Product
-from app.modules.catalog.repository import ProductRepository
-from app.modules.catalog.schemas import ProductCreate, ProductResponse, ProductUpdate
+from app.modules.catalog.models import Category, Product, ProductImage
+from app.modules.catalog.repository import (
+    CategoryRepository,
+    ProductImageRepository,
+    ProductRepository,
+)
+from app.modules.catalog.schemas import (
+    CategoryCreate,
+    CategoryUpdate,
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
+)
 
 
 class ProductService:
@@ -68,13 +79,18 @@ class ProductService:
             existing = await self.repo.get_active_by_barcode(payload.barcode, store_id)
             if existing is not None:
                 raise ConflictError("A product with this barcode already exists.", field="barcode")
+        category_id = await CategoryService(self.db).resolve_for_product(
+            store_id, payload.category_id
+        )
         product = Product(
             store_id=store_id,
             name=payload.name,
             barcode=payload.barcode,
-            unit_price=payload.unit_price,
+            selling_price=payload.selling_price,
+            purchase_price=payload.purchase_price,
             current_stock=None,
             min_stock=payload.min_stock,
+            category_id=category_id,
         )
         return await self.repo.create(product)
 
@@ -95,6 +111,10 @@ class ProductService:
             existing = await self.repo.get_active_by_barcode(new_barcode, store_id)
             if existing is not None:
                 raise ConflictError("A product with this barcode already exists.", field="barcode")
+        if "category_id" in updates:
+            updates["category_id"] = await CategoryService(self.db).resolve_for_product(
+                store_id, updates["category_id"]
+            )
         return await self.repo.update(product, updates)
 
     async def apply_stock_delta(
@@ -115,3 +135,89 @@ class ProductService:
         """Soft delete d'un produit. NotFoundError si absent."""
         product = await self.get_by_id(product_id, store_id)
         await self.repo.soft_delete(product)
+
+    async def set_image(self, product_id: UUID, store_id: UUID, raw: bytes) -> Product:
+        """Normalise l'image (WebP 512 px, sans EXIF) et la rattache au produit.
+
+        413 au-delà de 5 Mo, 422 si ce n'est pas une image JPEG/PNG/WebP.
+        """
+        product = await self.get_by_id(product_id, store_id)
+        image = normalize_image(
+            raw, max_width=PRODUCT_IMAGE_MAX_SIDE, max_height=PRODUCT_IMAGE_MAX_SIDE
+        )
+        return await ProductImageRepository(self.db).upsert(product, image)
+
+    async def get_image(self, product_id: UUID, store_id: UUID) -> ProductImage:
+        """Image d'un produit actif, ou NotFoundError."""
+        await self.get_by_id(product_id, store_id)
+        image = await ProductImageRepository(self.db).get(product_id)
+        if image is None:
+            raise NotFoundError("Product image not found.")
+        return image
+
+    async def delete_image(self, product_id: UUID, store_id: UUID) -> Product:
+        """Retire l'image d'un produit actif."""
+        product = await self.get_by_id(product_id, store_id)
+        return await ProductImageRepository(self.db).delete(product)
+
+
+class CategoryService:
+    """Service métier des catégories de produits (ADR-0008)."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+        self.repo = CategoryRepository(db)
+
+    async def list_categories(self, store_id: UUID) -> list[Category]:
+        """Catégories actives de la boutique, par nom."""
+        return await self.repo.list_active(store_id)
+
+    async def get_by_id(self, category_id: UUID, store_id: UUID) -> Category:
+        """Catégorie active ou NotFoundError."""
+        category = await self.repo.get_active_by_id(category_id, store_id)
+        if category is None:
+            raise NotFoundError("Category not found.")
+        return category
+
+    async def _ensure_name_available(
+        self, name: str, store_id: UUID, exclude_id: UUID | None
+    ) -> None:
+        existing = await self.repo.get_active_by_name_excluding(name, store_id, exclude_id)
+        if existing is not None:
+            raise ConflictError("A category with this name already exists.", field="name")
+
+    async def create_category(self, store_id: UUID, payload: CategoryCreate) -> Category:
+        """Crée une catégorie. ConflictError si le nom existe déjà (casse ignorée)."""
+        await self._ensure_name_available(payload.name, store_id, None)
+        return await self.repo.create(Category(store_id=store_id, name=payload.name))
+
+    async def rename_category(
+        self, category_id: UUID, store_id: UUID, payload: CategoryUpdate
+    ) -> Category:
+        """Renomme une catégorie. ConflictError si le nom est déjà pris."""
+        category = await self.get_by_id(category_id, store_id)
+        await self._ensure_name_available(payload.name, store_id, category.id)
+        return await self.repo.update(category, {"name": payload.name})
+
+    async def delete_category(self, category_id: UUID, store_id: UUID) -> None:
+        """Supprime (soft) la catégorie et détache ses produits."""
+        category = await self.get_by_id(category_id, store_id)
+        await self.repo.soft_delete_and_detach_products(category)
+
+    async def resolve_for_product(self, store_id: UUID, category_id: UUID | None) -> UUID | None:
+        """Valide la catégorie d'un produit.
+
+        - `None` : pas de catégorie.
+        - catégorie supprimée : `None` (la suppression l'emporte, même règle que
+          le détachement des produits).
+        - catégorie inconnue de la boutique (inexistante, ou d'une autre
+          boutique, invisible via RLS) : ValidationError (422).
+        """
+        if category_id is None:
+            return None
+        category = await self.repo.get_by_id_including_deleted(category_id)
+        if category is None or category.store_id != store_id:
+            raise ValidationError("Unknown category.", field="category_id")
+        if category.deleted_at is not None:
+            return None
+        return category.id

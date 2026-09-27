@@ -39,7 +39,7 @@ async def _create_product(
     db: AsyncSession,
     store_id: UUID,
     name: str = "Produit test",
-    unit_price: Decimal = Decimal("1000.00"),
+    selling_price: Decimal = Decimal("1000.00"),
     barcode: str | None = None,
     current_stock: int | None = None,
     min_stock: int | None = None,
@@ -47,7 +47,7 @@ async def _create_product(
     product = Product(
         store_id=store_id,
         name=name,
-        unit_price=unit_price,
+        selling_price=selling_price,
         barcode=barcode,
         current_stock=current_stock,
         min_stock=min_stock,
@@ -584,7 +584,7 @@ async def test_update_product_partial(client: AsyncClient, db_session: AsyncSess
     user = await _create_user(db_session, "patch-ok@test.com")
     store = await _create_store(db_session, user.id)
     product = await _create_product(
-        db_session, store.id, "Ancien nom", unit_price=Decimal("200.00"), current_stock=5
+        db_session, store.id, "Ancien nom", selling_price=Decimal("200.00"), current_stock=5
     )
     await db_session.commit()
 

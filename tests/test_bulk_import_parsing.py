@@ -36,7 +36,7 @@ def test_csv_comma_delimiter_dot_decimal() -> None:
     assert product0 is not None
     assert product0.name == "Riz"
     assert product0.barcode == "1234567890"
-    assert product0.unit_price == Decimal("3500.00")
+    assert product0.selling_price == Decimal("3500.00")
     assert product0.current_stock == 50
 
     _, product1, error1 = rows[1]
@@ -56,7 +56,7 @@ def test_csv_semicolon_delimiter_comma_decimal() -> None:
     _, product, error = rows[0]
     assert error is None
     assert product is not None
-    assert product.unit_price == Decimal("500.00")
+    assert product.selling_price == Decimal("500.00")
     assert product.current_stock == 120
 
 
@@ -88,7 +88,7 @@ def test_xlsx_typed_cells() -> None:
     _, product, error = rows[0]
     assert error is None
     assert product is not None
-    assert product.unit_price == Decimal("800.0")
+    assert product.selling_price == Decimal("800.0")
     assert product.current_stock == 25
     assert product.barcode is None
 

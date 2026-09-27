@@ -28,6 +28,8 @@ class User(Base):
 
     id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     phone_number: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    # Nom affiché « Vendeur : … » sur les reçus (ADR-0008).
+    display_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
