@@ -60,6 +60,8 @@ class ProductResponse(BaseModel):
     current_stock: int | None
     min_stock: int | None
     category_id: UUID | None = None
+    # SHA-256 de l'image (NULL sans image) : clé de cache côté app.
+    image_version: str | None = None
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None

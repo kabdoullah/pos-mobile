@@ -5,9 +5,14 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ConflictError, NotFoundError, ValidationError
+from app.core.images import PRODUCT_IMAGE_MAX_SIDE, normalize_image
 from app.core.pagination import CursorPage, encode_cursor
-from app.modules.catalog.models import Category, Product
-from app.modules.catalog.repository import CategoryRepository, ProductRepository
+from app.modules.catalog.models import Category, Product, ProductImage
+from app.modules.catalog.repository import (
+    CategoryRepository,
+    ProductImageRepository,
+    ProductRepository,
+)
 from app.modules.catalog.schemas import (
     CategoryCreate,
     CategoryUpdate,
@@ -129,6 +134,30 @@ class ProductService:
         """Soft delete d'un produit. NotFoundError si absent."""
         product = await self.get_by_id(product_id, store_id)
         await self.repo.soft_delete(product)
+
+    async def set_image(self, product_id: UUID, store_id: UUID, raw: bytes) -> Product:
+        """Normalise l'image (WebP 512 px, sans EXIF) et la rattache au produit.
+
+        413 au-delà de 5 Mo, 422 si ce n'est pas une image JPEG/PNG/WebP.
+        """
+        product = await self.get_by_id(product_id, store_id)
+        image = normalize_image(
+            raw, max_width=PRODUCT_IMAGE_MAX_SIDE, max_height=PRODUCT_IMAGE_MAX_SIDE
+        )
+        return await ProductImageRepository(self.db).upsert(product, image)
+
+    async def get_image(self, product_id: UUID, store_id: UUID) -> ProductImage:
+        """Image d'un produit actif, ou NotFoundError."""
+        await self.get_by_id(product_id, store_id)
+        image = await ProductImageRepository(self.db).get(product_id)
+        if image is None:
+            raise NotFoundError("Product image not found.")
+        return image
+
+    async def delete_image(self, product_id: UUID, store_id: UUID) -> Product:
+        """Retire l'image d'un produit actif."""
+        product = await self.get_by_id(product_id, store_id)
+        return await ProductImageRepository(self.db).delete(product)
 
 
 class CategoryService:

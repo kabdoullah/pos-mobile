@@ -113,8 +113,11 @@ GET    /api/v1/auth/me                   Profil de l'utilisateur connecté
 ### Boutique
 
 ```
-GET    /api/v1/stores                     Récupérer ma boutique
-PATCH  /api/v1/stores                     Mettre à jour ma boutique
+GET    /api/v1/stores/me                  Récupérer ma boutique
+PATCH  /api/v1/stores/me                  Mettre à jour ma boutique
+PUT    /api/v1/stores/me/logo             Définir le logo (multipart, champ `file`)
+GET    /api/v1/stores/me/logo             Logo WebP (ETag, 304 si If-None-Match)
+DELETE /api/v1/stores/me/logo             Retirer le logo
 ```
 
 ### Catalogue
@@ -126,6 +129,9 @@ GET    /api/v1/products/{id}             Récupérer un produit
 PATCH  /api/v1/products/{id}             Mettre à jour un produit
 DELETE /api/v1/products/{id}             Soft delete un produit
 GET    /api/v1/products/by-barcode/{ean} Recherche par code-barres
+PUT    /api/v1/products/{id}/image       Définir l'image (multipart, champ `file`)
+GET    /api/v1/products/{id}/image       Image WebP (ETag, 304 si If-None-Match)
+DELETE /api/v1/products/{id}/image       Retirer l'image
 GET    /api/v1/categories                Lister les catégories actives (par nom)
 POST   /api/v1/categories                Créer une catégorie (409 si nom déjà pris)
 PATCH  /api/v1/categories/{id}           Renommer une catégorie
@@ -135,6 +141,12 @@ DELETE /api/v1/categories/{id}           Soft delete (détache ses produits)
 Un produit porte au plus une catégorie (`category_id`, nullable). En PATCH et en
 synchro, `category_id` absent = inchangé, `null` = retiré ; une catégorie
 inconnue de la boutique donne 422 (ADR-0008).
+
+Images (produit, logo) : JPEG, PNG ou WebP, 5 Mo max (413 au-delà, 422 si ce
+n'est pas une image). Ré-encodées en WebP sans métadonnées EXIF : 512 px max
+pour un produit, 384 px de large pour le logo (imprimante 58 mm). Le binaire ne
+passe jamais par la synchro : `image_version` / `logo_version` (SHA-256, null
+sans image) servent de clé de cache, et changer d'image bumpe `updated_at`.
 
 ### Ventes
 

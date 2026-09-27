@@ -1,15 +1,16 @@
 """Routes du module catalog."""
 
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Query, Response, UploadFile, status
+from fastapi import APIRouter, Header, Query, Response, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import TenantDbSession
 from app.core.dependencies import CurrentStoreId, CurrentUserId
 from app.core.exceptions import AppError
+from app.core.images import MAX_UPLOAD_BYTES, image_response
 from app.core.pagination import CursorPage
 from app.modules.catalog.bulk_import import (
     build_csv_template,
@@ -267,6 +268,62 @@ async def delete_product(
 ) -> None:
     """Supprime un produit (soft delete). Transparent pour le client."""
     await ProductService(db).delete_product(product_id, store_id)
+
+
+# ---------------------------------------------------------------------------
+# Image produit — ADR-0008 (en ligne uniquement)
+# ---------------------------------------------------------------------------
+
+
+@router.put(
+    "/{product_id}/image",
+    response_model=ProductResponse,
+    summary="Définir l'image d'un produit",
+)
+async def upload_product_image(
+    product_id: UUID, file: UploadFile, db: TenantDbSession, store_id: CurrentStoreId
+) -> ProductResponse:
+    """Remplace l'image (JPEG, PNG ou WebP, 5 Mo max), ré-encodée en WebP 512 px.
+
+    Retourne le produit avec son nouvel `image_version`. 413 / 422 si refusée.
+    """
+    # Lecture bornée : au-delà de la limite, inutile de tout charger en mémoire.
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)
+    product = await ProductService(db).set_image(product_id, store_id, raw)
+    return ProductResponse.model_validate(product)
+
+
+@router.get(
+    "/{product_id}/image",
+    response_class=Response,
+    responses={
+        status.HTTP_200_OK: {"content": {"image/webp": {}}},
+        status.HTTP_304_NOT_MODIFIED: {"description": "Version déjà en cache (If-None-Match)"},
+        status.HTTP_404_NOT_FOUND: {"description": "Produit ou image absent"},
+    },
+    summary="Image d'un produit",
+)
+async def get_product_image(
+    product_id: UUID,
+    db: TenantDbSession,
+    store_id: CurrentStoreId,
+    if_none_match: Annotated[str | None, Header()] = None,
+) -> Response:
+    """Image WebP du produit, avec ETag (SHA-256) et cache long côté client."""
+    image = await ProductService(db).get_image(product_id, store_id)
+    return image_response(image.content, image.content_type, image.sha256, if_none_match)
+
+
+@router.delete(
+    "/{product_id}/image",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Retirer l'image d'un produit",
+)
+async def delete_product_image(
+    product_id: UUID, db: TenantDbSession, store_id: CurrentStoreId
+) -> None:
+    """Supprime l'image du produit (`image_version` repasse à null)."""
+    await ProductService(db).delete_image(product_id, store_id)
 
 
 # ---------------------------------------------------------------------------

@@ -55,6 +55,8 @@ class StoreResponse(BaseModel):
     ncc: str | None
     vat_subject: bool
     receipt_footer_text: str | None
+    # SHA-256 du logo (NULL sans logo) : clé de cache côté app.
+    logo_version: str | None = None
     next_receipt_number: int
     created_at: datetime
     updated_at: datetime

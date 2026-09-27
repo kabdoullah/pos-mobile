@@ -56,6 +56,13 @@ class ValidationError(AppError):
     code = "VALIDATION_ERROR"
 
 
+class PayloadTooLargeError(AppError):
+    """Fichier envoyé trop volumineux (ex. image > 5 Mo)."""
+
+    status_code = status.HTTP_413_CONTENT_TOO_LARGE
+    code = "PAYLOAD_TOO_LARGE"
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Enregistre les handlers d'exception sur l'app FastAPI."""
 

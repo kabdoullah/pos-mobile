@@ -22,6 +22,8 @@ _BACKEND_DIR = Path(__file__).parent.parent
 
 # Tables dans l'ordre pour TRUNCATE (enfants avant parents)
 _ALL_TABLES = (
+    "product_images",
+    "store_logos",
     "stock_movements",
     "sale_items",
     "sales",

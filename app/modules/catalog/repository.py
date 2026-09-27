@@ -7,8 +7,9 @@ from uuid import UUID
 from sqlalchemy import func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.images import ProcessedImage
 from app.core.pagination import decode_cursor
-from app.modules.catalog.models import Category, Product
+from app.modules.catalog.models import Category, Product, ProductImage
 
 
 class _CursorData(TypedDict):
@@ -247,3 +248,40 @@ class CategoryRepository:
         await self.db.flush()
         for product in products:
             await self.db.refresh(product)
+
+
+class ProductImageRepository:
+    """Images produit. Ne charge le binaire que pour le servir."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def get(self, product_id: UUID) -> ProductImage | None:
+        """Image du produit (RLS : boutique courante uniquement), ou None."""
+        return await self.db.get(ProductImage, product_id)
+
+    async def upsert(self, product: Product, image: ProcessedImage) -> Product:
+        """Remplace l'image du produit et met à jour sa version (bumpe updated_at)."""
+        row = await self.get(product.id)
+        if row is None:
+            row = ProductImage(product_id=product.id, store_id=product.store_id)
+            self.db.add(row)
+        row.content = image.content
+        row.content_type = image.content_type
+        row.width = image.width
+        row.height = image.height
+        row.sha256 = image.sha256
+        product.image_version = image.sha256
+        await self.db.flush()
+        await self.db.refresh(product)
+        return product
+
+    async def delete(self, product: Product) -> Product:
+        """Supprime l'image du produit (sans erreur s'il n'en a pas)."""
+        row = await self.get(product.id)
+        if row is not None:
+            await self.db.delete(row)
+        product.image_version = None
+        await self.db.flush()
+        await self.db.refresh(product)
+        return product
