@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field, field_validator
 
 _BARCODE_PATTERN = r"^[A-Za-z0-9]{6,50}$"
 
@@ -15,7 +15,17 @@ class ProductCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     barcode: str | None = Field(None, pattern=_BARCODE_PATTERN)
-    unit_price: Decimal = Field(..., ge=Decimal("0"), max_digits=12, decimal_places=2)
+    # ADR-0009 : ex-unit_price, encore accepté en entrée (versions de l'app
+    # antérieures) le temps de la transition.
+    selling_price: Decimal = Field(
+        ...,
+        ge=Decimal("0"),
+        max_digits=12,
+        decimal_places=2,
+        validation_alias=AliasChoices("selling_price", "unit_price"),
+    )
+    # NULL = non renseigné. Donnée interne au commerçant.
+    purchase_price: Decimal | None = Field(None, ge=Decimal("0"), max_digits=12, decimal_places=2)
     current_stock: int | None = Field(None, ge=0)
     min_stock: int | None = Field(None, ge=0)
     category_id: UUID | None = None
@@ -33,7 +43,15 @@ class ProductUpdate(BaseModel):
 
     name: str | None = Field(None, min_length=1, max_length=255)
     barcode: str | None = Field(None, pattern=_BARCODE_PATTERN)
-    unit_price: Decimal | None = Field(None, ge=Decimal("0"), max_digits=12, decimal_places=2)
+    selling_price: Decimal | None = Field(
+        None,
+        ge=Decimal("0"),
+        max_digits=12,
+        decimal_places=2,
+        validation_alias=AliasChoices("selling_price", "unit_price"),
+    )
+    # Absent = inchangé ; null = prix d'achat retiré (PATCH, exclude_unset).
+    purchase_price: Decimal | None = Field(None, ge=Decimal("0"), max_digits=12, decimal_places=2)
     current_stock: int | None = Field(None, ge=0)
     min_stock: int | None = Field(None, ge=0)
     # Absent = inchangé ; null = retire la catégorie (PATCH, exclude_unset).
@@ -56,7 +74,8 @@ class ProductResponse(BaseModel):
     store_id: UUID
     name: str
     barcode: str | None
-    unit_price: Decimal
+    selling_price: Decimal
+    purchase_price: Decimal | None = None
     current_stock: int | None
     min_stock: int | None
     category_id: UUID | None = None
@@ -65,6 +84,14 @@ class ProductResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def unit_price(self) -> Decimal:
+        """Déprécié (ADR-0009) : alias de selling_price pour les versions de
+        l'app antérieures, qui exigent ce champ. À retirer quand elles ne
+        circulent plus."""
+        return self.selling_price
 
 
 class ProductBulkCreateRequest(BaseModel):

@@ -129,7 +129,8 @@ Champs principaux :
 - `store_id` — UUID, FK vers `stores`
 - `name` — nom du produit
 - `barcode` — optionnel, format EAN-13/8/UPC-A/Code 128
-- `unit_price` — NUMERIC(12, 2)
+- `selling_price` — NUMERIC(12, 2), prix de vente (ex-`unit_price`, ADR-0009)
+- `purchase_price` — NUMERIC(12, 2) NULL, prix d'achat (NULL = non renseigné, donnée interne)
 - `current_stock` — INTEGER NULL (NULL = stock non géré)
 - `created_at`, `updated_at`, `deleted_at`
 
@@ -155,6 +156,7 @@ Champs principaux :
 - `mobile_money_amount` — NUMERIC(12, 2), pour les paiements mixtes
 - `created_at` — TIMESTAMPTZ, instant de la vente
 - `synced_at` — TIMESTAMPTZ NULL, instant de réception côté serveur
+- `discount_type` / `discount_value` / `discount_amount` — remise globale (ADR-0009) ; `total_amount = Σ line_total − discount_amount`
 
 Index importants :
 
@@ -176,7 +178,9 @@ Champs principaux :
 - `product_name_at_sale` — copie du nom au moment de la vente (immuabilité)
 - `unit_price_at_sale` — NUMERIC(12, 2), copie du prix au moment de la vente
 - `quantity` — INTEGER NOT NULL
-- `line_total` — NUMERIC(12, 2), calculé `quantity * unit_price_at_sale`
+- `line_total` — NUMERIC(12, 2), total net `quantity * unit_price_at_sale - discount_amount`
+- `purchase_price_at_sale` — NUMERIC(12, 2) NULL, copie du prix d'achat (marge historique)
+- `discount_type` / `discount_value` / `discount_amount` — réduction de ligne (ADR-0009)
 
 La dénormalisation de `product_name_at_sale` et `unit_price_at_sale` est délibérée : elle garantit que l'historique des ventes reste lisible même si le produit est ensuite supprimé ou son prix modifié.
 

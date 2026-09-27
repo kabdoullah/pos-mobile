@@ -50,7 +50,7 @@ async def _create_product(
     unit_price: Decimal = Decimal("1000.00"),
     barcode: str | None = None,
 ) -> Product:
-    product = Product(store_id=store_id, name=name, unit_price=unit_price, barcode=barcode)
+    product = Product(store_id=store_id, name=name, selling_price=unit_price, barcode=barcode)
     db.add(product)
     await db.flush()
     await db.refresh(product)
@@ -723,7 +723,7 @@ async def test_sync_changes_with_pagination(client: AsyncClient, db_session: Asy
 
     for i in range(150):
         db_session.add(
-            Product(store_id=store.id, name=f"Produit {i:04d}", unit_price=Decimal("1000.00"))
+            Product(store_id=store.id, name=f"Produit {i:04d}", selling_price=Decimal("1000.00"))
         )
     await db_session.flush()
 
@@ -755,7 +755,7 @@ async def test_sync_changes_use_cursor_to_continue(
             Product(
                 store_id=store.id,
                 name=f"Produit cursor {i:04d}",
-                unit_price=Decimal("1000.00"),
+                selling_price=Decimal("1000.00"),
             )
         )
     await db_session.flush()

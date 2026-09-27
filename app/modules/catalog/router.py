@@ -186,7 +186,8 @@ async def download_bulk_import_template(
     format: Literal["csv", "xlsx"] = Query("csv"),
 ) -> Response:
     """Modèle vierge (en-têtes + 2 lignes d'exemple) au format attendu par
-    `POST /products/bulk/file` : name, barcode, unit_price, current_stock.
+    `POST /products/bulk/file` : name, barcode, purchase_price, selling_price,
+    current_stock, min_stock.
     """
     if format == "xlsx":
         content = build_xlsx_template()

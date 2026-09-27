@@ -70,6 +70,10 @@ class SaleService:
                     unit_price_at_sale=item_payload.unit_price_at_sale,
                     quantity=item_payload.quantity,
                     line_total=item_payload.line_total,
+                    purchase_price_at_sale=item_payload.purchase_price_at_sale,
+                    discount_type=item_payload.discount_type,
+                    discount_value=item_payload.discount_value,
+                    discount_amount=item_payload.discount_amount,
                 )
             )
 
@@ -82,6 +86,9 @@ class SaleService:
             cash_amount=payload.cash_amount,
             mobile_money_amount=payload.mobile_money_amount,
             created_at=payload.created_at,
+            discount_type=payload.discount_type,
+            discount_value=payload.discount_value,
+            discount_amount=payload.discount_amount,
             created_by=user_id,
         )
 

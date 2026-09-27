@@ -61,6 +61,8 @@ def _estimate_height(
     if seller_name:
         lines += 1
     lines += len(items) * 2  # chaque article : nom, puis qté x prix = total
+    lines += sum(1 for item in items if item.discount_amount)  # ligne « Réduction »
+    lines += 2  # sous-total + remise globale éventuels
     lines += 4  # séparateur + total + tva + moyen de paiement
     if store.receipt_footer_text:
         lines += 2
@@ -122,14 +124,31 @@ def _draw_items(pdf: Canvas, items: list[SaleItem], y: float) -> float:
         y -= _LINE_HEIGHT
         detail = f"  {item.quantity} x {_fmt_amount(item.unit_price_at_sale)}"
         pdf.drawString(_MARGIN, y, detail)
-        pdf.drawRightString(_PAGE_WIDTH - _MARGIN, y, _fmt_amount(item.line_total))
+        # Total brut, puis la réduction de ligne (ADR-0009). Jamais le prix
+        # d'achat : le reçu est remis au client.
+        gross = item.unit_price_at_sale * item.quantity
+        pdf.drawRightString(_PAGE_WIDTH - _MARGIN, y, _fmt_amount(gross))
         y -= _LINE_HEIGHT
+        if item.discount_amount:
+            pdf.drawString(_MARGIN, y, "  Réduction")
+            pdf.drawRightString(_PAGE_WIDTH - _MARGIN, y, f"-{_fmt_amount(item.discount_amount)}")
+            y -= _LINE_HEIGHT
 
     pdf.line(_MARGIN, y, _PAGE_WIDTH - _MARGIN, y)
     return y - _LINE_HEIGHT
 
 
 def _draw_totals(pdf: Canvas, sale: Sale, store: Store, y: float) -> float:
+    if sale.discount_amount:
+        pdf.setFont("Helvetica", 8)
+        pdf.drawString(_MARGIN, y, "Sous-total")
+        pdf.drawRightString(
+            _PAGE_WIDTH - _MARGIN, y, _fmt_amount(sale.total_amount + sale.discount_amount)
+        )
+        y -= _LINE_HEIGHT
+        pdf.drawString(_MARGIN, y, "Remise")
+        pdf.drawRightString(_PAGE_WIDTH - _MARGIN, y, f"-{_fmt_amount(sale.discount_amount)}")
+        y -= _LINE_HEIGHT
     pdf.setFont("Helvetica-Bold", 10)
     pdf.drawString(_MARGIN, y, "TOTAL")
     pdf.drawRightString(_PAGE_WIDTH - _MARGIN, y, _fmt_amount(sale.total_amount))

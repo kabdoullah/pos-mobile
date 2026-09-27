@@ -65,7 +65,11 @@ class Product(Base):
 
     __tablename__ = "products"
     __table_args__ = (
-        CheckConstraint("unit_price >= 0", name="chk_products_unit_price_positive"),
+        CheckConstraint("selling_price >= 0", name="chk_products_selling_price_positive"),
+        CheckConstraint(
+            "purchase_price IS NULL OR purchase_price >= 0",
+            name="chk_products_purchase_price_positive",
+        ),
         CheckConstraint("length(trim(name)) > 0", name="chk_products_name_not_empty"),
         CheckConstraint(
             "min_stock IS NULL OR min_stock >= 0", name="chk_products_min_stock_non_negative"
@@ -81,7 +85,10 @@ class Product(Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     barcode: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    # Prix de vente normal (ADR-0009, ex-unit_price).
+    selling_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    # Prix d'achat (coût d'acquisition) ; NULL = non renseigné. Donnée interne.
+    purchase_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     current_stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
     min_stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
     category_id: Mapped[UUID | None] = mapped_column(
@@ -105,7 +112,7 @@ class Product(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
-        return f"<Product id={self.id} name={self.name!r} price={self.unit_price}>"
+        return f"<Product id={self.id} name={self.name!r} price={self.selling_price}>"
 
 
 class ProductImage(Base):

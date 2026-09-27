@@ -165,7 +165,7 @@ async def test_delete_category_detaches_products_and_bumps_them(
     product = Product(
         store_id=store.id,
         name="Coca",
-        unit_price=Decimal("500"),
+        selling_price=Decimal("500"),
         category_id=category.id,
         updated_at=old,
     )
@@ -427,7 +427,7 @@ async def test_sync_product_without_category_field_keeps_category(
     user, store = await _store(db_session, "cat-sync-compat@test.com")
     category = await _category(db_session, store, "Boissons")
     product = Product(
-        store_id=store.id, name="Coca", unit_price=Decimal("500"), category_id=category.id
+        store_id=store.id, name="Coca", selling_price=Decimal("500"), category_id=category.id
     )
     db_session.add(product)
     await db_session.flush()
@@ -476,7 +476,9 @@ async def test_sync_changes_returns_categories_before_products(
     user, store = await _store(db_session, "cat-changes@test.com")
     category = await _category(db_session, store, "Boissons")
     db_session.add(
-        Product(store_id=store.id, name="Coca", unit_price=Decimal("500"), category_id=category.id)
+        Product(
+            store_id=store.id, name="Coca", selling_price=Decimal("500"), category_id=category.id
+        )
     )
     await db_session.flush()
 
@@ -496,7 +498,9 @@ async def test_sync_changes_paginates_across_all_phases(
     for i in range(3):
         db_session.add(Category(store_id=store.id, name=f"Catégorie {i}"))
     for i in range(4):
-        db_session.add(Product(store_id=store.id, name=f"Produit {i}", unit_price=Decimal("100")))
+        db_session.add(
+            Product(store_id=store.id, name=f"Produit {i}", selling_price=Decimal("100"))
+        )
     await db_session.flush()
 
     headers = _headers(user, store)
@@ -525,7 +529,7 @@ async def test_sync_changes_accepts_cursor_emitted_before_categories(
     """Un cursor « phase products » d'une ancienne app reste valide."""
     user, store = await _store(db_session, "cat-changes-old-cursor@test.com")
     await _category(db_session, store, "Boissons")
-    db_session.add(Product(store_id=store.id, name="Coca", unit_price=Decimal("500")))
+    db_session.add(Product(store_id=store.id, name="Coca", selling_price=Decimal("500")))
     await db_session.flush()
 
     r = await client.get(

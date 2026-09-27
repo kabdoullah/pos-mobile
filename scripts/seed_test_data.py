@@ -34,16 +34,26 @@ TEST_EMAIL = "test@gmail.com"
 TEST_PASSWORD = "TestPassword123"  # noqa: S105
 
 PRODUCTS_TO_CREATE = [
-    {"name": "Pain de mie", "barcode": "3017620422003", "unit_price": "500.00", "stock": 50},
-    {"name": "Eau minérale 1.5L", "barcode": "3068320055000", "unit_price": "300.00", "stock": 100},
+    {"name": "Pain de mie", "barcode": "3017620422003", "selling_price": "500.00", "stock": 50},
+    {
+        "name": "Eau minérale 1.5L",
+        "barcode": "3068320055000",
+        "selling_price": "300.00",
+        "stock": 100,
+    },
     {
         "name": "Café Nescafé sachet",
         "barcode": "7613032567736",
-        "unit_price": "150.00",
+        "selling_price": "150.00",
         "stock": 200,
     },
-    {"name": "Savon de Marseille", "barcode": "3245676543210", "unit_price": "750.00", "stock": 30},
-    {"name": "Banane (kg)", "barcode": None, "unit_price": "400.00", "stock": None},
+    {
+        "name": "Savon de Marseille",
+        "barcode": "3245676543210",
+        "selling_price": "750.00",
+        "stock": 30,
+    },
+    {"name": "Banane (kg)", "barcode": None, "selling_price": "400.00", "stock": None},
 ]
 
 
@@ -91,7 +101,7 @@ async def seed() -> None:
                 store_id=store.id,
                 name=p["name"],
                 barcode=p["barcode"],
-                unit_price=Decimal(p["unit_price"]),
+                selling_price=Decimal(p["selling_price"]),
                 current_stock=p["stock"],
             )
             session.add(product)

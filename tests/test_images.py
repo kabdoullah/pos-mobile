@@ -45,7 +45,7 @@ def _headers(user: User, store: Store) -> dict[str, str]:
 
 
 async def _product(db: AsyncSession, store: Store, updated_at: datetime | None = None) -> Product:
-    product = Product(store_id=store.id, name="Coca", unit_price=Decimal("500"))
+    product = Product(store_id=store.id, name="Coca", selling_price=Decimal("500"))
     if updated_at is not None:
         product.updated_at = updated_at
     db.add(product)

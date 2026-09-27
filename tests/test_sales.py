@@ -47,11 +47,11 @@ async def _create_product(
     db: AsyncSession,
     store_id: UUID,
     name: str = "Produit test",
-    unit_price: Decimal = Decimal("1000.00"),
+    selling_price: Decimal = Decimal("1000.00"),
     current_stock: int | None = None,
 ) -> Product:
     product = Product(
-        store_id=store_id, name=name, unit_price=unit_price, current_stock=current_stock
+        store_id=store_id, name=name, selling_price=selling_price, current_stock=current_stock
     )
     db.add(product)
     await db.flush()
@@ -69,7 +69,7 @@ def _sale_payload(
     sale_id: UUID | None = None,
     product_id: UUID | None = None,
     product_name: str = "Baguette",
-    unit_price: str = "1000.00",
+    selling_price: str = "1000.00",
     quantity: int = 5,
     line_total: str = "5000.00",
     total_amount: str = "5000.00",
@@ -90,7 +90,7 @@ def _sale_payload(
             {
                 "product_id": str(product_id) if product_id is not None else None,
                 "product_name_at_sale": product_name,
-                "unit_price_at_sale": unit_price,
+                "unit_price_at_sale": selling_price,
                 "quantity": quantity,
                 "line_total": line_total,
             }
@@ -361,7 +361,7 @@ async def test_create_sale_idempotent_with_timeout_simulation(
     # Même id, payload avec un total différent (simule un retry après timeout)
     payload_2 = _sale_payload(
         sale_id=sale_id,
-        unit_price="2000.00",
+        selling_price="2000.00",
         quantity=4,
         line_total="8000.00",
         total_amount="8000.00",
@@ -824,7 +824,7 @@ async def test_today_summary_with_sales(client: AsyncClient, db_session: AsyncSe
         await client.post(
             "/api/v1/sales",
             json=_sale_payload(
-                unit_price="600.00",
+                selling_price="600.00",
                 quantity=3,
                 line_total="1800.00",
                 total_amount="1800.00",
@@ -902,12 +902,12 @@ async def test_today_summary_top_products_limited_to_5(
     # Quantités décroissantes : A=100, B=90, C=80, D=70, E=60, F=50, G=40
     products = [("A", 100), ("B", 90), ("C", 80), ("D", 70), ("E", 60), ("F", 50), ("G", 40)]
     for name, qty in products:
-        total = str(qty * 10)  # unit_price=10
+        total = str(qty * 10)  # selling_price=10
         line = total
         await client.post(
             "/api/v1/sales",
             json=_sale_payload(
-                unit_price="10.00",
+                selling_price="10.00",
                 quantity=qty,
                 line_total=f"{line}.00",
                 total_amount=f"{total}.00",

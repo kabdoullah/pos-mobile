@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from app.modules.catalog.schemas import CategoryResponse, ProductResponse
 from app.modules.sales.schemas import SaleCreate, SaleResponse
@@ -39,7 +39,17 @@ class ProductSyncRequest(BaseModel):
     id: UUID
     name: str = Field(..., min_length=1, max_length=255)
     barcode: str | None = Field(None, pattern=_BARCODE_PATTERN)
-    unit_price: Decimal = Field(..., ge=Decimal("0"), max_digits=12, decimal_places=2)
+    # ADR-0009 : ex-unit_price, encore accepté des anciennes versions de l'app.
+    selling_price: Decimal = Field(
+        ...,
+        ge=Decimal("0"),
+        max_digits=12,
+        decimal_places=2,
+        validation_alias=AliasChoices("selling_price", "unit_price"),
+    )
+    # Absent (anciennes versions) = inchangé ; null = non renseigné.
+    # Distingué via model_fields_set.
+    purchase_price: Decimal | None = Field(None, ge=Decimal("0"), max_digits=12, decimal_places=2)
     current_stock: int | None = Field(None, ge=0)
     min_stock: int | None = Field(None, ge=0)
     # ADR-0008. Absent (anciennes versions de l'app) = catégorie inchangée ;

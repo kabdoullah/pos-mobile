@@ -134,10 +134,13 @@ class SyncService:
         updates: dict[str, Any] = {
             "name": payload.name,
             "barcode": payload.barcode,
-            "unit_price": payload.unit_price,
+            "selling_price": payload.selling_price,
             "min_stock": payload.min_stock,
             "deleted_at": None,
         }
+        # Champ absent (ancienne app) : on ne touche pas au prix d'achat.
+        if "purchase_price" in payload.model_fields_set:
+            updates["purchase_price"] = payload.purchase_price
         # Champ absent (ancienne app) : on ne touche pas à la catégorie.
         if "category_id" in payload.model_fields_set:
             updates["category_id"] = await self.category_service.resolve_for_product(
@@ -187,7 +190,8 @@ class SyncService:
                     store_id=store_id,
                     name=payload.name,
                     barcode=payload.barcode,
-                    unit_price=payload.unit_price,
+                    selling_price=payload.selling_price,
+                    purchase_price=payload.purchase_price,
                     current_stock=None,
                     min_stock=payload.min_stock,
                     category_id=category_id,

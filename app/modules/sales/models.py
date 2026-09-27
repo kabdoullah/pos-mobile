@@ -54,6 +54,11 @@ class Sale(Base):
         ),
         CheckConstraint("vat_amount <= total_amount", name="chk_sales_vat_lte_total"),
         CheckConstraint(
+            "discount_type IS NULL OR discount_type IN ('amount', 'percentage')",
+            name="chk_sales_discount_type",
+        ),
+        CheckConstraint("discount_amount >= 0", name="chk_sales_discount_amount_positive"),
+        CheckConstraint(
             "(payment_method = 'mixed' AND cash_amount IS NOT NULL AND mobile_money_amount IS NOT NULL) "
             "OR (payment_method != 'mixed' AND (cash_amount IS NULL OR mobile_money_amount IS NULL))",
             name="chk_sales_mixed_amounts",
@@ -87,6 +92,13 @@ class Sale(Base):
 
     cash_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     mobile_money_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+
+    # Remise globale (ADR-0009) : total_amount = somme des line_total - discount_amount.
+    discount_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    discount_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    discount_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0"), server_default="0"
+    )
 
     # Pas de server_default : c'est le timestamp côté CLIENT au moment de la vente
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -124,8 +136,20 @@ class SaleItem(Base):
             name="chk_sale_items_unit_price_positive",
         ),
         CheckConstraint(
-            "line_total = unit_price_at_sale * quantity",
+            "line_total = unit_price_at_sale * quantity - discount_amount",
             name="chk_sale_items_line_total",
+        ),
+        CheckConstraint(
+            "discount_amount >= 0 AND discount_amount <= unit_price_at_sale * quantity",
+            name="chk_sale_items_discount_amount",
+        ),
+        CheckConstraint(
+            "discount_type IS NULL OR discount_type IN ('amount', 'percentage')",
+            name="chk_sale_items_discount_type",
+        ),
+        CheckConstraint(
+            "purchase_price_at_sale IS NULL OR purchase_price_at_sale >= 0",
+            name="chk_sale_items_purchase_price_positive",
         ),
     )
 
@@ -154,7 +178,16 @@ class SaleItem(Base):
     product_name_at_sale: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_price_at_sale: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Total net de la ligne : unit_price_at_sale * quantity - discount_amount.
     line_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+
+    # Instantané ADR-0009 : jamais relu depuis le produit actuel.
+    purchase_price_at_sale: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    discount_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    discount_value: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    discount_amount: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), nullable=False, default=Decimal("0"), server_default="0"
+    )
 
     def __repr__(self) -> str:
         return (

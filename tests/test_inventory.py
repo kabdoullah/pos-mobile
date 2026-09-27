@@ -41,7 +41,7 @@ async def _create_product(
     current_stock: int | None = None,
 ) -> Product:
     product = Product(
-        store_id=store_id, name=name, unit_price=unit_price, current_stock=current_stock
+        store_id=store_id, name=name, selling_price=unit_price, current_stock=current_stock
     )
     db.add(product)
     await db.flush()
