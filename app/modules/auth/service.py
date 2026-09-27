@@ -174,3 +174,31 @@ class AuthService:
 
         await self.repo.update_password(user, hash_password(new_password))
         await self.password_reset_repo.mark_used(db_token)
+
+
+class UserService:
+    """Profil de l'utilisateur connecté (nom affiché sur les reçus, ADR-0008)."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.repo = UserRepository(db)
+
+    async def get_me(self, user_id: UUID) -> User:
+        """Utilisateur connecté, ou NotFoundError."""
+        user = await self.repo.get_by_id(user_id)
+        if user is None:
+            raise NotFoundError("User not found.")
+        return user
+
+    async def update_me(self, user_id: UUID, payload: schemas.UserMeUpdate) -> User:
+        """Met à jour le profil (champs fournis uniquement)."""
+        user = await self.get_me(user_id)
+        if "display_name" in payload.model_fields_set:
+            user = await self.repo.update_display_name(user, payload.display_name)
+        return user
+
+    async def get_display_name(self, user_id: UUID | None) -> str | None:
+        """Nom affiché d'un utilisateur (reçu), ou None s'il n'est pas renseigné."""
+        if user_id is None:
+            return None
+        user = await self.repo.get_by_id(user_id)
+        return user.display_name if user is not None else None

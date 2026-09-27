@@ -79,6 +79,7 @@ class SaleRepository:
                 cash_amount=sale.cash_amount,
                 mobile_money_amount=sale.mobile_money_amount,
                 created_at=sale.created_at,
+                created_by=sale.created_by,
             )
             .on_conflict_do_nothing(index_elements=["id"])
             .returning(Sale.id)

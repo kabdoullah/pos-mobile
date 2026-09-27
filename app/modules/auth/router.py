@@ -2,11 +2,13 @@
 
 from fastapi import APIRouter, status
 
-from app.core.db import DbSession
+from app.core.db import DbSession, TenantDbSession
+from app.core.dependencies import CurrentUserId
 from app.modules.auth import schemas
-from app.modules.auth.service import AuthService
+from app.modules.auth.service import AuthService, UserService
 
 router = APIRouter()
+users_router = APIRouter()
 
 
 @router.post(
@@ -73,3 +75,26 @@ async def reset_password(payload: schemas.ResetPasswordRequest, db: DbSession) -
     """Réinitialise le mot de passe via le token reçu par email."""
     service = AuthService(db)
     await service.reset_password(payload.token, payload.new_password)
+
+
+# ---------------------------------------------------------------------------
+# Profil (/api/v1/users/me) — ADR-0008
+# ---------------------------------------------------------------------------
+
+
+@users_router.get("/me", response_model=schemas.UserMeResponse, summary="Mon profil")
+async def get_me(db: TenantDbSession, user_id: CurrentUserId) -> schemas.UserMeResponse:
+    """Profil de l'utilisateur connecté."""
+    user = await UserService(db).get_me(user_id)
+    return schemas.UserMeResponse.model_validate(user)
+
+
+@users_router.patch(
+    "/me", response_model=schemas.UserMeResponse, summary="Mettre à jour mon profil"
+)
+async def update_me(
+    payload: schemas.UserMeUpdate, db: TenantDbSession, user_id: CurrentUserId
+) -> schemas.UserMeResponse:
+    """Met à jour le nom affiché « Vendeur : … » sur les reçus (vide = retiré)."""
+    user = await UserService(db).update_me(user_id, payload)
+    return schemas.UserMeResponse.model_validate(user)

@@ -31,6 +31,8 @@ class Store(Base):
     ncc: Mapped[str | None] = mapped_column(String(20), nullable=True)
     vat_subject: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     receipt_footer_text: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Téléphone de la boutique (E.164), imprimé sur les reçus.
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # SHA-256 du logo courant (NULL sans logo), voir StoreLogo.
     logo_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
 

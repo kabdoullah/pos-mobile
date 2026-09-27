@@ -13,7 +13,7 @@ from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import StoreContextMiddleware
 from app.core.seed import seed_superadmin
-from app.modules.auth.router import router as auth_router
+from app.modules.auth.router import router as auth_router, users_router
 from app.modules.catalog.router import categories_router, router as catalog_router
 from app.modules.inventory.router import router as inventory_router
 from app.modules.sales.router import router as sales_router
@@ -54,6 +54,7 @@ register_exception_handlers(app)
 # Routes
 api_v1_prefix = "/api/v1"
 app.include_router(auth_router, prefix=f"{api_v1_prefix}/auth", tags=["auth"])
+app.include_router(users_router, prefix=f"{api_v1_prefix}/users", tags=["users"])
 app.include_router(stores_router, prefix=f"{api_v1_prefix}/stores", tags=["stores"])
 app.include_router(catalog_router, prefix=f"{api_v1_prefix}/products", tags=["catalog"])
 app.include_router(categories_router, prefix=f"{api_v1_prefix}/categories", tags=["catalog"])

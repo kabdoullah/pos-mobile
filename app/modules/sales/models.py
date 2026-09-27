@@ -90,6 +90,12 @@ class Sale(Base):
 
     # Pas de server_default : c'est le timestamp côté CLIENT au moment de la vente
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Vendeur (utilisateur du JWT à la synchro) ; NULL pour les ventes anciennes.
+    created_by: Mapped[UUID | None] = mapped_column(
+        SQLUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL", name="fk_sales_created_by"),
+        nullable=True,
+    )
     synced_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

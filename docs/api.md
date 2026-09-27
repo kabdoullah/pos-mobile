@@ -110,6 +110,13 @@ POST   /api/v1/auth/verify-email         Confirmer l'email avec token
 GET    /api/v1/auth/me                   Profil de l'utilisateur connecté
 ```
 
+### Profil
+
+```
+GET    /api/v1/users/me                   Mon profil (téléphone, email, display_name)
+PATCH  /api/v1/users/me                   Nom affiché « Vendeur : … » sur les reçus (vide = retiré)
+```
+
 ### Boutique
 
 ```
@@ -119,6 +126,11 @@ PUT    /api/v1/stores/me/logo             Définir le logo (multipart, champ `fi
 GET    /api/v1/stores/me/logo             Logo WebP (ETag, 304 si If-None-Match)
 DELETE /api/v1/stores/me/logo             Retirer le logo
 ```
+
+`phone` (E.164, ex. `+2250700000000`) est imprimé sur les reçus. Le reçu PDF
+(`GET /api/v1/sales/{id}/receipt`) affiche aussi le logo et « Vendeur : … »
+(nom affiché de l'utilisateur qui a synchronisé la vente, `sales.created_by` ;
+absent pour les ventes antérieures).
 
 ### Catalogue
 

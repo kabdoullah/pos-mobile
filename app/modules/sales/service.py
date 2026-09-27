@@ -82,6 +82,7 @@ class SaleService:
             cash_amount=payload.cash_amount,
             mobile_money_amount=payload.mobile_money_amount,
             created_at=payload.created_at,
+            created_by=user_id,
         )
 
         created_sale, was_created = await self.repo.create_sale_atomic(sale, items)

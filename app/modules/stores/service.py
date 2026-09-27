@@ -85,3 +85,8 @@ class StoreService:
         """Retire le logo de la boutique."""
         store = await self.get_for_user(user_id)
         return await self.repo.delete_logo(store)
+
+    async def get_logo_content(self, store_id: UUID) -> bytes | None:
+        """Contenu du logo (pour le reçu PDF), ou None sans logo."""
+        logo = await self.repo.get_logo(store_id)
+        return logo.content if logo is not None else None
