@@ -26,6 +26,7 @@ _ALL_TABLES = (
     "sale_items",
     "sales",
     "products",
+    "categories",
     "email_verification_tokens",
     "password_reset_tokens",
     "stores",

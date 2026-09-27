@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 from typing import Any, TypedDict
 from uuid import UUID
 
-from sqlalchemy import select, tuple_
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import decode_cursor
-from app.modules.catalog.models import Product
+from app.modules.catalog.models import Category, Product
 
 
 class _CursorData(TypedDict):
@@ -164,3 +164,86 @@ class ProductRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+
+class CategoryRepository:
+    """Accès aux catégories. Filtrage tenant assuré par RLS + store_id explicite."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def list_active(self, store_id: UUID) -> list[Category]:
+        """Catégories non supprimées, triées par nom (insensible à la casse)."""
+        stmt = (
+            select(Category)
+            .where(Category.store_id == store_id, Category.deleted_at.is_(None))
+            .order_by(func.lower(Category.name))
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_active_by_id(self, category_id: UUID, store_id: UUID) -> Category | None:
+        """Catégorie non supprimée de la boutique, ou None."""
+        stmt = select(Category).where(
+            Category.id == category_id,
+            Category.store_id == store_id,
+            Category.deleted_at.is_(None),
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_by_id_including_deleted(self, category_id: UUID) -> Category | None:
+        """Catégorie par id, supprimée ou non (RLS limite à la boutique courante)."""
+        result = await self.db.execute(select(Category).where(Category.id == category_id))
+        return result.scalar_one_or_none()
+
+    async def get_active_by_name_excluding(
+        self, name: str, store_id: UUID, exclude_id: UUID | None
+    ) -> Category | None:
+        """Autre catégorie active portant ce nom (insensible à la casse), ou None."""
+        stmt = select(Category).where(
+            Category.store_id == store_id,
+            Category.deleted_at.is_(None),
+            func.lower(Category.name) == name.lower(),
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(Category.id != exclude_id)
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def create(self, category: Category) -> Category:
+        """Crée et persiste une catégorie."""
+        self.db.add(category)
+        await self.db.flush()
+        await self.db.refresh(category)
+        return category
+
+    async def update(self, category: Category, updates: dict[str, Any]) -> Category:
+        """Applique les champs fournis et persiste."""
+        for field, value in updates.items():
+            setattr(category, field, value)
+        await self.db.flush()
+        await self.db.refresh(category)
+        return category
+
+    async def soft_delete_and_detach_products(self, category: Category) -> None:
+        """Supprime la catégorie (soft) et retire le lien de ses produits.
+
+        Le trigger updated_at des produits bumpe leur date : les autres appareils
+        récupèrent la correction au prochain pull.
+        """
+        category.deleted_at = datetime.now(UTC)
+        # Via l'ORM (et non un UPDATE en masse) : les produits déjà chargés dans
+        # la session restent cohérents. Le refresh relit le updated_at posé par
+        # le trigger (pas de chargement implicite possible en async).
+        result = await self.db.execute(
+            select(Product).where(
+                Product.category_id == category.id, Product.store_id == category.store_id
+            )
+        )
+        products = list(result.scalars().all())
+        for product in products:
+            product.category_id = None
+        await self.db.flush()
+        for product in products:
+            await self.db.refresh(product)

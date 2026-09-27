@@ -8,6 +8,8 @@ from app.core.db import TenantDbSession
 from app.core.dependencies import CurrentStoreId, CurrentUserId
 from app.core.exceptions import ValidationError
 from app.modules.sync.schemas import (
+    CategorySyncRequest,
+    CategorySyncResponse,
     ProductSyncRequest,
     ProductSyncResponse,
     SalesBatchSyncRequest,
@@ -67,6 +69,34 @@ async def sync_product(
       l'état serveur actuel pour que le client puisse fusionner manuellement
     """
     result, http_status = await SyncService(db).sync_product_state(store_id, payload, user_id)
+    response.status_code = http_status
+    return result
+
+
+@router.put(
+    "/categories",
+    response_model=CategorySyncResponse,
+    responses={
+        status.HTTP_200_OK: {"description": "updated / no_change / deleted"},
+        status.HTTP_201_CREATED: {"description": "created — catégorie inconnue du serveur"},
+        status.HTTP_409_CONFLICT: {
+            "description": "conflict — état serveur plus récent ou nom déjà pris"
+        },
+    },
+    summary="Synchroniser l'état d'une catégorie (upsert last-write-wins)",
+)
+async def sync_category(
+    payload: CategorySyncRequest,
+    response: Response,
+    db: TenantDbSession,
+    store_id: CurrentStoreId,
+) -> CategorySyncResponse:
+    """Applique l'état catégorie du client (ADR-0008).
+
+    À envoyer avant les produits : un produit qui référence une catégorie
+    inconnue du serveur est refusé en 422.
+    """
+    result, http_status = await SyncService(db).sync_category_state(store_id, payload)
     response.status_code = http_status
     return result
 

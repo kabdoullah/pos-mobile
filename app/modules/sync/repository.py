@@ -7,7 +7,7 @@ from sqlalchemy import and_, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.modules.catalog.models import Product
+from app.modules.catalog.models import Category, Product
 from app.modules.sales.models import Sale
 
 
@@ -16,6 +16,43 @@ class SyncRepository:
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+
+    async def list_changed_categories(
+        self,
+        store_id: UUID,
+        since: datetime | None,
+        limit: int,
+        cursor_after_id: UUID | None = None,
+        cursor_after_updated_at: datetime | None = None,
+    ) -> tuple[list[Category], bool]:
+        """Catégories modifiées ou soft-deleted depuis `since` (mêmes règles que
+        les produits : suppressions incluses, tri ASC).
+        """
+        stmt = select(Category).where(Category.store_id == store_id)
+
+        if since is not None:
+            stmt = stmt.where(
+                or_(
+                    Category.updated_at > since,
+                    and_(Category.deleted_at.is_not(None), Category.deleted_at > since),
+                )
+            )
+
+        if cursor_after_id is not None and cursor_after_updated_at is not None:
+            stmt = stmt.where(
+                tuple_(Category.updated_at, Category.id)
+                > (cursor_after_updated_at, cursor_after_id)
+            )
+
+        stmt = stmt.order_by(Category.updated_at.asc(), Category.id.asc()).limit(limit + 1)
+        result = await self.db.execute(stmt)
+        rows = list(result.scalars().all())
+
+        has_more = len(rows) > limit
+        if has_more:
+            rows = rows[:limit]
+
+        return rows, has_more
 
     async def list_changed_products(
         self,

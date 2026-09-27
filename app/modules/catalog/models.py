@@ -11,6 +11,42 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base
 
 
+class Category(Base):
+    """Catégorie de produits d'une boutique (ADR-0008).
+
+    Synchronisée par état comme le catalogue (last-write-wins, id généré par le
+    client). Soft delete via deleted_at ; la suppression détache ses produits.
+    Nom unique par boutique, insensible à la casse, parmi les non supprimées
+    (index unique partiel en migration).
+    """
+
+    __tablename__ = "categories"
+    __table_args__ = (
+        CheckConstraint("length(trim(name)) > 0", name="chk_categories_name_not_empty"),
+    )
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(
+        SQLUUID(as_uuid=True),
+        ForeignKey("stores.id", ondelete="RESTRICT", name="fk_categories_store"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(60), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<Category id={self.id} name={self.name!r}>"
+
+
 class Product(Base):
     """Produit du catalogue d'une boutique.
 
@@ -39,6 +75,11 @@ class Product(Base):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     current_stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
     min_stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    category_id: Mapped[UUID | None] = mapped_column(
+        SQLUUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="SET NULL", name="fk_products_category"),
+        nullable=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

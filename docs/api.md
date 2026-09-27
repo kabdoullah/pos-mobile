@@ -126,7 +126,15 @@ GET    /api/v1/products/{id}             Récupérer un produit
 PATCH  /api/v1/products/{id}             Mettre à jour un produit
 DELETE /api/v1/products/{id}             Soft delete un produit
 GET    /api/v1/products/by-barcode/{ean} Recherche par code-barres
+GET    /api/v1/categories                Lister les catégories actives (par nom)
+POST   /api/v1/categories                Créer une catégorie (409 si nom déjà pris)
+PATCH  /api/v1/categories/{id}           Renommer une catégorie
+DELETE /api/v1/categories/{id}           Soft delete (détache ses produits)
 ```
+
+Un produit porte au plus une catégorie (`category_id`, nullable). En PATCH et en
+synchro, `category_id` absent = inchangé, `null` = retiré ; une catégorie
+inconnue de la boutique donne 422 (ADR-0008).
 
 ### Ventes
 
@@ -142,9 +150,13 @@ Note : pas de `POST /sales` direct. Les ventes sont créées uniquement via `/sy
 
 ```
 POST   /api/v1/sync/sales                Push événements ventes (batch)
+PUT    /api/v1/sync/categories           Push état catégorie (à envoyer avant les produits)
 PUT    /api/v1/sync/products             Push état produit
 GET    /api/v1/sync/changes              Pull des changements depuis un timestamp
 ```
+
+`GET /sync/changes` renvoie les phases dans l'ordre catégories → produits →
+ventes : une catégorie arrive toujours avant ses produits.
 
 ### Système
 

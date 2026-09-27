@@ -17,6 +17,9 @@ from app.modules.catalog.bulk_import import (
     parse_bulk_import_file,
 )
 from app.modules.catalog.schemas import (
+    CategoryCreate,
+    CategoryResponse,
+    CategoryUpdate,
     ProductBulkCreateRequest,
     ProductBulkCreateResponse,
     ProductBulkItemResult,
@@ -24,10 +27,11 @@ from app.modules.catalog.schemas import (
     ProductResponse,
     ProductUpdate,
 )
-from app.modules.catalog.service import ProductService
+from app.modules.catalog.service import CategoryService, ProductService
 from app.modules.inventory.service import InventoryService
 
 router = APIRouter()
+categories_router = APIRouter()
 logger = structlog.get_logger()
 
 
@@ -263,3 +267,56 @@ async def delete_product(
 ) -> None:
     """Supprime un produit (soft delete). Transparent pour le client."""
     await ProductService(db).delete_product(product_id, store_id)
+
+
+# ---------------------------------------------------------------------------
+# Catégories (/api/v1/categories) — ADR-0008
+# ---------------------------------------------------------------------------
+
+
+@categories_router.get(
+    "",
+    response_model=list[CategoryResponse],
+    summary="Lister les catégories",
+)
+async def list_categories(db: TenantDbSession, store_id: CurrentStoreId) -> list[CategoryResponse]:
+    """Catégories actives de la boutique, triées par nom."""
+    categories = await CategoryService(db).list_categories(store_id)
+    return [CategoryResponse.model_validate(c) for c in categories]
+
+
+@categories_router.post(
+    "",
+    response_model=CategoryResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Créer une catégorie",
+)
+async def create_category(
+    payload: CategoryCreate, db: TenantDbSession, store_id: CurrentStoreId
+) -> CategoryResponse:
+    """Crée une catégorie. 409 si le nom existe déjà (casse ignorée)."""
+    category = await CategoryService(db).create_category(store_id, payload)
+    return CategoryResponse.model_validate(category)
+
+
+@categories_router.patch(
+    "/{category_id}",
+    response_model=CategoryResponse,
+    summary="Renommer une catégorie",
+)
+async def rename_category(
+    category_id: UUID, payload: CategoryUpdate, db: TenantDbSession, store_id: CurrentStoreId
+) -> CategoryResponse:
+    """Renomme une catégorie. 404 si absente, 409 si le nom est déjà pris."""
+    category = await CategoryService(db).rename_category(category_id, store_id, payload)
+    return CategoryResponse.model_validate(category)
+
+
+@categories_router.delete(
+    "/{category_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Supprimer une catégorie",
+)
+async def delete_category(category_id: UUID, db: TenantDbSession, store_id: CurrentStoreId) -> None:
+    """Supprime la catégorie (soft) et retire le lien de ses produits."""
+    await CategoryService(db).delete_category(category_id, store_id)

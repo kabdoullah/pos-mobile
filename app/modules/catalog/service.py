@@ -4,11 +4,17 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import ConflictError, NotFoundError, ValidationError
 from app.core.pagination import CursorPage, encode_cursor
-from app.modules.catalog.models import Product
-from app.modules.catalog.repository import ProductRepository
-from app.modules.catalog.schemas import ProductCreate, ProductResponse, ProductUpdate
+from app.modules.catalog.models import Category, Product
+from app.modules.catalog.repository import CategoryRepository, ProductRepository
+from app.modules.catalog.schemas import (
+    CategoryCreate,
+    CategoryUpdate,
+    ProductCreate,
+    ProductResponse,
+    ProductUpdate,
+)
 
 
 class ProductService:
@@ -68,6 +74,9 @@ class ProductService:
             existing = await self.repo.get_active_by_barcode(payload.barcode, store_id)
             if existing is not None:
                 raise ConflictError("A product with this barcode already exists.", field="barcode")
+        category_id = await CategoryService(self.db).resolve_for_product(
+            store_id, payload.category_id
+        )
         product = Product(
             store_id=store_id,
             name=payload.name,
@@ -75,6 +84,7 @@ class ProductService:
             unit_price=payload.unit_price,
             current_stock=None,
             min_stock=payload.min_stock,
+            category_id=category_id,
         )
         return await self.repo.create(product)
 
@@ -95,6 +105,10 @@ class ProductService:
             existing = await self.repo.get_active_by_barcode(new_barcode, store_id)
             if existing is not None:
                 raise ConflictError("A product with this barcode already exists.", field="barcode")
+        if "category_id" in updates:
+            updates["category_id"] = await CategoryService(self.db).resolve_for_product(
+                store_id, updates["category_id"]
+            )
         return await self.repo.update(product, updates)
 
     async def apply_stock_delta(
@@ -115,3 +129,65 @@ class ProductService:
         """Soft delete d'un produit. NotFoundError si absent."""
         product = await self.get_by_id(product_id, store_id)
         await self.repo.soft_delete(product)
+
+
+class CategoryService:
+    """Service métier des catégories de produits (ADR-0008)."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+        self.repo = CategoryRepository(db)
+
+    async def list_categories(self, store_id: UUID) -> list[Category]:
+        """Catégories actives de la boutique, par nom."""
+        return await self.repo.list_active(store_id)
+
+    async def get_by_id(self, category_id: UUID, store_id: UUID) -> Category:
+        """Catégorie active ou NotFoundError."""
+        category = await self.repo.get_active_by_id(category_id, store_id)
+        if category is None:
+            raise NotFoundError("Category not found.")
+        return category
+
+    async def _ensure_name_available(
+        self, name: str, store_id: UUID, exclude_id: UUID | None
+    ) -> None:
+        existing = await self.repo.get_active_by_name_excluding(name, store_id, exclude_id)
+        if existing is not None:
+            raise ConflictError("A category with this name already exists.", field="name")
+
+    async def create_category(self, store_id: UUID, payload: CategoryCreate) -> Category:
+        """Crée une catégorie. ConflictError si le nom existe déjà (casse ignorée)."""
+        await self._ensure_name_available(payload.name, store_id, None)
+        return await self.repo.create(Category(store_id=store_id, name=payload.name))
+
+    async def rename_category(
+        self, category_id: UUID, store_id: UUID, payload: CategoryUpdate
+    ) -> Category:
+        """Renomme une catégorie. ConflictError si le nom est déjà pris."""
+        category = await self.get_by_id(category_id, store_id)
+        await self._ensure_name_available(payload.name, store_id, category.id)
+        return await self.repo.update(category, {"name": payload.name})
+
+    async def delete_category(self, category_id: UUID, store_id: UUID) -> None:
+        """Supprime (soft) la catégorie et détache ses produits."""
+        category = await self.get_by_id(category_id, store_id)
+        await self.repo.soft_delete_and_detach_products(category)
+
+    async def resolve_for_product(self, store_id: UUID, category_id: UUID | None) -> UUID | None:
+        """Valide la catégorie d'un produit.
+
+        - `None` : pas de catégorie.
+        - catégorie supprimée : `None` (la suppression l'emporte, même règle que
+          le détachement des produits).
+        - catégorie inconnue de la boutique (inexistante, ou d'une autre
+          boutique, invisible via RLS) : ValidationError (422).
+        """
+        if category_id is None:
+            return None
+        category = await self.repo.get_by_id_including_deleted(category_id)
+        if category is None or category.store_id != store_id:
+            raise ValidationError("Unknown category.", field="category_id")
+        if category.deleted_at is not None:
+            return None
+        return category.id
