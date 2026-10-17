@@ -16,6 +16,7 @@ from app.core.db import Base, _asyncpg_url_and_ssl
 from app.modules.auth import models as auth_models
 from app.modules.catalog import models as catalog_models
 from app.modules.inventory import models as inventory_models
+from app.modules.returns import models as returns_models
 from app.modules.sales import models as sales_models
 from app.modules.stores import models as stores_models
 

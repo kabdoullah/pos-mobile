@@ -112,6 +112,10 @@ class SaleService:
             raise NotFoundError("Sale not found.")
         return sale
 
+    async def get_sale_for_update(self, sale_id: UUID) -> Sale | None:
+        """Vente avec ses lignes, verrouillée jusqu'à la fin de la transaction."""
+        return await self.repo.get_by_id_for_update(sale_id)
+
     async def list_sales(
         self,
         store_id: UUID,

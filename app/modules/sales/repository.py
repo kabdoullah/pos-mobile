@@ -63,6 +63,21 @@ class SaleRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_id_for_update(self, sale_id: UUID) -> Sale | None:
+        """Vente verrouillée (SELECT … FOR UPDATE) jusqu'à la fin de la transaction.
+
+        Sérialise les retours concurrents d'une même vente (ADR-0010). Un verrou
+        de ligne n'est pas un UPDATE : le trigger d'immuabilité ne se déclenche pas.
+        """
+        stmt = (
+            select(Sale)
+            .options(selectinload(Sale.items))
+            .where(Sale.id == sale_id)
+            .with_for_update(of=Sale)
+        )
+        result = await self.db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def create_sale_atomic(self, sale: Sale, items: list[SaleItem]) -> tuple[Sale, bool]:
         """Insère la vente avec idempotence via ON CONFLICT DO NOTHING.
 

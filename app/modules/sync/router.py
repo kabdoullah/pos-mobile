@@ -12,6 +12,8 @@ from app.modules.sync.schemas import (
     CategorySyncResponse,
     ProductSyncRequest,
     ProductSyncResponse,
+    ReturnsBatchSyncRequest,
+    ReturnsBatchSyncResponse,
     SalesBatchSyncRequest,
     SalesBatchSyncResponse,
     SyncChangesResponse,
@@ -40,6 +42,30 @@ async def sync_sales_batch(
     invalide n'annule pas les autres. Retourne toujours 200.
     """
     return await SyncService(db).sync_sales_batch(store_id, payload, user_id)
+
+
+@router.post(
+    "/returns",
+    response_model=ReturnsBatchSyncResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Push de retours clients en mode best-effort, idempotent par UUID",
+)
+async def sync_returns_batch(
+    payload: ReturnsBatchSyncRequest,
+    db: TenantDbSession,
+    store_id: CurrentStoreId,
+    user_id: CurrentUserId,
+) -> ReturnsBatchSyncResponse:
+    """Push de retours clients (ADR-0010), à envoyer après les ventes.
+
+    Insère un lot de retours (max 50). Un retour déjà présent (même UUID) retourne
+    `already_exists`. La vente est verrouillée : deux retours concurrents d'une
+    même vente ne peuvent pas dépasser la quantité vendue. Un refus métier est
+    `rejected` avec un `error_code` (`sale_not_found`, `item_not_in_sale`,
+    `quantity_exceeded`, `amount_mismatch`) et ne doit pas être renvoyé.
+    Retourne toujours 200.
+    """
+    return await SyncService(db).sync_returns_batch(store_id, payload, user_id)
 
 
 @router.put(
@@ -113,12 +139,12 @@ async def get_changes(
     cursor: str | None = Query(None),
     limit: int = Query(200, ge=1, le=500),
 ) -> SyncChangesResponse:
-    """Retourne les produits et ventes modifiés depuis `since`.
+    """Retourne catégories, produits, ventes et retours modifiés depuis `since`.
 
     - `since` absent : retourne l'intégralité de l'historique (sync initiale)
     - `since` présent : doit être timezone-aware (ISO 8601 avec offset, ex. `2024-01-01T00:00:00Z`)
     - Paginer via `next_cursor` jusqu'à `has_more=False`
-    - Produits triés par `updated_at ASC`, ventes par `synced_at ASC`
+    - Produits triés par `updated_at ASC`, ventes et retours par `synced_at ASC`
     """
     if since is not None and since.tzinfo is None:
         raise ValidationError("since must be timezone-aware")

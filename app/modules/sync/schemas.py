@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 
 from app.modules.catalog.schemas import CategoryResponse, ProductResponse
+from app.modules.returns.schemas import SaleReturnCreate, SaleReturnResponse
 from app.modules.sales.schemas import SaleCreate, SaleResponse
 
 _BARCODE_PATTERN = r"^[A-Za-z0-9]{6,50}$"
@@ -33,6 +34,32 @@ class SalesBatchSyncRequest(BaseModel):
 class SalesBatchSyncResponse(BaseModel):
     processed: int
     results: list[SaleSyncResult]
+
+
+class ReturnSyncResultStatus(StrEnum):
+    created = "created"
+    already_exists = "already_exists"
+    # Refus définitif (quantité dépassée, montant faux…) : ne pas renvoyer.
+    rejected = "rejected"
+    # Erreur inattendue : à renvoyer plus tard.
+    failed = "failed"
+
+
+class ReturnSyncResult(BaseModel):
+    id: UUID
+    status: ReturnSyncResultStatus
+    return_number: int | None = None
+    error_code: str | None = None
+    error: str | None = None
+
+
+class ReturnsBatchSyncRequest(BaseModel):
+    returns: list[SaleReturnCreate] = Field(..., min_length=1, max_length=50)
+
+
+class ReturnsBatchSyncResponse(BaseModel):
+    processed: int
+    results: list[ReturnSyncResult]
 
 
 class ProductSyncRequest(BaseModel):
@@ -114,6 +141,8 @@ class SyncChangesResponse(BaseModel):
     categories: list[CategoryResponse] = []
     products: list[ProductResponse]
     sales: list[SaleResponse]
+    # ADR-0010. Par défaut vide : compatible avec les clients qui l'ignorent.
+    returns: list[SaleReturnResponse] = []
     next_cursor: str | None = None
     has_more: bool
     server_time: datetime
