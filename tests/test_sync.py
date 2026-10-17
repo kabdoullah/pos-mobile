@@ -211,6 +211,38 @@ async def test_sync_sales_batch_idempotent_across_requests(
 
 
 @pytest.mark.asyncio
+async def test_sync_sales_keeps_client_item_id(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """L'id de ligne envoyé par le client est conservé ; absent → généré par le serveur."""
+    user = await _create_user(db_session, "sync-item-id@test.com")
+    store = await _create_store(db_session, user.id)
+    await db_session.commit()
+
+    item_id = uuid4()
+    with_id = _sale_payload()
+    with_id["items"][0]["id"] = str(item_id)
+    legacy = _sale_payload()
+    batch = {"sales": [with_id, legacy]}
+
+    response = await client.post(
+        "/api/v1/sync/sales", json=batch, headers=_headers(user.id, store.id)
+    )
+    assert response.status_code == 200
+    assert all(r["status"] == "created" for r in response.json()["results"])
+
+    rows = (
+        await db_session.execute(
+            text("SELECT sale_id, id FROM sale_items WHERE store_id = :sid"),
+            {"sid": str(store.id)},
+        )
+    ).all()
+    ids_by_sale = {str(sale_id): item for sale_id, item in rows}
+    assert ids_by_sale[with_id["id"]] == item_id
+    assert ids_by_sale[legacy["id"]] is not None
+
+
+@pytest.mark.asyncio
 async def test_sync_sales_batch_mixed_valid_invalid(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:

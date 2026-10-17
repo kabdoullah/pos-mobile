@@ -1,7 +1,7 @@
 """Logique métier du module sales."""
 
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -65,6 +65,7 @@ class SaleService:
 
             items.append(
                 SaleItem(
+                    id=item_payload.id or uuid4(),
                     product_id=resolved_product_id,
                     product_name_at_sale=item_payload.product_name_at_sale,
                     unit_price_at_sale=item_payload.unit_price_at_sale,

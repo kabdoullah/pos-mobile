@@ -76,6 +76,10 @@ def check_discount(
 
 
 class SaleItemCreate(BaseModel):
+    # UUID généré côté client : la ligne garde le même id sur l'appareil et le
+    # serveur (référencée par les retours). Absent des anciennes versions de
+    # l'app → généré par le serveur.
+    id: UUID | None = None
     product_id: UUID | None = None
     product_name_at_sale: str = Field(..., min_length=1, max_length=255)
     unit_price_at_sale: Amount
