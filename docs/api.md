@@ -115,6 +115,7 @@ GET    /api/v1/auth/me                   Profil de l'utilisateur connecté
 ```
 GET    /api/v1/users/me                   Mon profil (téléphone, email, display_name)
 PATCH  /api/v1/users/me                   Nom affiché « Vendeur : … » sur les reçus (vide = retiré)
+DELETE /api/v1/users/me                   Supprimer le compte et toutes les données de la boutique (body {password}, 403 si faux, ADR-0011)
 ```
 
 ### Boutique
