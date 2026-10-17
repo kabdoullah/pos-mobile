@@ -98,3 +98,14 @@ async def update_me(
     """Met à jour le nom affiché « Vendeur : … » sur les reçus (vide = retiré)."""
     user = await UserService(db).update_me(user_id, payload)
     return schemas.UserMeResponse.model_validate(user)
+
+
+@users_router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Supprimer mon compte")
+async def delete_me(
+    payload: schemas.DeleteAccountRequest, db: TenantDbSession, user_id: CurrentUserId
+) -> None:
+    """Supprime définitivement le compte, la boutique et toutes ses données (ADR-0011).
+
+    Mot de passe revérifié : 403 s'il est faux.
+    """
+    await UserService(db).delete_me(user_id, payload.password)

@@ -68,7 +68,8 @@ Les données sont hébergées sur notre serveur backend. Aucune donnée n'est tr
 ## 5. Conservation des données
 
 - Les données de compte et d'activité sont conservées tant que le compte est actif.
-- En cas de demande de suppression de compte, les données sont supprimées dans un délai de 30 jours.
+- Vous pouvez supprimer votre compte depuis l'application (Paramètres → Supprimer mon compte) : le compte et toutes les données de la boutique (catalogue, ventes, retours, images) sont supprimés immédiatement et définitivement.
+- En cas de demande de suppression par e-mail, les données sont supprimées dans un délai de 30 jours.
 
 ---
 
@@ -87,7 +88,7 @@ Vous disposez des droits suivants concernant vos données personnelles :
 
 - **Accès** : demander une copie des données associées à votre compte
 - **Rectification** : corriger des données inexactes
-- **Suppression** : demander la suppression de votre compte et de vos données
+- **Suppression** : supprimer votre compte et vos données depuis l'application, ou en faire la demande par e-mail
 
 Pour exercer ces droits, contactez-nous à : **abdoullahcoulibaly2@gmail.com**
 
