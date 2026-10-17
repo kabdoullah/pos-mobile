@@ -12,7 +12,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.email import EmailService
-from app.core.exceptions import ConflictError, NotFoundError, UnauthorizedError, ValidationError
+from app.core.exceptions import (
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    UnauthorizedError,
+    ValidationError,
+)
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -180,6 +186,7 @@ class UserService:
     """Profil de l'utilisateur connecté (nom affiché sur les reçus, ADR-0008)."""
 
     def __init__(self, db: AsyncSession) -> None:
+        self.db = db
         self.repo = UserRepository(db)
 
     async def get_me(self, user_id: UUID) -> User:
@@ -195,6 +202,19 @@ class UserService:
         if "display_name" in payload.model_fields_set:
             user = await self.repo.update_display_name(user, payload.display_name)
         return user
+
+    async def delete_me(self, user_id: UUID, password: str) -> None:
+        """Supprime définitivement le compte, sa boutique et toutes ses données (ADR-0011).
+
+        Mauvais mot de passe : ForbiddenError (403) et non 401, qui ferait
+        rafraîchir le token par l'app au lieu d'afficher l'erreur.
+        """
+        user = await self.get_me(user_id)
+        if not verify_password(password, user.password_hash):
+            raise ForbiddenError("Invalid password.")
+        await StoreService(self.db).purge_for_user(user.id)
+        await self.repo.delete(user)
+        logger.info("account_deleted", user_id=str(user_id))
 
     async def get_display_name(self, user_id: UUID | None) -> str | None:
         """Nom affiché d'un utilisateur (reçu), ou None s'il n'est pas renseigné."""

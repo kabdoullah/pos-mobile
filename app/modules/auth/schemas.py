@@ -74,6 +74,12 @@ class UserMeResponse(BaseModel):
     display_name: str | None = None
 
 
+class DeleteAccountRequest(BaseModel):
+    """Suppression du compte (ADR-0011) : le mot de passe est revérifié."""
+
+    password: str = Field(..., min_length=1, max_length=128)
+
+
 class UserMeUpdate(BaseModel):
     """Mise à jour du profil. `display_name` vide ou null = retiré du reçu."""
 

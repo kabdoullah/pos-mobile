@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from pydantic import EmailStr
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.auth.models import EmailVerificationToken, PasswordResetToken, User
@@ -53,6 +53,11 @@ class UserRepository:
         user.password_hash = new_password_hash
         await self.db.flush()
         return user
+
+    async def delete(self, user: User) -> None:
+        """Supprime définitivement l'utilisateur (tokens e-mail/reset en CASCADE)."""
+        await self.db.execute(delete(User).where(User.id == user.id))
+        self.db.expunge(user)
 
 
 class EmailVerificationTokenRepository:

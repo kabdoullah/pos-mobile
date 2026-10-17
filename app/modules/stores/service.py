@@ -50,6 +50,13 @@ class StoreService:
             raise NotFoundError("Store not found.")
         return store
 
+    async def purge_for_user(self, user_id: UUID) -> None:
+        """Supprime définitivement la boutique de l'utilisateur et toutes ses
+        données (ADR-0011). Sans effet s'il n'a pas de boutique."""
+        store = await self.repo.get_by_owner_id(user_id)
+        if store is not None:
+            await self.repo.purge(store)
+
     async def get_by_id(self, store_id: UUID) -> Store:
         """Retourne une boutique par son id ou lève NotFoundError."""
         store = await self.repo.get_by_id(store_id)

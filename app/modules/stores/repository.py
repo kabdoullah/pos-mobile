@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.images import ProcessedImage
@@ -27,6 +27,14 @@ class StoreRepository:
         stmt = select(Store).where(Store.owner_id == owner_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def purge(self, store: Store) -> None:
+        """Supprime la boutique et toutes ses données (fonction SQL purge_store, ADR-0011).
+
+        Exige app.current_store_id posé sur cette boutique (RLS).
+        """
+        await self.db.execute(text("SELECT purge_store(:store_id)"), {"store_id": store.id})
+        self.db.expunge(store)
 
     async def create(self, store: Store) -> Store:
         """Crée et persiste une boutique."""
