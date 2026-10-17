@@ -11,6 +11,8 @@ class StockMovementReason(StrEnum):
     sale = "sale"
     manual_adjustment = "manual_adjustment"
     catalog_update = "catalog_update"
+    # Article rendu revendable, remis en stock (ADR-0010).
+    customer_return = "customer_return"
 
 
 class ManualStockAdjustmentCreate(BaseModel):
@@ -40,6 +42,7 @@ class StockMovementResponse(BaseModel):
     reason: StockMovementReason
     resulting_stock: int | None
     sale_id: UUID | None
+    sale_return_id: UUID | None = None
     created_by: UUID | None
     note: str | None
     created_at: datetime

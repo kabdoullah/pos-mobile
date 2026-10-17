@@ -25,6 +25,7 @@ Pourquoi écrire des ADRs :
 | [0007](0007-stock-movements.md) | Traçabilité du stock via un ledger append-only (stock_movements) | Accepté | 2026-08-02 |
 | [0008](0008-categories-images-recus.md) | Catégories produit, images (produit + logo) et reçus enrichis | Accepté | 2026-09-27 |
 | [0009](0009-prix-achat-remises-marge.md) | Prix d'achat, réductions et marge, instantané dans les ventes | Accepté | 2026-09-27 |
+| [0010](0010-retours-clients.md) | Retours clients, remboursement manuel et validation serveur | Accepté | 2026-10-17 |
 
 ## Comment écrire un nouvel ADR
 

@@ -13,6 +13,9 @@ from app.modules.catalog.repository import CategoryRepository, ProductRepository
 from app.modules.catalog.schemas import CategoryResponse, ProductResponse
 from app.modules.catalog.service import CategoryService
 from app.modules.inventory.service import InventoryService
+from app.modules.returns.exceptions import ReturnRejectedError
+from app.modules.returns.schemas import SaleReturnResponse
+from app.modules.returns.service import ReturnService
 from app.modules.sales.schemas import SaleResponse
 from app.modules.sales.service import SaleService
 from app.modules.sync.repository import SyncRepository
@@ -22,6 +25,10 @@ from app.modules.sync.schemas import (
     ProductSyncRequest,
     ProductSyncResponse,
     ProductSyncStatus,
+    ReturnsBatchSyncRequest,
+    ReturnsBatchSyncResponse,
+    ReturnSyncResult,
+    ReturnSyncResultStatus,
     SalesBatchSyncRequest,
     SalesBatchSyncResponse,
     SaleSyncResult,
@@ -31,13 +38,14 @@ from app.modules.sync.schemas import (
 
 _SYNC_TOLERANCE_MS = 1
 
-# Ordre du pull : une catégorie arrive toujours avant ses produits.
-_PHASES = ("categories", "products", "sales")
+# Ordre du pull : une catégorie arrive toujours avant ses produits, une vente
+# avant ses retours.
+_PHASES = ("categories", "products", "sales", "returns")
 
 
 def _phase_ts(phase: str, row: Any) -> datetime:
-    """Horodatage de tri d'une ligne selon sa phase (synced_at pour les ventes)."""
-    ts: datetime = row.synced_at if phase == "sales" else row.updated_at
+    """Horodatage de tri d'une ligne selon sa phase (synced_at pour ventes et retours)."""
+    ts: datetime = row.synced_at if phase in ("sales", "returns") else row.updated_at
     return ts
 
 
@@ -63,6 +71,7 @@ class SyncService:
         self.category_repo = CategoryRepository(db)
         self.category_service = CategoryService(db)
         self.sale_service = SaleService(db)
+        self.return_service = ReturnService(db)
         self.sync_repo = SyncRepository(db)
         self.inventory_service = InventoryService(db)
 
@@ -103,6 +112,58 @@ class SyncService:
                     )
                 )
         return SalesBatchSyncResponse(processed=len(results), results=results)
+
+    async def sync_returns_batch(
+        self, store_id: UUID, payload: ReturnsBatchSyncRequest, user_id: UUID | None = None
+    ) -> ReturnsBatchSyncResponse:
+        """Sync best-effort d'un lot de retours (ADR-0010).
+
+        Chaque retour a son SAVEPOINT. Un refus métier est définitif (`rejected`,
+        avec un code) ; une erreur inattendue reste réessayable (`failed`).
+        """
+        results: list[ReturnSyncResult] = []
+        for return_payload in payload.returns:
+            try:
+                async with self.db.begin_nested():
+                    sale_return, was_created = await self.return_service.create_return(
+                        store_id, return_payload, user_id
+                    )
+                results.append(
+                    ReturnSyncResult(
+                        id=sale_return.id,
+                        status=ReturnSyncResultStatus.created
+                        if was_created
+                        else ReturnSyncResultStatus.already_exists,
+                        return_number=sale_return.return_number,
+                    )
+                )
+            except ReturnRejectedError as exc:
+                logger.info(
+                    "return_sync_rejected",
+                    return_id=str(return_payload.id),
+                    code=exc.code.value,
+                    error=exc.message,
+                )
+                results.append(
+                    ReturnSyncResult(
+                        id=return_payload.id,
+                        status=ReturnSyncResultStatus.rejected,
+                        error_code=exc.code.value,
+                        error=exc.message,
+                    )
+                )
+            except Exception as exc:
+                logger.warning(
+                    "return_sync_failed", return_id=str(return_payload.id), error=str(exc)
+                )
+                results.append(
+                    ReturnSyncResult(
+                        id=return_payload.id,
+                        status=ReturnSyncResultStatus.failed,
+                        error=str(exc),
+                    )
+                )
+        return ReturnsBatchSyncResponse(processed=len(results), results=results)
 
     async def _apply_product_changes(
         self, product: Product, payload: ProductSyncRequest, user_id: UUID | None
@@ -331,7 +392,7 @@ class SyncService:
         """Retourne les changements depuis `since`, paginés.
 
         Phases dans un ordre stable : catégories puis produits (tri updated_at
-        ASC), puis ventes (tri synced_at ASC). Les catégories passent d'abord pour
+        ASC), puis ventes et retours (tri synced_at ASC). Les catégories passent d'abord pour
         qu'un produit n'arrive jamais avant sa catégorie. Le cursor encode la
         phase courante et la position dans cette phase ; un cursor émis avant
         l'ajout des catégories (phase « products » ou « sales ») reste valide.
@@ -392,6 +453,7 @@ class SyncService:
             categories=[CategoryResponse.model_validate(c) for c in rows["categories"]],
             products=[ProductResponse.model_validate(p) for p in rows["products"]],
             sales=[SaleResponse.model_validate(s) for s in rows["sales"]],
+            returns=[SaleReturnResponse.model_validate(r) for r in rows["returns"]],
             next_cursor=next_cursor,
             has_more=has_more,
             server_time=server_time,
@@ -425,11 +487,20 @@ class SyncService:
                 cursor_after_updated_at=after_ts,
             )
             return list(products), more
-        sales, more = await self.sync_repo.list_changed_sales(
+        if phase == "sales":
+            sales, more = await self.sync_repo.list_changed_sales(
+                store_id=store_id,
+                since=since,
+                limit=limit,
+                cursor_after_id=after_id,
+                cursor_after_synced_at=after_ts,
+            )
+            return list(sales), more
+        returns, more = await self.return_service.list_changed(
             store_id=store_id,
             since=since,
             limit=limit,
             cursor_after_id=after_id,
             cursor_after_synced_at=after_ts,
         )
-        return list(sales), more
+        return list(returns), more

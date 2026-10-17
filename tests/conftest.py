@@ -25,6 +25,8 @@ _ALL_TABLES = (
     "product_images",
     "store_logos",
     "stock_movements",
+    "sale_return_items",
+    "sale_returns",
     "sale_items",
     "sales",
     "products",

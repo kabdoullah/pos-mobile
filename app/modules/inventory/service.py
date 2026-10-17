@@ -90,6 +90,36 @@ class InventoryService:
                     sale_id=str(sale_id),
                 )
 
+    async def record_return_movements(
+        self,
+        store_id: UUID,
+        sale_return_id: UUID,
+        items: list[tuple[UUID, int]],
+        user_id: UUID | None,
+    ) -> None:
+        """Remet en stock les articles revendables d'un retour (ADR-0010).
+
+        Même règle que la vente : un produit non suivi (current_stock NULL) le
+        reste. Contrairement à la vente, une erreur fait échouer le retour : la
+        ligne a été enregistrée comme remise en stock, le mouvement doit exister.
+        """
+        for product_id, quantity in items:
+            product = await self.product_service.apply_stock_delta(
+                product_id, store_id, quantity, enable_tracking=False
+            )
+            movement = StockMovement(
+                store_id=store_id,
+                product_id=product_id,
+                quantity_delta=quantity,
+                reason=StockMovementReason.customer_return.value,
+                resulting_stock=product.current_stock,
+                sale_id=None,
+                sale_return_id=sale_return_id,
+                created_by=user_id,
+                note=None,
+            )
+            await self.repo.create(movement)
+
     async def record_catalog_update(
         self,
         store_id: UUID,

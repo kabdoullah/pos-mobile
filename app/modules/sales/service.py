@@ -1,7 +1,7 @@
 """Logique métier du module sales."""
 
 from datetime import datetime
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import structlog
@@ -65,6 +65,7 @@ class SaleService:
 
             items.append(
                 SaleItem(
+                    id=item_payload.id or uuid4(),
                     product_id=resolved_product_id,
                     product_name_at_sale=item_payload.product_name_at_sale,
                     unit_price_at_sale=item_payload.unit_price_at_sale,
@@ -110,6 +111,10 @@ class SaleService:
         if sale is None:
             raise NotFoundError("Sale not found.")
         return sale
+
+    async def get_sale_for_update(self, sale_id: UUID) -> Sale | None:
+        """Vente avec ses lignes, verrouillée jusqu'à la fin de la transaction."""
+        return await self.repo.get_by_id_for_update(sale_id)
 
     async def list_sales(
         self,

@@ -19,6 +19,7 @@ stock_movement_reason_type = PgEnum(
     "sale",
     "manual_adjustment",
     "catalog_update",
+    "customer_return",
     name="stock_movement_reason_enum",
     create_type=False,
 )
@@ -44,6 +45,10 @@ class StockMovement(Base):
             "(reason = 'sale') = (sale_id IS NOT NULL)",
             name="chk_stock_movements_sale_id_matches_reason",
         ),
+        CheckConstraint(
+            "(reason = 'customer_return') = (sale_return_id IS NOT NULL)",
+            name="chk_stock_movements_sale_return_id_matches_reason",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
@@ -65,6 +70,12 @@ class StockMovement(Base):
     sale_id: Mapped[UUID | None] = mapped_column(
         SQLUUID(as_uuid=True),
         ForeignKey("sales.id", ondelete="SET NULL", name="fk_stock_movements_sale"),
+        nullable=True,
+    )
+    # Renseigné seulement si reason=customer_return (ADR-0010).
+    sale_return_id: Mapped[UUID | None] = mapped_column(
+        SQLUUID(as_uuid=True),
+        ForeignKey("sale_returns.id", ondelete="RESTRICT", name="fk_stock_movements_sale_return"),
         nullable=True,
     )
     created_by: Mapped[UUID | None] = mapped_column(
