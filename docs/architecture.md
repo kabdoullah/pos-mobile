@@ -373,7 +373,7 @@ Ces sujets sont identifiés comme importants mais reportés à des phases ultér
 - Intégration directe Mobile Money (Wave, Orange, MTN)
 - Renouvellement automatique d'abonnement
 - Tableaux de bord analytiques avancés
-- Application web compagnon (back-office propriétaire)
+- Application web compagnon destinée aux commerçants (back-office propriétaire). Le back-office **administrateur plateforme** (API `/api/v1/admin`, indicateurs et suspension de boutiques) existe, voir ADR-0012
 - Audit log complet (qui a fait quoi quand)
 - Synchronisation temps-réel (push via WebSocket)
 
