@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.security import create_refresh_token, hash_password
 from app.modules.stores.models import Store
-from tests.test_sync import _create_store, _create_user, _headers, _sale_payload
+from tests.factories import auth_headers, create_store, create_user
+from tests.test_sync import _sale_payload
 
 _PASSWORD = "motdepasse123"
 _SUPPORT = "+2250700000000"
@@ -27,9 +28,9 @@ def _support_contact() -> Iterator[None]:
 
 async def _setup(db: AsyncSession, email: str) -> tuple[Any, Any]:
     await db.execute(text("RESET ROLE"))
-    user = await _create_user(db, email)
+    user = await create_user(db, email)
     user.password_hash = hash_password(_PASSWORD)
-    store = await _create_store(db, user.id)
+    store = await create_store(db, user.id)
     await db.flush()
     return user, store
 
@@ -61,7 +62,7 @@ async def test_suspended_store_blocked_on_get_me(client: AsyncClient, db_session
     user, store = await _setup(db_session, "susp-me@example.com")
     await _set_suspended(db_session, store.id, True)
 
-    response = await client.get("/api/v1/stores/me", headers=_headers(user.id, store.id))
+    response = await client.get("/api/v1/stores/me", headers=auth_headers(user.id, store.id))
 
     _assert_suspended(response)
 
@@ -70,7 +71,7 @@ async def test_token_issued_before_suspension_blocked_on_sync(
     client: AsyncClient, db_session: AsyncSession
 ):
     user, store = await _setup(db_session, "susp-sync@example.com")
-    headers = _headers(user.id, store.id)
+    headers = auth_headers(user.id, store.id)
     await _set_suspended(db_session, store.id, True)
 
     response = await client.post(
@@ -111,7 +112,7 @@ async def test_reactivated_store_works_again(client: AsyncClient, db_session: As
     await _set_suspended(db_session, store.id, True)
     await _set_suspended(db_session, store.id, False)
 
-    response = await client.get("/api/v1/stores/me", headers=_headers(user.id, store.id))
+    response = await client.get("/api/v1/stores/me", headers=auth_headers(user.id, store.id))
 
     assert response.status_code == 200
 
@@ -119,7 +120,9 @@ async def test_reactivated_store_works_again(client: AsyncClient, db_session: As
 async def test_other_errors_have_no_details_key(client: AsyncClient, db_session: AsyncSession):
     user, store = await _setup(db_session, "susp-404@example.com")
 
-    response = await client.get(f"/api/v1/products/{uuid4()}", headers=_headers(user.id, store.id))
+    response = await client.get(
+        f"/api/v1/products/{uuid4()}", headers=auth_headers(user.id, store.id)
+    )
 
     assert response.status_code == 404
     assert "details" not in response.json()

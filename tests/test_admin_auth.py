@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 from pydantic import SecretStr
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
@@ -15,13 +15,13 @@ from app.core.config import settings
 from app.core.exceptions import UnauthorizedError
 from app.core.security import create_access_token, create_admin_token, decode_admin_token
 from app.modules.admin.models import PlatformAdmin
+from app.modules.admin.repository import AdminRepository
 from app.modules.admin.schemas import AdminLoginRequest
 from app.modules.admin.service import AdminService
 from app.modules.auth.models import User
 from app.modules.stores.models import Store
+from tests.factories import ADMIN_EMAIL, ADMIN_PASSWORD, create_admin
 
-ADMIN_EMAIL = "admin@test.ci"
-ADMIN_PASSWORD = "S3cret-pass!"
 LOGIN_URL = "/api/v1/admin/auth/login"
 _DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$dGVzdA$dGVzdGhhc2g"
 
@@ -32,19 +32,13 @@ def _admin_secret() -> Iterator[None]:
         yield
 
 
-async def _create_admin(db: AsyncSession) -> PlatformAdmin:
-    await AdminService(db).ensure_seed_admin(ADMIN_EMAIL, ADMIN_PASSWORD)
-    await db.commit()
-    return (await db.execute(select(PlatformAdmin))).scalar_one()
-
-
-async def _login(client: AsyncClient, password: str, email: str = ADMIN_EMAIL):  # type: ignore[no-untyped-def]
+async def _login(client: AsyncClient, password: str, email: str = ADMIN_EMAIL) -> Response:
     return await client.post(LOGIN_URL, json={"email": email, "password": password})
 
 
 @pytest.mark.asyncio
 async def test_admin_login_success(client: AsyncClient, db_session: AsyncSession) -> None:
-    admin = await _create_admin(db_session)
+    admin = await create_admin(db_session)
 
     response = await _login(client, ADMIN_PASSWORD, "  Admin@Test.CI ")
 
@@ -59,7 +53,7 @@ async def test_admin_login_success(client: AsyncClient, db_session: AsyncSession
 
 @pytest.mark.asyncio
 async def test_admin_login_wrong_password(client: AsyncClient, db_session: AsyncSession) -> None:
-    await _create_admin(db_session)
+    await create_admin(db_session)
 
     response = await _login(client, "wrong")
 
@@ -69,7 +63,7 @@ async def test_admin_login_wrong_password(client: AsyncClient, db_session: Async
 
 @pytest.mark.asyncio
 async def test_admin_login_unknown_email(client: AsyncClient, db_session: AsyncSession) -> None:
-    await _create_admin(db_session)
+    await create_admin(db_session)
 
     wrong_pw = await _login(client, "wrong")
     unknown = await _login(client, "wrong", "nobody@test.ci")
@@ -80,7 +74,7 @@ async def test_admin_login_unknown_email(client: AsyncClient, db_session: AsyncS
 
 @pytest.mark.asyncio
 async def test_admin_locked_after_5_failures(client: AsyncClient, db_session: AsyncSession) -> None:
-    await _create_admin(db_session)
+    await create_admin(db_session)
 
     for _ in range(5):
         assert (await _login(client, "wrong")).status_code == 401
@@ -97,7 +91,7 @@ async def test_admin_locked_after_5_failures(client: AsyncClient, db_session: As
 async def test_admin_unlocked_after_15_minutes(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    admin = await _create_admin(db_session)
+    admin = await create_admin(db_session)
     for _ in range(5):
         await _login(client, "wrong")
     await db_session.refresh(admin)
@@ -135,7 +129,7 @@ async def test_merchant_token_rejected_on_admin_route(
 async def test_admin_token_rejected_on_merchant_route(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    await _create_admin(db_session)
+    await create_admin(db_session)
     token = (await _login(client, ADMIN_PASSWORD)).json()["access_token"]
 
     response = await client.get("/api/v1/stores/me", headers={"Authorization": f"Bearer {token}"})
@@ -147,7 +141,7 @@ async def test_admin_token_rejected_on_merchant_route(
 async def test_admin_login_disabled_without_secret(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    await _create_admin(db_session)
+    await create_admin(db_session)
 
     with patch.object(settings, "admin_jwt_secret_key", SecretStr("")):
         response = await _login(client, ADMIN_PASSWORD)
@@ -175,10 +169,10 @@ async def test_seed_admin_idempotent(db_session: AsyncSession) -> None:
 
 @pytest.mark.asyncio
 async def test_concurrent_failures_lock_account(
-    client: AsyncClient, db_session: AsyncSession, db_engine: AsyncEngine
+    db_session: AsyncSession, db_engine: AsyncEngine
 ) -> None:
     """Des échecs parallèles (sessions distinctes) ne perdent aucun incrément."""
-    admin = await _create_admin(db_session)
+    admin = await create_admin(db_session)
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
 
     async def attempt() -> None:
@@ -198,7 +192,7 @@ async def test_concurrent_failures_lock_account(
 
 @pytest.mark.asyncio
 async def test_expired_lock_restarts_counter(client: AsyncClient, db_session: AsyncSession) -> None:
-    admin = await _create_admin(db_session)
+    admin = await create_admin(db_session)
     admin.failed_login_count = 5
     admin.locked_until = datetime.now(UTC) - timedelta(minutes=1)
     await db_session.commit()
@@ -214,7 +208,7 @@ async def test_expired_lock_restarts_counter(client: AsyncClient, db_session: As
 async def test_valid_admin_token_opens_admin_route(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
-    await _create_admin(db_session)
+    await create_admin(db_session)
     token = (await _login(client, ADMIN_PASSWORD)).json()["access_token"]
 
     response = await client.get(
@@ -226,7 +220,7 @@ async def test_valid_admin_token_opens_admin_route(
 
 @pytest.mark.asyncio
 async def test_deleted_admin_token_rejected(client: AsyncClient, db_session: AsyncSession) -> None:
-    admin = await _create_admin(db_session)
+    admin = await create_admin(db_session)
     token = (await _login(client, ADMIN_PASSWORD)).json()["access_token"]
     await db_session.delete(admin)
     await db_session.commit()
@@ -240,7 +234,7 @@ async def test_deleted_admin_token_rejected(client: AsyncClient, db_session: Asy
 
 @pytest.mark.asyncio
 async def test_expired_admin_token_rejected(client: AsyncClient, db_session: AsyncSession) -> None:
-    admin = await _create_admin(db_session)
+    admin = await create_admin(db_session)
     with patch.object(settings, "admin_token_expire_minutes", -1):
         token = create_admin_token(admin.id)
 
@@ -256,7 +250,7 @@ async def test_cross_token_rejected_even_with_same_secret(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     """Audience/type seuls protègent quand les deux clés sont identiques."""
-    admin = await _create_admin(db_session)
+    admin = await create_admin(db_session)
     user = User(email="m2@test.com", password_hash=_DUMMY_HASH, phone_number="+225020202020")
     db_session.add(user)
     await db_session.flush()
@@ -276,3 +270,19 @@ async def test_cross_token_rejected_even_with_same_secret(
 
     assert r1.status_code == 401
     assert r2.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_failed_login_never_extends_active_lock(db_session: AsyncSession) -> None:
+    admin = await create_admin(db_session)
+    locked_until = datetime.now(UTC) + timedelta(minutes=5)
+    admin.failed_login_count = 5
+    admin.locked_until = locked_until
+    await db_session.commit()
+
+    await AdminRepository(db_session).register_failed_login(admin.id, 5, 15)
+    await db_session.commit()
+
+    await db_session.refresh(admin)
+    assert admin.failed_login_count == 5
+    assert admin.locked_until == locked_until

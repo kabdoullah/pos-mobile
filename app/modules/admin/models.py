@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, Integer, String, func
+from sqlalchemy import CheckConstraint, DateTime, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID as SQLUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,11 +15,12 @@ class PlatformAdmin(Base):
 
     __tablename__ = "platform_admins"
     __table_args__ = (
+        UniqueConstraint("email", name="uq_platform_admins_email"),
         CheckConstraint("email = lower(email)", name="chk_platform_admins_email_lowercase"),
     )
 
     id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"

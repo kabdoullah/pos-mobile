@@ -1,4 +1,8 @@
-"""Logique métier du module admin."""
+"""Logique métier du module admin.
+
+Le service fait ``commit()`` lui-même au login : le compteur d'échecs doit survivre
+au rollback de ``get_db`` déclenché par l'exception d'authentification.
+"""
 
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -41,6 +45,9 @@ class AdminService:
         admin = await self.repo.get_by_email(payload.email.strip().lower())
         if admin is None:
             verify_password(payload.password, _DUMMY_PASSWORD_HASH)
+            # Mêmes allers-retours DB que sur mauvais mot de passe (UPDATE + commit).
+            await self.repo.round_trip()
+            await self.db.commit()
             raise UnauthorizedError(_INVALID_CREDENTIALS)
 
         now = datetime.now(UTC)
@@ -56,10 +63,7 @@ class AdminService:
                 await self.db.commit()
             raise UnauthorizedError(_INVALID_CREDENTIALS)
 
-        admin.failed_login_count = 0
-        admin.locked_until = None
-        admin.last_login_at = now
-        await self.db.flush()
+        await self.repo.register_successful_login(admin.id)
         return AdminTokenResponse(
             access_token=create_admin_token(admin.id),
             token_type="bearer",  # noqa: S106
@@ -81,8 +85,14 @@ class AdminService:
         """Indicateurs globaux de la plateforme."""
         row = await self.repo.platform_metrics()
         return PlatformMetrics(
-            **{k: v for k, v in row.items() if not k.endswith("_amount")},
+            stores_total=row["stores_total"],
+            stores_new_7d=row["stores_new_7d"],
+            stores_active_7d=row["stores_active_7d"],
+            stores_inactive_14d=row["stores_inactive_14d"],
+            stores_suspended=row["stores_suspended"],
+            sales_today_count=row["sales_today_count"],
             sales_today_amount=str(row["sales_today_amount"]),
+            sales_7d_count=row["sales_7d_count"],
             sales_7d_amount=str(row["sales_7d_amount"]),
         )
 

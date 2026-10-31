@@ -1,13 +1,27 @@
 """Accès données du module admin."""
 
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict, cast
 from uuid import UUID
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.admin.models import PlatformAdmin
+
+
+class PlatformMetricsRow(TypedDict):
+    """Ligne d'indicateurs plateforme (montants en Decimal, comptes en int)."""
+
+    stores_total: int
+    stores_new_7d: int
+    stores_suspended: int
+    stores_active_7d: int
+    stores_inactive_14d: int
+    sales_today_count: int
+    sales_today_amount: Decimal
+    sales_7d_count: int
+    sales_7d_amount: Decimal
 
 
 class AdminRepository:
@@ -39,7 +53,8 @@ class AdminRepository:
         """Incrémente atomiquement le compteur d'échecs (une seule requête SQL).
 
         Si un verrou a expiré, le compteur repart de 1. Au seuil, verrouille
-        le compte pour ``lock_minutes`` minutes.
+        le compte pour ``lock_minutes`` minutes. Un verrou encore actif n'est
+        jamais modifié (ni compteur, ni échéance : pas de prolongation).
         """
         await self.db.execute(
             text(
@@ -54,13 +69,27 @@ class AdminRepository:
                             THEN now() + make_interval(mins => :lock_minutes)
                         WHEN locked_until IS NOT NULL AND locked_until <= now() THEN NULL
                         ELSE locked_until END
-                WHERE id = :id
+                WHERE id = :id AND (locked_until IS NULL OR locked_until <= now())
                 """
             ),
             {"id": admin_id, "max_failures": max_failures, "lock_minutes": lock_minutes},
         )
 
-    async def platform_metrics(self) -> dict[str, Any]:
+    async def register_successful_login(self, admin_id: UUID) -> None:
+        """Remet à zéro compteur et verrou, horodate la connexion (un seul UPDATE)."""
+        await self.db.execute(
+            text(
+                "UPDATE platform_admins SET failed_login_count = 0, locked_until = NULL, "
+                "last_login_at = now() WHERE id = :id"
+            ),
+            {"id": admin_id},
+        )
+
+    async def round_trip(self) -> None:
+        """Aller-retour DB factice (aligne le temps de réponse d'un email inconnu)."""
+        await self.db.execute(text("SELECT 1"))
+
+    async def platform_metrics(self) -> PlatformMetricsRow:
         """Agrège les indicateurs plateforme en SQL (nécessite le flag RLS admin)."""
         result = await self.db.execute(
             text(
@@ -102,14 +131,14 @@ class AdminRepository:
                         ) AS sales_7d_amount
                     FROM sales
                 )
-                SELECT * FROM store_stats, sale_stats
+                SELECT stores_total, stores_new_7d, stores_suspended, stores_active_7d,
+                       stores_inactive_14d, sales_today_count, sales_today_amount,
+                       sales_7d_count, sales_7d_amount
+                FROM store_stats, sale_stats
                 """
             )
         )
-        row = dict(result.mappings().one())
-        for key in ("sales_today_amount", "sales_7d_amount"):
-            row[key] = Decimal(row[key])
-        return row
+        return cast("PlatformMetricsRow", dict(result.mappings().one()))
 
     async def list_stores(
         self,
@@ -145,23 +174,28 @@ class AdminRepository:
             else "s.created_at DESC"
         )
         where = " AND ".join(conditions)
-        base = f"""
-            FROM stores s
-            JOIN users u ON u.id = s.owner_id
-            LEFT JOIN (
-                SELECT store_id, max(created_at) AS last_sale_at, count(*) AS sales_count
-                FROM sales GROUP BY store_id
-            ) st ON st.store_id = s.id
-            WHERE {where}
-        """  # noqa: S608 - fragments fixes ; valeurs liées en paramètres
-        total = (await self.db.execute(text(f"SELECT count(*) {base}"), params)).scalar_one()
+        stores_from = "FROM stores s JOIN users u ON u.id = s.owner_id"
+        sales_join = (
+            "LEFT JOIN LATERAL (SELECT max(created_at) AS last_sale_at, count(*) AS sales_count "
+            "FROM sales WHERE store_id = s.id) st ON TRUE"
+        )
+        # Le count ne paie l'agrégat des ventes que si le filtre inactive l'utilise.
+        count_from = f"{stores_from} {sales_join if inactive else ''}"
+        total = (
+            await self.db.execute(
+                text(f"SELECT count(*) {count_from} WHERE {where}"),
+                params,
+            )
+        ).scalar_one()
         rows = await self.db.execute(
             text(
                 f"""
                 SELECT s.id, s.name, u.phone_number AS owner_phone, s.created_at,
                        st.last_sale_at, COALESCE(st.sales_count, 0) AS sales_count,
                        s.suspended_at, s.suspension_reason
-                {base} ORDER BY {order_by}, s.id LIMIT :limit OFFSET :offset
+                {stores_from} {sales_join}
+                WHERE {where}
+                ORDER BY {order_by}, s.id LIMIT :limit OFFSET :offset
                 """
             ),
             params,

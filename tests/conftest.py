@@ -18,7 +18,7 @@ from app.core.config import settings
 from app.core.db import assert_store_active, get_db, get_tenant_db
 from app.core.security import create_admin_token
 from app.main import app
-from app.modules.admin.dependencies import get_admin_db
+from app.modules.admin.dependencies import CurrentAdminId, get_admin_db
 from app.modules.admin.models import PlatformAdmin
 
 _TEST_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/pos_test"
@@ -159,10 +159,11 @@ async def admin_client(
     """Client + header Bearer d'un admin plateforme valide.
 
     Override get_admin_db pour appliquer SET LOCAL ROLE pos_app + le flag admin :
-    les politiques RLS admin sont ainsi réellement exercées.
+    les politiques RLS admin sont ainsi réellement exercées. L'override dépend de
+    CurrentAdminId : la garde d'authentification réelle s'exécute toujours.
     """
 
-    async def override_get_admin_db() -> AsyncSession:
+    async def override_get_admin_db(_admin: CurrentAdminId) -> AsyncSession:
         await db_session.execute(text("SET LOCAL ROLE pos_app"))
         await db_session.execute(text("SET LOCAL app.is_platform_admin = 'on'"))
         return db_session

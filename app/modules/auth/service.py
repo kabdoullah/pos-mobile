@@ -90,6 +90,16 @@ class AuthService:
 
         return user
 
+    async def _active_store_id(self, user_id: UUID) -> UUID | None:
+        """Id de la boutique de l'utilisateur (None sans boutique) ; refuse si suspendue."""
+        try:
+            store = await StoreService(self.db).get_for_user(user_id)
+        except NotFoundError:
+            store = None
+        if store is not None and store.suspended_at is not None:
+            raise StoreSuspendedError
+        return store.id if store is not None else None
+
     async def login(self, payload: schemas.LoginRequest) -> schemas.TokenResponse:
         """Vérifie les credentials et retourne les tokens."""
         phone = payload.phone_number.strip()
@@ -103,13 +113,7 @@ class AuthService:
         if not user.is_active:
             raise UnauthorizedError("Account is disabled.")
 
-        try:
-            store = await StoreService(self.db).get_for_user(user.id)
-            if store.suspended_at is not None:
-                raise StoreSuspendedError
-            store_id = store.id
-        except NotFoundError:
-            store_id = None
+        store_id = await self._active_store_id(user.id)
 
         return schemas.TokenResponse(
             access_token=create_access_token(user.id, store_id),
@@ -128,13 +132,7 @@ class AuthService:
         if user is None or not user.is_active:
             raise UnauthorizedError("User not found or disabled.")
 
-        try:
-            store = await StoreService(self.db).get_for_user(user.id)
-            if store.suspended_at is not None:
-                raise StoreSuspendedError
-            store_id = store.id
-        except NotFoundError:
-            store_id = None
+        store_id = await self._active_store_id(user.id)
 
         return schemas.TokenResponse(
             access_token=create_access_token(user.id, store_id),

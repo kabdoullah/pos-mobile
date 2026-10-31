@@ -2,43 +2,18 @@
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from uuid import uuid4
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.auth.models import User
-from app.modules.sales.models import Sale
 from app.modules.stores.models import Store
-
-_DUMMY_HASH = "$argon2id$v=19$m=65536,t=3,p=4$dGVzdA$dGVzdGhhc2g"
+from tests.factories import create_numbered_store, make_sale
 
 
 async def _store(db: AsyncSession, n: int, created_at: datetime, suspended: bool = False) -> Store:
-    user = User(email=f"m{n}@test.com", password_hash=_DUMMY_HASH, phone_number=f"+22507000000{n}")
-    db.add(user)
-    await db.flush()
-    store = Store(
-        owner_id=user.id,
-        name=f"Boutique {n}",
-        created_at=created_at,
-        suspended_at=datetime.now(UTC) if suspended else None,
-    )
-    db.add(store)
-    await db.flush()
+    _, store = await create_numbered_store(db, n, created_at, suspended)
     return store
-
-
-def _sale(store: Store, amount: str, created_at: datetime) -> Sale:
-    return Sale(
-        id=uuid4(),
-        store_id=store.id,
-        total_amount=Decimal(amount),
-        payment_method="cash",
-        cash_amount=Decimal(amount),
-        created_at=created_at,
-    )
 
 
 @pytest.mark.asyncio
@@ -57,10 +32,10 @@ async def test_metrics_on_known_dataset(
     d = await _store(db_session, 4, now - timedelta(days=30), suspended=True)
     db_session.add_all(
         [
-            _sale(a, "1500.00", today),
-            _sale(a, "2500.00", today),
-            _sale(b, "700.00", now - timedelta(days=20)),
-            _sale(d, "1000.00", today),
+            make_sale(a, "1500.00", today),
+            make_sale(a, "2500.00", today),
+            make_sale(b, "700.00", now - timedelta(days=20)),
+            make_sale(d, "1000.00", today),
         ]
     )
     await db_session.commit()
@@ -111,9 +86,9 @@ async def test_metrics_definition_edges(
     g = await _store(db_session, 3, now - timedelta(days=30))
     db_session.add_all(
         [
-            _sale(e, "100.00", today),
-            _sale(e, "200.00", now - timedelta(days=2) - timedelta(minutes=1)),
-            _sale(g, "300.00", now - timedelta(days=10)),
+            make_sale(e, "100.00", today),
+            make_sale(e, "200.00", now - timedelta(days=2) - timedelta(minutes=1)),
+            make_sale(g, "300.00", now - timedelta(days=10)),
         ]
     )
     await db_session.commit()
