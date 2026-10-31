@@ -1,5 +1,6 @@
 """Accès aux données du module stores."""
 
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -50,6 +51,18 @@ class StoreRepository:
         await self.db.flush()
         await self.db.refresh(store)
         return store
+
+    async def set_suspension(self, store: Store, suspended: bool, reason: str | None) -> None:
+        """Suspend (en conservant la date existante) ou réactive la boutique."""
+        if suspended:
+            if store.suspended_at is None:
+                store.suspended_at = datetime.now(UTC)
+            store.suspension_reason = reason
+        else:
+            store.suspended_at = None
+            store.suspension_reason = None
+        await self.db.flush()
+        await self.db.refresh(store)
 
     async def get_logo(self, store_id: UUID) -> StoreLogo | None:
         """Logo de la boutique, ou None."""

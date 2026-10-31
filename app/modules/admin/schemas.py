@@ -1,8 +1,10 @@
 """Schémas Pydantic du module admin."""
 
+from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class AdminLoginRequest(BaseModel):
@@ -32,3 +34,29 @@ class PlatformMetrics(BaseModel):
     sales_today_amount: str
     sales_7d_count: int
     sales_7d_amount: str
+
+
+class AdminStoreItem(BaseModel):
+    """Boutique vue par le backoffice."""
+
+    id: UUID
+    name: str
+    owner_phone: str
+    created_at: datetime
+    last_sale_at: datetime | None
+    sales_count: int
+    suspended_at: datetime | None
+    suspension_reason: str | None
+
+
+class AdminStorePage(BaseModel):
+    """Page de boutiques."""
+
+    items: list[AdminStoreItem]
+    total: int
+
+
+class SuspendRequest(BaseModel):
+    """Corps de la suspension d'une boutique."""
+
+    reason: str | None = Field(default=None, max_length=500)

@@ -1,7 +1,7 @@
 """Accès données du module admin."""
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from sqlalchemy import select, text
@@ -110,3 +110,82 @@ class AdminRepository:
         for key in ("sales_today_amount", "sales_7d_amount"):
             row[key] = Decimal(row[key])
         return row
+
+    async def list_stores(
+        self,
+        *,
+        search: str | None,
+        status: Literal["all", "active", "suspended"],
+        inactive: bool,
+        sort: Literal["last_sale", "created"],
+        limit: int,
+        offset: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Liste paginée des boutiques (SQL paramétré ; nécessite le flag RLS admin)."""
+        conditions = ["TRUE"]
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if search:
+            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            params["pattern"] = f"%{escaped}%"
+            conditions.append(
+                "(s.name ILIKE :pattern ESCAPE '\\' OR u.phone_number ILIKE :pattern ESCAPE '\\')"
+            )
+        if status == "active":
+            conditions.append("s.suspended_at IS NULL")
+        elif status == "suspended":
+            conditions.append("s.suspended_at IS NOT NULL")
+        if inactive:
+            conditions.append(
+                "(s.suspended_at IS NULL AND s.created_at < now() - interval '14 days' "
+                "AND (st.last_sale_at IS NULL OR st.last_sale_at < now() - interval '14 days'))"
+            )
+        order_by = (
+            "st.last_sale_at DESC NULLS LAST, s.created_at DESC"
+            if sort == "last_sale"
+            else "s.created_at DESC"
+        )
+        where = " AND ".join(conditions)
+        base = f"""
+            FROM stores s
+            JOIN users u ON u.id = s.owner_id
+            LEFT JOIN (
+                SELECT store_id, max(created_at) AS last_sale_at, count(*) AS sales_count
+                FROM sales GROUP BY store_id
+            ) st ON st.store_id = s.id
+            WHERE {where}
+        """  # noqa: S608 - fragments fixes ; valeurs liées en paramètres
+        total = (await self.db.execute(text(f"SELECT count(*) {base}"), params)).scalar_one()
+        rows = await self.db.execute(
+            text(
+                f"""
+                SELECT s.id, s.name, u.phone_number AS owner_phone, s.created_at,
+                       st.last_sale_at, COALESCE(st.sales_count, 0) AS sales_count,
+                       s.suspended_at, s.suspension_reason
+                {base} ORDER BY {order_by}, s.id LIMIT :limit OFFSET :offset
+                """
+            ),
+            params,
+        )
+        return [dict(r) for r in rows.mappings()], int(total)
+
+    async def get_store_item(self, store_id: UUID) -> dict[str, Any] | None:
+        """Une boutique au format de la liste, ou None."""
+        rows = await self.db.execute(
+            text(
+                """
+                SELECT s.id, s.name, u.phone_number AS owner_phone, s.created_at,
+                       st.last_sale_at, COALESCE(st.sales_count, 0) AS sales_count,
+                       s.suspended_at, s.suspension_reason
+                FROM stores s
+                JOIN users u ON u.id = s.owner_id
+                LEFT JOIN (
+                    SELECT store_id, max(created_at) AS last_sale_at, count(*) AS sales_count
+                    FROM sales WHERE store_id = :sid GROUP BY store_id
+                ) st ON st.store_id = s.id
+                WHERE s.id = :sid
+                """
+            ),
+            {"sid": store_id},
+        )
+        row = rows.mappings().first()
+        return dict(row) if row else None

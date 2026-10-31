@@ -1,14 +1,23 @@
 """Logique métier du module admin."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Literal
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import ForbiddenError, UnauthorizedError
+from app.core.exceptions import ForbiddenError, NotFoundError, UnauthorizedError
 from app.core.security import create_admin_token, hash_password, verify_password
 from app.modules.admin.repository import AdminRepository
-from app.modules.admin.schemas import AdminLoginRequest, AdminTokenResponse, PlatformMetrics
+from app.modules.admin.schemas import (
+    AdminLoginRequest,
+    AdminStoreItem,
+    AdminStorePage,
+    AdminTokenResponse,
+    PlatformMetrics,
+)
+from app.modules.stores.service import StoreService
 
 MAX_FAILED_LOGINS = 5
 LOCK_DURATION = timedelta(minutes=15)
@@ -76,3 +85,29 @@ class AdminService:
             sales_today_amount=str(row["sales_today_amount"]),
             sales_7d_amount=str(row["sales_7d_amount"]),
         )
+
+    async def list_stores(
+        self,
+        *,
+        search: str | None,
+        status: Literal["all", "active", "suspended"],
+        inactive: bool,
+        sort: Literal["last_sale", "created"],
+        limit: int,
+        offset: int,
+    ) -> AdminStorePage:
+        """Liste paginée et filtrée des boutiques."""
+        rows, total = await self.repo.list_stores(
+            search=search, status=status, inactive=inactive, sort=sort, limit=limit, offset=offset
+        )
+        return AdminStorePage(items=[AdminStoreItem(**r) for r in rows], total=total)
+
+    async def set_store_suspension(
+        self, store_id: UUID, suspended: bool, reason: str | None = None
+    ) -> AdminStoreItem:
+        """Suspend ou réactive une boutique (écriture via le module stores)."""
+        await StoreService(self.db).set_suspension(store_id, suspended, reason)
+        row = await self.repo.get_store_item(store_id)
+        if row is None:
+            raise NotFoundError("Store not found.")
+        return AdminStoreItem(**row)
