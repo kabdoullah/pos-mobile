@@ -5,16 +5,21 @@ import os
 import subprocess
 from collections.abc import AsyncGenerator
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from fastapi import Request
 from httpx import ASGITransport, AsyncClient
+from pydantic import SecretStr
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
 from app.core.db import assert_store_active, get_db, get_tenant_db
+from app.core.security import create_admin_token
 from app.main import app
+from app.modules.admin.dependencies import get_admin_db
+from app.modules.admin.models import PlatformAdmin
 
 _TEST_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/pos_test"
 _ADMIN_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/postgres"
@@ -145,3 +150,26 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def admin_client(
+    client: AsyncClient, db_session: AsyncSession
+) -> AsyncGenerator[tuple[AsyncClient, dict[str, str]], None]:
+    """Client + header Bearer d'un admin plateforme valide.
+
+    Override get_admin_db pour appliquer SET LOCAL ROLE pos_app + le flag admin :
+    les politiques RLS admin sont ainsi réellement exercées.
+    """
+
+    async def override_get_admin_db() -> AsyncSession:
+        await db_session.execute(text("SET LOCAL ROLE pos_app"))
+        await db_session.execute(text("SET LOCAL app.is_platform_admin = 'on'"))
+        return db_session
+
+    admin = PlatformAdmin(email="metrics-admin@test.ci", password_hash="x")
+    db_session.add(admin)
+    await db_session.commit()
+    app.dependency_overrides[get_admin_db] = override_get_admin_db
+    with patch.object(settings, "admin_jwt_secret_key", SecretStr("a" * 48)):
+        yield client, {"Authorization": f"Bearer {create_admin_token(admin.id)}"}

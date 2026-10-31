@@ -1,5 +1,7 @@
 """Accès données du module admin."""
 
+from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select, text
@@ -57,3 +59,54 @@ class AdminRepository:
             ),
             {"id": admin_id, "max_failures": max_failures, "lock_minutes": lock_minutes},
         )
+
+    async def platform_metrics(self) -> dict[str, Any]:
+        """Agrège les indicateurs plateforme en SQL (nécessite le flag RLS admin)."""
+        result = await self.db.execute(
+            text(
+                """
+                WITH bounds AS (
+                    SELECT (date_trunc('day', now() AT TIME ZONE 'Africa/Abidjan')
+                            AT TIME ZONE 'Africa/Abidjan') AS today_start
+                ), store_stats AS (
+                    SELECT
+                        count(*) AS stores_total,
+                        count(*) FILTER (
+                            WHERE created_at >= now() - interval '7 days') AS stores_new_7d,
+                        count(*) FILTER (WHERE suspended_at IS NOT NULL) AS stores_suspended,
+                        count(*) FILTER (
+                            WHERE suspended_at IS NULL AND EXISTS (
+                                SELECT 1 FROM sales s WHERE s.store_id = stores.id
+                                AND s.created_at >= now() - interval '7 days'
+                            )) AS stores_active_7d,
+                        count(*) FILTER (
+                            WHERE suspended_at IS NULL
+                            AND created_at < now() - interval '14 days'
+                            AND NOT EXISTS (
+                                SELECT 1 FROM sales s WHERE s.store_id = stores.id
+                                AND s.created_at >= now() - interval '14 days'
+                            )) AS stores_inactive_14d
+                    FROM stores
+                ), sale_stats AS (
+                    SELECT
+                        count(*) FILTER (
+                            WHERE created_at >= (SELECT today_start FROM bounds)
+                        ) AS sales_today_count,
+                        COALESCE(SUM(total_amount) FILTER (
+                            WHERE created_at >= (SELECT today_start FROM bounds)), 0
+                        ) AS sales_today_amount,
+                        count(*) FILTER (
+                            WHERE created_at >= now() - interval '7 days') AS sales_7d_count,
+                        COALESCE(SUM(total_amount) FILTER (
+                            WHERE created_at >= now() - interval '7 days'), 0
+                        ) AS sales_7d_amount
+                    FROM sales
+                )
+                SELECT * FROM store_stats, sale_stats
+                """
+            )
+        )
+        row = dict(result.mappings().one())
+        for key in ("sales_today_amount", "sales_7d_amount"):
+            row[key] = Decimal(row[key])
+        return row

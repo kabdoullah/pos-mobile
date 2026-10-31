@@ -4,6 +4,8 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends, Request
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import DbSession
 from app.core.exceptions import UnauthorizedError
@@ -27,3 +29,12 @@ async def get_current_admin_id(request: Request, db: DbSession) -> UUID:
 
 
 CurrentAdminId = Annotated[UUID, Depends(get_current_admin_id)]
+
+
+async def get_admin_db(db: DbSession, _admin: CurrentAdminId) -> AsyncSession:
+    """Session DB avec le flag RLS plateforme (lecture cross-tenant, transaction courante)."""
+    await db.execute(text("SET LOCAL app.is_platform_admin = 'on'"))
+    return db
+
+
+AdminDbSession = Annotated[AsyncSession, Depends(get_admin_db)]

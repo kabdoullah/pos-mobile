@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import create_admin_token, hash_password, verify_password
 from app.modules.admin.repository import AdminRepository
-from app.modules.admin.schemas import AdminLoginRequest, AdminTokenResponse
+from app.modules.admin.schemas import AdminLoginRequest, AdminTokenResponse, PlatformMetrics
 
 MAX_FAILED_LOGINS = 5
 LOCK_DURATION = timedelta(minutes=15)
@@ -67,3 +67,12 @@ class AdminService:
             return False
         await self.repo.create(normalized, hash_password(password))
         return True
+
+    async def get_platform_metrics(self) -> PlatformMetrics:
+        """Indicateurs globaux de la plateforme."""
+        row = await self.repo.platform_metrics()
+        return PlatformMetrics(
+            **{k: v for k, v in row.items() if not k.endswith("_amount")},
+            sales_today_amount=str(row["sales_today_amount"]),
+            sales_7d_amount=str(row["sales_7d_amount"]),
+        )

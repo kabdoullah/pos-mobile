@@ -1,12 +1,10 @@
 """Routes du backoffice admin."""
 
-from typing import Any
-
 from fastapi import APIRouter, status
 
 from app.core.db import DbSession
 from app.modules.admin import schemas
-from app.modules.admin.dependencies import CurrentAdminId
+from app.modules.admin.dependencies import AdminDbSession
 from app.modules.admin.service import AdminService
 
 router = APIRouter()
@@ -27,10 +25,10 @@ async def admin_login(
 
 @router.get(
     "/metrics",
-    response_model=dict[str, Any],
+    response_model=schemas.PlatformMetrics,
     status_code=status.HTTP_200_OK,
-    summary="Métriques plateforme",
+    summary="Indicateurs plateforme",
 )
-async def get_metrics(_admin_id: CurrentAdminId) -> dict[str, Any]:
-    """Placeholder protégé (complété dans une tâche ultérieure)."""
-    return {}
+async def get_metrics(db: AdminDbSession) -> schemas.PlatformMetrics:
+    """Indicateurs globaux (boutiques, ventes) toutes boutiques confondues."""
+    return await AdminService(db).get_platform_metrics()
