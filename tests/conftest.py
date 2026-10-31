@@ -13,7 +13,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import settings
-from app.core.db import get_db, get_tenant_db
+from app.core.db import assert_store_active, get_db, get_tenant_db
 from app.main import app
 
 _TEST_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/pos_test"
@@ -136,6 +136,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         if store_id is not None:
             await db_session.execute(text("SET LOCAL ROLE pos_app"))
             await db_session.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
+            await assert_store_active(db_session, store_id)
         return db_session
 
     app.dependency_overrides[get_db] = override_get_db

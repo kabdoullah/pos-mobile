@@ -16,6 +16,7 @@ from app.core.exceptions import (
     ConflictError,
     ForbiddenError,
     NotFoundError,
+    StoreSuspendedError,
     UnauthorizedError,
     ValidationError,
 )
@@ -104,6 +105,8 @@ class AuthService:
 
         try:
             store = await StoreService(self.db).get_for_user(user.id)
+            if store.suspended_at is not None:
+                raise StoreSuspendedError
             store_id = store.id
         except NotFoundError:
             store_id = None
@@ -127,6 +130,8 @@ class AuthService:
 
         try:
             store = await StoreService(self.db).get_for_user(user.id)
+            if store.suspended_at is not None:
+                raise StoreSuspendedError
             store_id = store.id
         except NotFoundError:
             store_id = None

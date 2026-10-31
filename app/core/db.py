@@ -3,7 +3,7 @@
 from collections.abc import AsyncGenerator
 from typing import Annotated
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
-from uuid import UUID  # noqa: TC003
+from uuid import UUID
 
 from fastapi import Depends, Request
 from sqlalchemy import text
@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
+from app.core.exceptions import StoreSuspendedError
 
 
 def _asyncpg_url_and_ssl(url: str) -> tuple[str, dict[str, str | bool]]:
@@ -69,6 +70,19 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+async def assert_store_active(db: AsyncSession, store_id: UUID) -> None:
+    """Lève StoreSuspendedError si la boutique est suspendue.
+
+    À appeler après `SET LOCAL app.current_store_id` (la RLS laisse la boutique
+    lire sa propre ligne).
+    """
+    result = await db.execute(
+        text("SELECT suspended_at FROM stores WHERE id = :sid"), {"sid": store_id}
+    )
+    if result.scalar_one_or_none() is not None:
+        raise StoreSuspendedError
+
+
 async def get_tenant_db(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -83,6 +97,7 @@ async def get_tenant_db(
     if store_id is not None:
         # SET LOCAL ne supporte pas les paramètres bindés en PostgreSQL — UUID est safe à inliner.
         await db.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
+        await assert_store_active(db, store_id)
     return db
 
 

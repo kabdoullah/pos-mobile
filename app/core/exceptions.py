@@ -6,6 +6,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
 
+from app.core.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,9 +17,15 @@ class AppError(Exception):
     status_code: int = status.HTTP_400_BAD_REQUEST
     code: str = "APP_ERROR"
 
-    def __init__(self, message: str, field: str | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        field: str | None = None,
+        details: dict[str, str] | None = None,
+    ) -> None:
         self.message = message
         self.field = field
+        self.details = details
         super().__init__(message)
 
 
@@ -40,6 +48,18 @@ class ForbiddenError(AppError):
 
     status_code = status.HTTP_403_FORBIDDEN
     code = "FORBIDDEN"
+
+
+class StoreSuspendedError(ForbiddenError):
+    """La boutique est suspendue par la plateforme."""
+
+    code = "STORE_SUSPENDED"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Store is suspended.",
+            details={"support_contact": settings.support_contact},
+        )
 
 
 class ConflictError(AppError):
@@ -68,14 +88,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(AppError)
     async def handle_app_exception(_request: Request, exc: AppError) -> JSONResponse:
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={
-                "detail": exc.message,
-                "code": exc.code,
-                "field": exc.field,
-            },
-        )
+        content: dict[str, object] = {
+            "detail": exc.message,
+            "code": exc.code,
+            "field": exc.field,
+        }
+        if exc.details is not None:
+            content["details"] = exc.details
+        return JSONResponse(status_code=exc.status_code, content=content)
 
     @app.exception_handler(PydanticValidationError)
     async def handle_pydantic_validation(
