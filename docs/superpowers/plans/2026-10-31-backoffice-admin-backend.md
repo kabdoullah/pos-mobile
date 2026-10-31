@@ -162,5 +162,5 @@
 
 ### Task 7: Configuration Render (avec l'utilisateur)
 
-- [ ] **Step 1:** Donner à l'utilisateur la liste des variables Render : `ADMIN_JWT_SECRET` (générée localement par `python -c "import secrets; print(secrets.token_urlsafe(48))"` et saisie par lui), `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SUPPORT_CONTACT`, et `CORS_ORIGINS` complété avec l'URL Netlify (connue au plan front, Task 5).
+- [ ] **Step 1:** Donner à l'utilisateur la liste des variables Render : `ADMIN_JWT_SECRET` (générée localement par `python -c "import secrets; print(secrets.token_urlsafe(48))"` et saisie par lui), `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SUPPORT_CONTACT` (obligatoire), et `CORS_ORIGINS` complété avec l'URL Netlify (connue au plan front, Task 5).
 - [ ] **Step 2:** Après déploiement : `curl -s -o /dev/null -w "%{http_code}\n" -X POST https://pos-mobile-vkuh.onrender.com/api/v1/admin/auth/login -H 'Content-Type: application/json' -d '{"email":"x@x.ci","password":"bad"}'` → `401`.

@@ -79,7 +79,7 @@ Certaines erreurs ajoutent une clé `details` (objet). Exemple : `STORE_SUSPENDE
 }
 ```
 
-Les autres erreurs n'ont pas de clé `details`.
+`support_contact` vaut `""` si `SUPPORT_CONTACT` n'est pas configurée. Les autres erreurs n'ont pas de clé `details`.
 
 ### Pagination
 

@@ -46,6 +46,9 @@ async def seed_platform_admin() -> None:
 
     Idempotent : un admin existant n'est jamais réécrit (mot de passe inclus).
     """
+    if settings.admin_jwt_secret_key.get_secret_value() and not settings.support_contact.strip():
+        logger.warning("support_contact_missing")
+
     email = settings.admin_email.strip()
     password = settings.admin_password.get_secret_value()
 

@@ -11,7 +11,8 @@ Create Date: 2026-10-31
   lecture de stores et sales, UPDATE de stores.
 
 Schéma uniquement, aucune donnée modifiée.
-Downgrade : supprime les politiques, la table et les colonnes.
+Downgrade : supprime les politiques, la table et les colonnes ; supprimer
+suspended_at réactive de fait toutes les boutiques suspendues.
 """
 
 from collections.abc import Sequence
