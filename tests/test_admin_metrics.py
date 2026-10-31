@@ -94,3 +94,38 @@ async def test_metrics_empty_platform(
 async def test_metrics_requires_admin(client: AsyncClient) -> None:
     response = await client.get("/api/v1/admin/metrics")
     assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_metrics_definition_edges(
+    admin_client: tuple[AsyncClient, dict[str, str]], db_session: AsyncSession
+) -> None:
+    """Pin les bornes : aujourd'hui vs 7 j, suspendue exclue des inactives, fenêtre 14 j."""
+    client, headers = admin_client
+    now = datetime.now(UTC)
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today = max(midnight, now - timedelta(minutes=1))
+
+    e = await _store(db_session, 1, now - timedelta(days=30))
+    await _store(db_session, 2, now - timedelta(days=30), suspended=True)  # F, sans vente
+    g = await _store(db_session, 3, now - timedelta(days=30))
+    db_session.add_all(
+        [
+            _sale(e, "100.00", today),
+            _sale(e, "200.00", now - timedelta(days=2) - timedelta(minutes=1)),
+            _sale(g, "300.00", now - timedelta(days=10)),
+        ]
+    )
+    await db_session.commit()
+
+    data = (await client.get("/api/v1/admin/metrics", headers=headers)).json()
+
+    assert data["stores_total"] == 3
+    assert data["stores_new_7d"] == 0
+    assert data["stores_active_7d"] == 1
+    assert data["stores_inactive_14d"] == 0
+    assert data["stores_suspended"] == 1
+    assert data["sales_today_count"] == 1
+    assert Decimal(data["sales_today_amount"]) == Decimal("100.00")
+    assert data["sales_7d_count"] == 2
+    assert Decimal(data["sales_7d_amount"]) == Decimal("300.00")
