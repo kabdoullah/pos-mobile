@@ -36,6 +36,10 @@ class Store(Base):
     # SHA-256 du logo courant (NULL sans logo), voir StoreLogo.
     logo_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
+    # Suspension par l'administrateur plateforme (NULL = boutique active).
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    suspension_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     next_receipt_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # Compteur des numéros de retour (trigger generate_return_number, ADR-0010).
     next_return_number: Mapped[int] = mapped_column(

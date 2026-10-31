@@ -13,6 +13,7 @@ from app.core.db import Base, _asyncpg_url_and_ssl
 
 # Import explicite des modèles pour que Alembic les détecte
 # Ajouter ici chaque nouveau module avec des modèles
+from app.modules.admin import models as admin_models
 from app.modules.auth import models as auth_models
 from app.modules.catalog import models as catalog_models
 from app.modules.inventory import models as inventory_models

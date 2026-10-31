@@ -5,6 +5,7 @@ import structlog
 from app.core.config import settings
 from app.core.db import AsyncSessionLocal
 from app.core.exceptions import ConflictError
+from app.modules.admin.service import AdminService
 from app.modules.auth.schemas import RegisterRequest
 from app.modules.auth.service import AuthService
 
@@ -38,3 +39,23 @@ async def seed_superadmin() -> None:
             logger.info("superadmin_created", phone=phone, user_id=str(user.id))
         except ConflictError:
             logger.info("superadmin_already_exists", phone=phone)
+
+
+async def seed_platform_admin() -> None:
+    """Crée l'administrateur plateforme si ADMIN_EMAIL et ADMIN_PASSWORD sont définis.
+
+    Idempotent : un admin existant n'est jamais réécrit (mot de passe inclus).
+    """
+    if settings.admin_jwt_secret_key.get_secret_value() and not settings.support_contact.strip():
+        logger.warning("support_contact_missing")
+
+    email = settings.admin_email.strip()
+    password = settings.admin_password.get_secret_value()
+
+    if not email or not password:
+        return
+
+    async with AsyncSessionLocal() as session:
+        created = await AdminService(session).ensure_seed_admin(email, password)
+        await session.commit()
+        logger.info("platform_admin_seeded" if created else "platform_admin_already_exists")

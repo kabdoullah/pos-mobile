@@ -68,6 +68,19 @@ Toutes les erreurs suivent un format unifié :
 
 Le champ `code` est un identifiant stable côté client pour i18n et logique conditionnelle. Le champ `field` est présent uniquement pour les erreurs de validation.
 
+Certaines erreurs ajoutent une clé `details` (objet). Exemple : `STORE_SUSPENDED` (403, boutique suspendue, renvoyée par le login, le refresh et toute route authentifiée) :
+
+```json
+{
+  "detail": "Store is suspended.",
+  "code": "STORE_SUSPENDED",
+  "field": null,
+  "details": {"support_contact": "support@example.com"}
+}
+```
+
+`support_contact` vaut `""` si `SUPPORT_CONTACT` n'est pas configurée. Les autres erreurs n'ont pas de clé `details`.
+
 ### Pagination
 
 Les endpoints qui retournent des listes utilisent une pagination par cursor :
@@ -182,6 +195,18 @@ GET    /api/v1/sync/changes              Pull des changements depuis un timestam
 
 `GET /sync/changes` renvoie les phases dans l'ordre catégories → produits →
 ventes : une catégorie arrive toujours avant ses produits.
+
+### Administration plateforme
+
+Réservé à l'administrateur de la plateforme (jeton distinct, `aud = "pos-admin"`, 120 min, pas de refresh, ADR-0012). 403 si `ADMIN_JWT_SECRET` n'est pas configuré. Les jetons commerçant sont refusés.
+
+```
+POST   /api/v1/admin/auth/login                 Connexion admin (email, mot de passe) ; 5 échecs = blocage 15 min
+GET    /api/v1/admin/metrics                    Indicateurs plateforme
+GET    /api/v1/admin/stores                     Liste des boutiques (search, status=all|active|suspended, inactive, sort=last_sale|created, limit 1-100, offset)
+POST   /api/v1/admin/stores/{id}/suspend        Suspendre une boutique (body {reason?})
+POST   /api/v1/admin/stores/{id}/reactivate     Réactiver une boutique
+```
 
 ### Système
 

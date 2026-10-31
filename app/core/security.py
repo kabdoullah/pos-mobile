@@ -64,3 +64,41 @@ def decode_token(token: str) -> dict[str, Any] | None:
         )
     except jwt.PyJWTError:
         return None
+
+
+ADMIN_TOKEN_AUDIENCE = "pos-admin"  # noqa: S105
+
+
+def create_admin_token(admin_id: UUID) -> str:
+    """Génère un JWT admin (clé et audience distinctes des tokens commerçants)."""
+    expire = datetime.now(UTC) + timedelta(minutes=settings.admin_token_expire_minutes)
+    payload: dict[str, Any] = {
+        "sub": str(admin_id),
+        "exp": expire,
+        "type": "admin",
+        "aud": ADMIN_TOKEN_AUDIENCE,
+    }
+    return jwt.encode(
+        payload,
+        settings.admin_jwt_secret_key.get_secret_value(),
+        algorithm=settings.jwt_algorithm,
+    )
+
+
+def decode_admin_token(token: str) -> dict[str, Any] | None:
+    """Décode un JWT admin. None si clé vide, token invalide, expiré ou mauvais type."""
+    secret = settings.admin_jwt_secret_key.get_secret_value()
+    if not secret:
+        return None
+    try:
+        payload: dict[str, Any] = jwt.decode(
+            token,
+            secret,
+            algorithms=[settings.jwt_algorithm],
+            audience=ADMIN_TOKEN_AUDIENCE,
+        )
+    except jwt.PyJWTError:
+        return None
+    if payload.get("type") != "admin":
+        return None
+    return payload

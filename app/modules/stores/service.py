@@ -97,3 +97,12 @@ class StoreService:
         """Contenu du logo (pour le reçu PDF), ou None sans logo."""
         logo = await self.repo.get_logo(store_id)
         return logo.content if logo is not None else None
+
+    async def set_suspension(self, store_id: UUID, suspended: bool, reason: str | None) -> None:
+        """Suspend ou réactive une boutique (usage backoffice, session admin).
+
+        Suspendre une boutique déjà suspendue conserve la date ; la raison n'est
+        remplacée que si une nouvelle est fournie.
+        """
+        if not await self.repo.set_suspension(store_id, suspended, reason):
+            raise NotFoundError("Store not found.")

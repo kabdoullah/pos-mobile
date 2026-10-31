@@ -3,8 +3,10 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import AliasChoices, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_MIN_ADMIN_SECRET_LENGTH = 32
 
 
 class Settings(BaseSettings):
@@ -15,6 +17,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,
     )
 
     # Application
@@ -51,6 +54,28 @@ class Settings(BaseSettings):
     superadmin_phone: str = ""
     superadmin_password: SecretStr = SecretStr("")
     superadmin_email: str = ""
+
+    # Backoffice admin plateforme (clé JWT distincte de celle des commerçants ;
+    # vide = accès admin désactivé)
+    admin_jwt_secret_key: SecretStr = Field(
+        SecretStr(""),
+        validation_alias=AliasChoices("ADMIN_JWT_SECRET", "ADMIN_JWT_SECRET_KEY"),
+    )
+    admin_token_expire_minutes: int = 120
+    admin_email: str = ""
+    admin_password: SecretStr = SecretStr("")
+    support_contact: str = ""
+
+    @model_validator(mode="after")
+    def _check_admin_secret(self) -> "Settings":
+        """Impose un secret admin robuste et distinct en staging/production."""
+        secret = self.admin_jwt_secret_key.get_secret_value()
+        if self.environment in ("staging", "production") and secret:
+            if len(secret) < _MIN_ADMIN_SECRET_LENGTH:
+                raise ValueError("ADMIN_JWT_SECRET doit faire au moins 32 caractères")
+            if secret == self.jwt_secret_key.get_secret_value():
+                raise ValueError("ADMIN_JWT_SECRET doit différer de JWT_SECRET_KEY")
+        return self
 
     @property
     def cors_origins_list(self) -> list[str]:
