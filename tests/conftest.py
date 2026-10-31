@@ -35,6 +35,7 @@ _ALL_TABLES = (
     "password_reset_tokens",
     "stores",
     "users",
+    "platform_admins",
 )
 
 
