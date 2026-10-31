@@ -75,11 +75,14 @@ Certaines erreurs ajoutent une clé `details` (objet). Exemple : `STORE_SUSPENDE
   "detail": "Store is suspended.",
   "code": "STORE_SUSPENDED",
   "field": null,
-  "details": {"support_contact": "support@example.com"}
+  "details": {
+    "support_contact": "support@example.com",
+    "support_whatsapp": "+2250700000000"
+  }
 }
 ```
 
-`support_contact` vaut `""` si `SUPPORT_CONTACT` n'est pas configurée. Les autres erreurs n'ont pas de clé `details`.
+`support_contact` vaut `""` si `SUPPORT_CONTACT` n'est pas configurée ; `support_whatsapp` (numéro avec indicatif pays) vaut `""` si `SUPPORT_WHATSAPP` n'est pas configurée. Les autres erreurs n'ont pas de clé `details`.
 
 ### Pagination
 

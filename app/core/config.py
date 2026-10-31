@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     admin_email: str = ""
     admin_password: SecretStr = SecretStr("")
     support_contact: str = ""
+    # Numéro WhatsApp du support (indicatif pays inclus, ex. +225…), optionnel.
+    support_whatsapp: str = ""
 
     @model_validator(mode="after")
     def _check_admin_secret(self) -> "Settings":

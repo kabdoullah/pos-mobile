@@ -17,12 +17,16 @@ from tests.factories import auth_headers, create_store, create_user
 from tests.test_sync import _sale_payload
 
 _PASSWORD = "motdepasse123"
-_SUPPORT = "+2250700000000"
+_SUPPORT = "support@example.com"
+_WHATSAPP = "+2250700000000"
 
 
 @pytest.fixture(autouse=True)
 def _support_contact() -> Iterator[None]:
-    with patch.object(settings, "support_contact", _SUPPORT):
+    with (
+        patch.object(settings, "support_contact", _SUPPORT),
+        patch.object(settings, "support_whatsapp", _WHATSAPP),
+    ):
         yield
 
 
@@ -56,6 +60,7 @@ def _assert_suspended(response: Any) -> None:
     body = response.json()
     assert body["code"] == "STORE_SUSPENDED"
     assert body["details"]["support_contact"] == _SUPPORT
+    assert body["details"]["support_whatsapp"] == _WHATSAPP
 
 
 async def test_suspended_store_blocked_on_get_me(client: AsyncClient, db_session: AsyncSession):

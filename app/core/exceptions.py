@@ -58,7 +58,10 @@ class StoreSuspendedError(ForbiddenError):
     def __init__(self) -> None:
         super().__init__(
             "Store is suspended.",
-            details={"support_contact": settings.support_contact},
+            details={
+                "support_contact": settings.support_contact,
+                "support_whatsapp": settings.support_whatsapp,
+            },
         )
 
 
