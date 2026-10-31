@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     superadmin_password: SecretStr = SecretStr("")
     superadmin_email: str = ""
 
+    # Backoffice admin plateforme (clé JWT distincte de celle des commerçants ;
+    # vide = accès admin désactivé)
+    admin_jwt_secret_key: SecretStr = SecretStr("")
+    admin_token_expire_minutes: int = 120
+    admin_email: str = ""
+    admin_password: SecretStr = SecretStr("")
+    support_contact: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Convertit la string CSV en liste."""

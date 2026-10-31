@@ -12,7 +12,8 @@ from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.core.logging import setup_logging
 from app.core.middleware import StoreContextMiddleware
-from app.core.seed import seed_superadmin
+from app.core.seed import seed_platform_admin, seed_superadmin
+from app.modules.admin.router import router as admin_router
 from app.modules.auth.router import router as auth_router, users_router
 from app.modules.catalog.router import categories_router, router as catalog_router
 from app.modules.inventory.router import router as inventory_router
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:  # noqa: ARG001
     """Hook de cycle de vie de l'application : startup et shutdown."""
     setup_logging()
     await seed_superadmin()
+    await seed_platform_admin()
     yield
 
 
@@ -53,6 +55,7 @@ register_exception_handlers(app)
 
 # Routes
 api_v1_prefix = "/api/v1"
+app.include_router(admin_router, prefix=f"{api_v1_prefix}/admin", tags=["admin"])
 app.include_router(auth_router, prefix=f"{api_v1_prefix}/auth", tags=["auth"])
 app.include_router(users_router, prefix=f"{api_v1_prefix}/users", tags=["users"])
 app.include_router(stores_router, prefix=f"{api_v1_prefix}/stores", tags=["stores"])
