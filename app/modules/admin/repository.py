@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.admin.models import PlatformAdmin
@@ -30,3 +30,30 @@ class AdminRepository:
         self.db.add(admin)
         await self.db.flush()
         return admin
+
+    async def register_failed_login(
+        self, admin_id: UUID, max_failures: int, lock_minutes: int
+    ) -> None:
+        """Incrémente atomiquement le compteur d'échecs (une seule requête SQL).
+
+        Si un verrou a expiré, le compteur repart de 1. Au seuil, verrouille
+        le compte pour ``lock_minutes`` minutes.
+        """
+        await self.db.execute(
+            text(
+                """
+                UPDATE platform_admins SET
+                    failed_login_count = CASE
+                        WHEN locked_until IS NOT NULL AND locked_until <= now() THEN 1
+                        ELSE failed_login_count + 1 END,
+                    locked_until = CASE
+                        WHEN (CASE WHEN locked_until IS NOT NULL AND locked_until <= now()
+                                   THEN 1 ELSE failed_login_count + 1 END) >= :max_failures
+                            THEN now() + make_interval(mins => :lock_minutes)
+                        WHEN locked_until IS NOT NULL AND locked_until <= now() THEN NULL
+                        ELSE locked_until END
+                WHERE id = :id
+                """
+            ),
+            {"id": admin_id, "max_failures": max_failures, "lock_minutes": lock_minutes},
+        )

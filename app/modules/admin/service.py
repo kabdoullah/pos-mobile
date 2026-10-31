@@ -40,9 +40,9 @@ class AdminService:
 
         if locked or not password_ok:
             if not locked:
-                admin.failed_login_count += 1
-                if admin.failed_login_count >= MAX_FAILED_LOGINS:
-                    admin.locked_until = now + LOCK_DURATION
+                await self.repo.register_failed_login(
+                    admin.id, MAX_FAILED_LOGINS, int(LOCK_DURATION.total_seconds() // 60)
+                )
                 # Persister le compteur malgré l'exception (get_db fait rollback).
                 await self.db.commit()
             raise UnauthorizedError(_INVALID_CREDENTIALS)
