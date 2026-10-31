@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import create_refresh_token, hash_password
+from app.modules.stores.models import Store
 from tests.test_sync import _create_store, _create_user, _headers, _sale_payload
 
 _PASSWORD = "motdepasse123"
@@ -43,8 +44,10 @@ async def _set_suspended(db: AsyncSession, store_id: Any, suspended: bool) -> No
         ),
         {"sid": str(store_id)},
     )
-    # La session de test est partagée avec l'app : invalide l'identity map.
-    db.expire_all()
+    # La session de test est partagée avec l'app : invalide la boutique en cache.
+    store = await db.get(Store, store_id)
+    if store is not None:
+        await db.refresh(store)
 
 
 def _assert_suspended(response: Any) -> None:
