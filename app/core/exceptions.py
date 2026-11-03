@@ -1,8 +1,11 @@
 """Exceptions métier et handlers FastAPI."""
 
 import logging
+from collections.abc import Sequence
+from typing import Any
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
 
@@ -86,6 +89,32 @@ class PayloadTooLargeError(AppError):
     code = "PAYLOAD_TOO_LARGE"
 
 
+# Préfixes de `loc` ajoutés par FastAPI pour situer le champ dans la requête.
+_REQUEST_LOCATIONS = {"body", "query", "path", "header", "cookie"}
+_VALUE_ERROR_PREFIX = "Value error, "
+
+
+def _validation_error_response(errors: Sequence[Any]) -> JSONResponse:
+    """Aplatit des erreurs Pydantic/FastAPI au format `{detail, code, field}`.
+
+    Seule la première erreur est renvoyée (le client affiche un message). Les
+    valeurs saisies (`input`) ne sont jamais loguées : elles peuvent contenir
+    un mot de passe ou un PIN.
+    """
+    first = errors[0] if errors else {}
+    detail = str(first.get("msg", "Validation error")).removeprefix(_VALUE_ERROR_PREFIX)
+    loc = [part for part in first.get("loc", ()) if part not in _REQUEST_LOCATIONS]
+    field = next((str(part) for part in loc if isinstance(part, str)), None)
+    logger.info(
+        "validation_error",
+        extra={"errors": [{"loc": e.get("loc"), "type": e.get("type")} for e in errors]},
+    )
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": detail, "code": "VALIDATION_ERROR", "field": field},
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Enregistre les handlers d'exception sur l'app FastAPI."""
 
@@ -100,21 +129,9 @@ def register_exception_handlers(app: FastAPI) -> None:
             content["details"] = exc.details
         return JSONResponse(status_code=exc.status_code, content=content)
 
+    @app.exception_handler(RequestValidationError)
     @app.exception_handler(PydanticValidationError)
-    async def handle_pydantic_validation(
-        _request: Request, exc: PydanticValidationError
+    async def handle_validation_error(
+        _request: Request, exc: RequestValidationError | PydanticValidationError
     ) -> JSONResponse:
-        errors = exc.errors()
-        logger.error(f"Pydantic validation error: {errors}")
-        # Format first error message for mobile client
-        detail = errors[0]["msg"] if errors else "Validation error"
-        # Extract field name if available
-        field = errors[0]["loc"][0] if errors and errors[0].get("loc") else None
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={
-                "detail": detail,
-                "code": "VALIDATION_ERROR",
-                "field": str(field) if field else None,
-            },
-        )
+        return _validation_error_response(exc.errors())
