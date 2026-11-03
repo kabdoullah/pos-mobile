@@ -67,6 +67,9 @@ class Settings(BaseSettings):
     support_contact: str = ""
     # Numéro WhatsApp du support (indicatif pays inclus, ex. +225…), optionnel.
     support_whatsapp: str = ""
+    # Build minimal de l'app mobile (versionCode Android) : en dessous, l'app
+    # bloque sur un dialogue de mise à jour obligatoire. 0 = jamais de blocage.
+    min_app_build: int = Field(0, ge=0)
 
     @model_validator(mode="after")
     def _check_admin_secret(self) -> "Settings":

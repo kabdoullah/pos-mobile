@@ -218,6 +218,8 @@ GET    /health                           Health check (pas de /api/v1)
 GET    /                                 Bienvenue + version
 ```
 
+`/health` renvoie `{"status": "ok", "version": "…", "min_app_build": 0}`. `min_app_build` vient de la variable `MIN_APP_BUILD` (versionCode Android, 0 par défaut = aucun blocage) : l'app mobile dont le numéro de build est inférieur affiche un dialogue de mise à jour obligatoire. Ne la relever qu'**après** la publication du build correspondant sur le Play Store.
+
 ## Rate limiting
 
 | Endpoint | Limite |

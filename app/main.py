@@ -90,9 +90,17 @@ app.openapi = _custom_openapi  # type: ignore[method-assign]
 
 
 @app.get("/health", tags=["system"])
-async def health() -> dict[str, str]:
-    """Health check endpoint utilisé par Docker et UptimeRobot."""
-    return {"status": "ok", "version": app.version}
+async def health() -> dict[str, str | int]:
+    """Health check utilisé par Docker, UptimeRobot et l'app mobile.
+
+    L'app l'appelle au lancement (réveil du serveur) et y lit
+    ``min_app_build`` pour imposer une mise à jour.
+    """
+    return {
+        "status": "ok",
+        "version": app.version,
+        "min_app_build": settings.min_app_build,
+    }
 
 
 @app.get("/", tags=["system"])

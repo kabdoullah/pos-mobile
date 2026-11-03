@@ -12,6 +12,7 @@ async def test_health_endpoint(client: AsyncClient) -> None:
     data = response.json()
     assert data["status"] == "ok"
     assert "version" in data
+    assert isinstance(data["min_app_build"], int)
 
 
 @pytest.mark.asyncio
