@@ -22,6 +22,7 @@ def test_register_accepts_real_mobile_numbers(phone: str) -> None:
         "+22507000000001",  # trop long
         "+2252721000000",  # ligne fixe : ne reçoit pas de SMS
         "0700000000",  # pas E.164
+        "+2801234567",  # indicatif pays non attribué
     ],
 )
 def test_register_rejects_fake_numbers(phone: str) -> None:

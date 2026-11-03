@@ -26,7 +26,10 @@ def validate_mobile_number(value: str) -> str:
     seule une vérification OTP le peut.
     """
     validate_e164(value)
-    parsed = phonenumbers.parse(value, None)
+    try:
+        parsed = phonenumbers.parse(value, None)
+    except phonenumbers.NumberParseException as exc:  # ex. indicatif pays non attribué
+        raise ValueError("Phone number does not exist (unknown country code).") from exc
     if not phonenumbers.is_valid_number(parsed):
         raise ValueError("Phone number does not exist (check the number of digits and prefix).")
     if phonenumbers.number_type(parsed) not in _MOBILE_TYPES:
