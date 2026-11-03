@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.core.validators import validate_e164
+from app.core.validators import validate_mobile_number
 
 
 class RegisterRequest(BaseModel):
@@ -17,7 +17,7 @@ class RegisterRequest(BaseModel):
     @field_validator("phone_number")
     @classmethod
     def validate_phone_e164(cls, v: str) -> str:
-        return validate_e164(v)
+        return validate_mobile_number(v)
 
 
 class RegisterResponse(BaseModel):
