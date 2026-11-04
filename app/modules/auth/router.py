@@ -1,9 +1,12 @@
 """Routes du module auth."""
 
-from fastapi import APIRouter, Request, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request, status
 
 from app.core.db import DbSession, TenantDbSession
 from app.core.dependencies import CurrentUserId
+from app.core.email import EmailService, get_email_service
 from app.core.exceptions import StoreSuspendedError
 from app.core.rate_limit import client_ip, rate_limiter
 from app.modules.auth import schemas
@@ -34,6 +37,16 @@ _REGISTER_PER_IP = 10  # par heure
 _RESET_PER_IP = 10  # par heure
 
 
+def get_auth_service(
+    db: DbSession, email_service: Annotated[EmailService, Depends(get_email_service)]
+) -> AuthService:
+    """Construit l'AuthService de la requête avec ses dépendances injectées."""
+    return AuthService(db, email_service)
+
+
+AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+
+
 @router.post(
     "/register",
     response_model=schemas.RegisterResponse,
@@ -41,11 +54,10 @@ _RESET_PER_IP = 10  # par heure
     summary="Créer un compte",
 )
 async def register(
-    payload: schemas.RegisterRequest, db: DbSession, request: Request
+    payload: schemas.RegisterRequest, service: AuthServiceDep, request: Request
 ) -> schemas.RegisterResponse:
     """Crée un compte utilisateur avec numéro de téléphone + mot de passe. Email optionnel."""
     await rate_limiter.hit(f"register:ip:{client_ip(request)}", _REGISTER_PER_IP, _HOUR)
-    service = AuthService(db)
     user = await service.register(payload)
     message = (
         "Account created. Check your email to verify your address."
@@ -65,7 +77,7 @@ async def register(
     summary="Obtenir un JWT",
 )
 async def login(
-    payload: schemas.LoginRequest, db: DbSession, request: Request
+    payload: schemas.LoginRequest, service: AuthServiceDep, request: Request
 ) -> schemas.TokenResponse:
     """Authentifie l'utilisateur via numéro de téléphone + mot de passe."""
     ip = client_ip(request)
@@ -81,8 +93,6 @@ async def login(
     # La tentative est comptée AVANT la vérification (atomiquement) : des
     # requêtes concurrentes ne peuvent pas toutes passer avant le 1er échec.
     await rate_limiter.hit_many(attempt_keys)
-
-    service = AuthService(db)
     try:
         tokens = await service.login(payload)
     except StoreSuspendedError:
@@ -105,9 +115,10 @@ async def _clear_login_attempts(keys: tuple[tuple[str, int, int], ...]) -> None:
     response_model=schemas.TokenResponse,
     summary="Renouveler un JWT",
 )
-async def refresh(payload: schemas.RefreshRequest, db: DbSession) -> schemas.TokenResponse:
+async def refresh(
+    payload: schemas.RefreshRequest, service: AuthServiceDep
+) -> schemas.TokenResponse:
     """Renouvelle l'access token à partir d'un refresh token valide."""
-    service = AuthService(db)
     return await service.refresh(payload.refresh_token)
 
 
@@ -117,12 +128,11 @@ async def refresh(payload: schemas.RefreshRequest, db: DbSession) -> schemas.Tok
     summary="Demander un email de reset",
 )
 async def forgot_password(
-    payload: schemas.ForgotPasswordRequest, db: DbSession, request: Request
+    payload: schemas.ForgotPasswordRequest, service: AuthServiceDep, request: Request
 ) -> None:
     """Envoie un email de réinitialisation. Renvoie 204 même si l'email n'existe pas."""
     await rate_limiter.hit(f"forgot:ip:{client_ip(request)}", _FORGOT_PER_IP, _HOUR)
     await rate_limiter.hit(f"forgot:email:{payload.email.lower()}", _FORGOT_PER_EMAIL, _HOUR)
-    service = AuthService(db)
     await service.send_password_reset(payload.email)
 
 
@@ -132,11 +142,10 @@ async def forgot_password(
     summary="Confirmer la réinitialisation",
 )
 async def reset_password(
-    payload: schemas.ResetPasswordRequest, db: DbSession, request: Request
+    payload: schemas.ResetPasswordRequest, service: AuthServiceDep, request: Request
 ) -> None:
     """Réinitialise le mot de passe via le token reçu par email."""
     await rate_limiter.hit(f"reset:ip:{client_ip(request)}", _RESET_PER_IP, _HOUR)
-    service = AuthService(db)
     await service.reset_password(payload.token, payload.new_password)
 
 

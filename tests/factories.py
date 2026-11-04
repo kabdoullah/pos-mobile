@@ -91,3 +91,23 @@ async def create_admin(db: AsyncSession) -> PlatformAdmin:
     await AdminService(db).ensure_seed_admin(ADMIN_EMAIL, ADMIN_PASSWORD)
     await db.commit()
     return (await db.execute(select(PlatformAdmin))).scalar_one()
+
+
+class FakeEmailSender:
+    """Transport email de test : enregistre les envois, peut simuler une panne."""
+
+    def __init__(self) -> None:
+        self.sent: list[dict[str, str]] = []
+        self.error: Exception | None = None
+
+    async def send(self, to_email: str, subject: str, html_body: str, text_body: str) -> None:
+        if self.error is not None:
+            raise self.error
+        self.sent.append(
+            {
+                "to_email": to_email,
+                "subject": subject,
+                "html_body": html_body,
+                "text_body": text_body,
+            }
+        )

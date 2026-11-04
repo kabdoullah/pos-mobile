@@ -53,12 +53,12 @@ def normalize_login_phone(phone_number: str) -> str:
 class AuthService:
     """Service métier de l'authentification."""
 
-    def __init__(self, db: AsyncSession) -> None:
+    def __init__(self, db: AsyncSession, email_service: EmailService) -> None:
         self.db = db
         self.repo = UserRepository(db)
         self.email_verification_repo = EmailVerificationTokenRepository(db)
         self.password_reset_repo = PasswordResetTokenRepository(db)
-        self.email_service = EmailService()
+        self.email_service = email_service
 
     async def register(self, payload: schemas.RegisterRequest) -> User:
         """Crée un nouvel utilisateur. Phone requis, email optionnel."""

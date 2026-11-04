@@ -4,6 +4,7 @@ import structlog
 
 from app.core.config import settings
 from app.core.db import AsyncSessionLocal
+from app.core.email import get_email_service
 from app.core.exceptions import ConflictError
 from app.modules.admin.service import AdminService
 from app.modules.auth.schemas import RegisterRequest
@@ -28,7 +29,7 @@ async def seed_superadmin() -> None:
 
     async with AsyncSessionLocal() as session:
         try:
-            user = await AuthService(session).register(
+            user = await AuthService(session, get_email_service()).register(
                 RegisterRequest(
                     phone_number=phone,
                     password=password,
