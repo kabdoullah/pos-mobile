@@ -12,7 +12,7 @@ make dev                        # server with hot reload
 make seed                       # optional: test user, store and products
 ```
 
-Settings are read from the environment or a `.env` file (not versioned). Required: `DATABASE_URL` (asyncpg, e.g. `postgresql+asyncpg://pos:pos_local@localhost:5432/pos`) and `JWT_SECRET_KEY`. Optional: `BREVO_API_KEY` + `MAIL_FROM_EMAIL` (expéditeur validé dans Brevo), `CORS_ORIGINS`, `TRUSTED_PROXY_COUNT` (proxys devant l'API pour lire l'IP client, défaut 1), `SUPERADMIN_*` — see `app/core/config.py`.
+Settings are read from the environment or a `.env` file (not versioned). Required: `DATABASE_URL` (asyncpg, e.g. `postgresql+asyncpg://pos:pos_local@localhost:5432/pos`) and `JWT_SECRET_KEY`. Optional: `BREVO_API_KEY` + `MAIL_FROM_EMAIL` (expéditeur validé dans Brevo), `CORS_ORIGINS`, `CLIENT_IP_HEADER` (en-tête de l'IP client écrit par le proxy ; `cf-connecting-ip` sur Render) ou à défaut `TRUSTED_PROXY_COUNT`, `SUPERADMIN_*` — see `app/core/config.py`.
 
 ## Modules
 

@@ -101,10 +101,16 @@ rate_limiter = RateLimiter()
 def client_ip(request: Request) -> str:
     """IP du client telle que vue par le proxy de confiance.
 
-    Les proxys ajoutent l'IP de leur interlocuteur à droite de `X-Forwarded-For` :
-    les entrées de gauche viennent du client et sont falsifiables. On lit donc la
-    `trusted_proxy_count`-ième en partant de la droite.
+    Avec `client_ip_header` (ex. `cf-connecting-ip` derrière Cloudflare), on lit
+    cet en-tête, que le proxy écrase. Sinon, `X-Forwarded-For` : les proxys
+    ajoutent l'IP de leur interlocuteur à droite, les entrées de gauche viennent
+    du client et sont falsifiables ; on lit la `trusted_proxy_count`-ième en
+    partant de la droite.
     """
+    if settings.client_ip_header:
+        header_ip = request.headers.get(settings.client_ip_header, "").strip()
+        if header_ip:
+            return header_ip
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded and settings.trusted_proxy_count > 0:
         hops = [ip.strip() for ip in forwarded.split(",") if ip.strip()]
