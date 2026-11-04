@@ -89,6 +89,17 @@ class PayloadTooLargeError(AppError):
     code = "PAYLOAD_TOO_LARGE"
 
 
+class TooManyRequestsError(AppError):
+    """Trop de requêtes sur une même clé (IP, compte) : rate limiting."""
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    code = "RATE_LIMITED"
+
+    def __init__(self, retry_after: int) -> None:
+        self.retry_after = retry_after
+        super().__init__("Too many requests. Try again later.")
+
+
 # Préfixes de `loc` ajoutés par FastAPI pour situer le champ dans la requête.
 _REQUEST_LOCATIONS = {"body", "query", "path", "header", "cookie"}
 _VALUE_ERROR_PREFIX = "Value error, "
@@ -127,7 +138,10 @@ def register_exception_handlers(app: FastAPI) -> None:
         }
         if exc.details is not None:
             content["details"] = exc.details
-        return JSONResponse(status_code=exc.status_code, content=content)
+        headers = (
+            {"Retry-After": str(exc.retry_after)} if isinstance(exc, TooManyRequestsError) else None
+        )
+        return JSONResponse(status_code=exc.status_code, content=content, headers=headers)
 
     @app.exception_handler(RequestValidationError)
     @app.exception_handler(PydanticValidationError)

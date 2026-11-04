@@ -45,8 +45,19 @@ class Settings(BaseSettings):
     # Frontend
     app_frontend_url: str = "http://localhost:3000"
 
-    # Rate limiting
-    redis_url: str = ""
+    # Android App Links : apps autorisées à ouvrir les liens des emails
+    # (servi dans /.well-known/assetlinks.json). Packages des flavors servis
+    # par ce backend et empreintes SHA-256 de leurs clés (signature Play,
+    # importation, debug), au format JSON en env :
+    # ANDROID_PACKAGE_NAMES='["ci.pos.macaisse","ci.pos.macaisse.dev"]'
+    # ANDROID_CERT_SHA256_FINGERPRINTS='["AB:CD:…"]'. Vide = aucune app déclarée.
+    android_package_names: list[str] = []
+    android_cert_sha256_fingerprints: list[str] = []
+
+    # Rate limiting (app/core/rate_limit.py) : nombre de proxys de confiance
+    # devant l'API, qui ajoutent chacun une IP à droite de X-Forwarded-For
+    # (1 = l'edge Render). 0 = ignorer l'en-tête et prendre l'IP de connexion.
+    trusted_proxy_count: int = 1
 
     # CORS
     cors_origins: str = ""

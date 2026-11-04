@@ -39,6 +39,17 @@ from app.modules.stores.service import StoreService
 logger = structlog.get_logger()
 
 
+def normalize_login_phone(phone_number: str) -> str:
+    """Numéro tel que recherché en base au login (`07…` → `+22507…`).
+
+    Sert aussi de clé de rate limiting : une même clé ⇔ un même compte visé.
+    """
+    phone = phone_number.strip()
+    if re.match(r"^0\d{9}$", phone):
+        phone = "+225" + phone
+    return phone
+
+
 class AuthService:
     """Service métier de l'authentification."""
 
@@ -102,10 +113,7 @@ class AuthService:
 
     async def login(self, payload: schemas.LoginRequest) -> schemas.TokenResponse:
         """Vérifie les credentials et retourne les tokens."""
-        phone = payload.phone_number.strip()
-        if re.match(r"^0\d{9}$", phone):
-            phone = "+225" + phone
-        user = await self.repo.get_by_phone(phone)
+        user = await self.repo.get_by_phone(normalize_login_phone(payload.phone_number))
         if user is None or not verify_password(payload.password, user.password_hash):
             # Message volontairement vague pour ne pas révéler si le numéro existe
             raise UnauthorizedError("Invalid phone number or password.")

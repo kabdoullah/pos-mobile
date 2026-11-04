@@ -14,6 +14,7 @@ from app.core.logging import setup_logging
 from app.core.middleware import StoreContextMiddleware
 from app.core.seed import seed_platform_admin, seed_superadmin
 from app.modules.admin.router import router as admin_router
+from app.modules.auth.deeplink_router import router as deeplink_router
 from app.modules.auth.router import router as auth_router, users_router
 from app.modules.catalog.router import categories_router, router as catalog_router
 from app.modules.inventory.router import router as inventory_router
@@ -64,6 +65,8 @@ app.include_router(categories_router, prefix=f"{api_v1_prefix}/categories", tags
 app.include_router(sales_router, prefix=f"{api_v1_prefix}/sales", tags=["sales"])
 app.include_router(sync_router, prefix=f"{api_v1_prefix}/sync", tags=["sync"])
 app.include_router(inventory_router, prefix=f"{api_v1_prefix}/inventory", tags=["inventory"])
+# Hors /api/v1 : chemins imposés par Android App Links et par le lien de l'email.
+app.include_router(deeplink_router)
 
 
 def _custom_openapi() -> dict[str, Any]:
