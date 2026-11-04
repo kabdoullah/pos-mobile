@@ -10,7 +10,7 @@ from starlette.requests import Request
 
 from app.core.config import settings
 from app.core.exceptions import TooManyRequestsError, UnauthorizedError
-from app.core.rate_limit import RateLimiter, client_ip
+from app.core.rate_limit import RateLimiter, client_ip, rate_limiter
 from app.core.security import hash_password
 from tests.factories import create_user_with_store
 
@@ -162,17 +162,24 @@ async def test_login_failures_limited_per_phone_and_ip(client: AsyncClient) -> N
 
 
 async def test_third_party_cannot_lock_account_from_one_ip(
-    client: AsyncClient, db_session: AsyncSession
+    client: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     user, _ = await create_user_with_store(db_session, "victime@example.com")
     user.password_hash = hash_password(_PASSWORD)
     await db_session.flush()
 
-    for _ in range(6):
-        await _login(client, user.phone_number, ip="6.6.6.6")
+    clock = _Clock()
+    monkeypatch.setattr(rate_limiter, "_clock", clock)
+
+    # L'attaquant s'acharne depuis une IP pendant 14 minutes.
+    for _ in range(7):
+        for _ in range(10):
+            await _login(client, user.phone_number, ip="6.6.6.6")
+        clock.now += 2 * 60
     assert await _login(client, user.phone_number, ip="6.6.6.6") == 429
 
-    # Le commerçant, depuis son propre réseau, se connecte toujours.
+    # Il n'a apporté que 5 échecs au compteur du numéro : le commerçant, depuis
+    # son propre réseau, se connecte toujours.
     assert await _login(client, user.phone_number, _PASSWORD, ip="41.0.0.9") == 200
 
 
@@ -218,9 +225,9 @@ async def test_unexpected_error_keeps_attempt_counted(client: AsyncClient) -> No
 
 
 async def test_login_failures_limited_per_phone_across_ips(client: AsyncClient) -> None:
-    # Brute force distribué : 4 échecs depuis chacune de 5 IP = 20 échecs.
-    for i in range(5):
-        for _ in range(4):
+    # Brute force distribué : 5 échecs depuis chacune de 10 IP = 50 échecs.
+    for i in range(10):
+        for _ in range(5):
             assert await _login(client, "0700000003", ip=f"41.0.1.{i}") == 401
     assert await _login(client, "0700000003", ip="41.0.2.1") == 429
 

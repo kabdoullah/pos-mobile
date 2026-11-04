@@ -20,11 +20,13 @@ _HOUR = 3600
 #
 # Login : chaque tentative est comptée, et un succès remet les compteurs à
 # zéro (seuls les échecs restent donc comptés).
-# La limite stricte porte sur (numéro, IP) : un tiers ne peut pas bloquer le
-# compte d'un commerçant depuis une seule IP. La limite par numéro seul, plus
-# large, freine le brute force distribué sur plusieurs IP.
-_LOGIN_FAILS_PER_PHONE_IP = 5  # par minute
-_LOGIN_FAILS_PER_PHONE = 20  # par 15 minutes
+# La limite stricte porte sur (numéro, IP). La limite par numéro seul freine
+# le brute force distribué. Les deux partagent la même fenêtre : une IP
+# apporte au plus _LOGIN_FAILS_PER_PHONE_IP échecs au compteur du numéro, donc
+# bloquer un compte demande au moins 50 / 5 = 10 IP distinctes.
+_LOGIN_WINDOW = 15 * 60
+_LOGIN_FAILS_PER_PHONE_IP = 5  # par 15 minutes
+_LOGIN_FAILS_PER_PHONE = 50  # par 15 minutes
 _LOGIN_PER_IP = 30  # par minute, toutes tentatives
 _FORGOT_PER_EMAIL = 3  # par heure
 _FORGOT_PER_IP = 10  # par heure
@@ -73,8 +75,8 @@ async def login(
     # Familles de clés aux préfixes distincts ; l'IP (sans « | ») précède le
     # numéro saisi librement, pour qu'aucune saisie ne fabrique la clé d'un autre.
     attempt_keys = (
-        (f"login:attempt:phone_ip:{ip}|{phone}", _LOGIN_FAILS_PER_PHONE_IP, _MINUTE),
-        (f"login:attempt:phone:{phone}", _LOGIN_FAILS_PER_PHONE, 15 * _MINUTE),
+        (f"login:attempt:phone_ip:{ip}|{phone}", _LOGIN_FAILS_PER_PHONE_IP, _LOGIN_WINDOW),
+        (f"login:attempt:phone:{phone}", _LOGIN_FAILS_PER_PHONE, _LOGIN_WINDOW),
     )
     # La tentative est comptée AVANT la vérification (atomiquement) : des
     # requêtes concurrentes ne peuvent pas toutes passer avant le 1er échec.

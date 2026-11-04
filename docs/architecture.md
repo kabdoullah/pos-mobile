@@ -308,7 +308,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 | Attaque | Mitigation |
 |---|---|
-| Brute force login | Rate limiting en mémoire (`app/core/rate_limit.py`) : 5 échecs/min par (numéro, IP), 20 échecs/15 min par numéro, 30 tentatives/min par IP — voir `docs/api.md` |
+| Brute force login | Rate limiting en mémoire (`app/core/rate_limit.py`) : 5 échecs/15 min par (numéro, IP), 50 échecs/15 min par numéro, 30 tentatives/min par IP — voir `docs/api.md` |
 | Brute force PIN | Compteur local, 5 tentatives puis blocage 5 min |
 | SQL injection | SQLAlchemy avec paramètres bindés, jamais de string concat |
 | XSS | Pas de UI web servie par l'API, donc surface réduite |

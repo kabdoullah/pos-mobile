@@ -226,12 +226,12 @@ Implémenté dans `app/core/rate_limit.py` (fenêtre glissante, en mémoire) et 
 
 | Endpoint | Par compte | Par IP |
 |---|---|---|
-| `POST /auth/login` | 5 échecs / min par (numéro, IP), 20 échecs / 15 min par numéro | 30 / min |
+| `POST /auth/login` | 5 échecs / 15 min par (numéro, IP), 50 échecs / 15 min par numéro | 30 / min |
 | `POST /auth/forgot-password` | 3 / h par email | 10 / h |
 | `POST /auth/register` | — | 10 / h |
 | `POST /auth/reset-password` | — | 10 / h |
 
-Sur le login, seuls les échecs comptent et un succès remet les compteurs à zéro : un tiers ne peut pas bloquer un compte depuis une seule IP. Les limites strictes portent sur le compte visé : les opérateurs mobiles partagent souvent une IP entre de nombreux abonnés (CGNAT). Pas de limite sur les endpoints authentifiés. Le login admin a son propre verrouillage en base (5 échecs → 15 min).
+Sur le login, seuls les échecs comptent et un succès remet les compteurs à zéro : une IP apporte au plus 5 échecs au compteur du numéro, donc bloquer un compte demande au moins 10 IP distinctes. Les limites strictes portent sur le compte visé : les opérateurs mobiles partagent souvent une IP entre de nombreux abonnés (CGNAT). Pas de limite sur les endpoints authentifiés. Le login admin a son propre verrouillage en base (5 échecs → 15 min).
 
 En cas de dépassement, le serveur renvoie `429` au format d'erreur habituel (`code: "RATE_LIMITED"`) avec un header `Retry-After` indiquant le nombre de secondes à attendre.
 
