@@ -67,6 +67,19 @@ async def test_send_password_reset_email_calls_send() -> None:
     mock_send.assert_called_once()
 
 
+@pytest.mark.asyncio
+async def test_password_reset_link_keeps_token_out_of_query() -> None:
+    """Le token est dans le fragment, jamais dans la query (logs d'accès)."""
+    service = EmailService()
+    with patch(_PATCH_SEND, new_callable=AsyncMock) as mock_send:
+        await service.send_password_reset_email(
+            to_email="user@example.com", user_name="user@example.com", raw_token="xyz789token"
+        )
+    for body in (mock_send.call_args.kwargs["html_body"], mock_send.call_args.kwargs["text_body"]):
+        assert "/auth/reset-password#token=xyz789token" in body
+        assert "?token=" not in body
+
+
 # ---------------------------------------------------------------------------
 # Tests d'intégration AuthService (DB réelle, SMTP mocké)
 # ---------------------------------------------------------------------------
