@@ -1,6 +1,11 @@
-"""Service d'envoi d'emails transactionnels via l'API HTTP Resend."""
+"""Service d'envoi d'emails transactionnels via l'API HTTP Brevo.
 
-from email.utils import formataddr
+HTTP sur le port 443 : le SMTP est bloqué chez la plupart des hébergeurs.
+L'expéditeur (`MAIL_FROM_EMAIL`) doit être validé dans Brevo (Senders) ;
+sans domaine à soi, une adresse Gmail validée convient mais finit plus
+souvent en spam.
+"""
+
 from pathlib import Path
 
 import httpx
@@ -9,7 +14,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from app.core.config import settings
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "emails"
-_RESEND_SEND_URL = "https://api.resend.com/emails"
+_BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 class EmailSendError(Exception):
@@ -18,11 +23,11 @@ class EmailSendError(Exception):
     def __init__(self, status_code: int, body: str) -> None:
         self.status_code = status_code
         self.body = body
-        super().__init__(f"Resend send failed: {status_code} — {body}")
+        super().__init__(f"Email provider send failed: {status_code} — {body}")
 
 
 class EmailService:
-    """Envoie les emails transactionnels (vérification, reset password) via Resend."""
+    """Envoie les emails transactionnels (vérification, reset password) via Brevo."""
 
     def __init__(self) -> None:
         self._env = Environment(
@@ -38,22 +43,22 @@ class EmailService:
             return
 
         payload = {
-            "from": formataddr((settings.mail_from_name, settings.mail_from_email)),
-            "to": [to_email],
+            "sender": {"name": settings.mail_from_name, "email": settings.mail_from_email},
+            "to": [{"email": to_email}],
             "subject": subject,
-            "html": html_body,
-            "text": text_body,
+            "htmlContent": html_body,
+            "textContent": text_body,
         }
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                _RESEND_SEND_URL,
+                _BREVO_SEND_URL,
                 json=payload,
-                headers={"Authorization": f"Bearer {settings.resend_api_key.get_secret_value()}"},
+                headers={"api-key": settings.brevo_api_key.get_secret_value()},
                 timeout=10,
             )
             if response.is_error:
-                # Le corps Resend explique la cause exacte (domaine non vérifié,
-                # destinataire interdit en mode test, clé invalide…).
+                # Le corps Brevo explique la cause exacte (expéditeur non validé,
+                # clé invalide, compte pas encore activé…).
                 raise EmailSendError(response.status_code, response.text)
 
     async def send_verification_email(self, to_email: str, user_name: str, raw_token: str) -> None:

@@ -35,10 +35,11 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60
     jwt_refresh_token_expire_days: int = 30
 
-    # Email (Resend HTTP API — port 443, marche derrière hébergeurs bloquant SMTP)
+    # Email (API HTTP Brevo — port 443, marche derrière hébergeurs bloquant SMTP)
     email_enabled: bool = True
-    resend_api_key: SecretStr = SecretStr("")
-    mail_from_email: str = "onboarding@resend.dev"  # domaine vérifié Resend en prod
+    brevo_api_key: SecretStr = SecretStr("")
+    # Expéditeur validé dans Brevo (Senders) : obligatoire pour envoyer.
+    mail_from_email: str = ""
     mail_from_name: str = "POS Mobile CI"
 
     # Frontend
