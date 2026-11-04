@@ -222,13 +222,22 @@ GET    /                                 Bienvenue + version
 
 ## Rate limiting
 
-| Endpoint | Limite |
-|---|---|
-| `/auth/login` | 5 tentatives par minute par IP |
-| `/auth/forgot-password` | 3 par heure par IP |
-| Autres endpoints authentifiés | 100 par minute par utilisateur |
+Implémenté dans `app/core/rate_limit.py` (fenêtre glissante, en mémoire) et appliqué dans `app/modules/auth/router.py`.
 
-En cas de dépassement, le serveur renvoie `429 Too Many Requests` avec un header `Retry-After` indiquant le nombre de secondes à attendre.
+| Endpoint | Par compte | Par IP |
+|---|---|---|
+| `POST /auth/login` | 5 / min par numéro de téléphone | 30 / min |
+| `POST /auth/forgot-password` | 3 / h par email | 10 / h |
+| `POST /auth/register` | — | 10 / h |
+| `POST /auth/reset-password` | — | 10 / h |
+
+Les limites strictes portent sur le compte visé : les opérateurs mobiles partagent souvent une IP entre de nombreux abonnés (CGNAT). Pas de limite sur les endpoints authentifiés. Le login admin a son propre verrouillage en base (5 échecs → 15 min).
+
+En cas de dépassement, le serveur renvoie `429` au format d'erreur habituel (`code: "RATE_LIMITED"`) avec un header `Retry-After` indiquant le nombre de secondes à attendre.
+
+L'IP client est lue dans `X-Forwarded-For` à `TRUSTED_PROXY_COUNT` crans de la droite (défaut 1 : l'edge Render) ; les entrées de gauche, falsifiables par le client, sont ignorées.
+
+**Limite connue** : les compteurs vivent dans le process. Ils repartent à zéro à chaque redéploiement et ne sont pas partagés entre instances : passer à un stockage partagé avant de lancer plusieurs workers ou instances.
 
 ## Génération du client Flutter depuis OpenAPI
 

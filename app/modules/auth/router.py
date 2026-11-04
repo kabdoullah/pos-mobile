@@ -1,14 +1,34 @@
 """Routes du module auth."""
 
-from fastapi import APIRouter, status
+import re
+
+from fastapi import APIRouter, Request, status
 
 from app.core.db import DbSession, TenantDbSession
 from app.core.dependencies import CurrentUserId
+from app.core.rate_limit import client_ip, rate_limiter
 from app.modules.auth import schemas
 from app.modules.auth.service import AuthService, UserService
 
 router = APIRouter()
 users_router = APIRouter()
+
+_MINUTE = 60
+_HOUR = 3600
+
+# Limites strictes par compte visé, plus larges par IP : les opérateurs mobiles
+# partagent souvent une IP entre de nombreux abonnés (CGNAT).
+_LOGIN_PER_PHONE = 5  # par minute
+_LOGIN_PER_IP = 30  # par minute
+_FORGOT_PER_EMAIL = 3  # par heure
+_FORGOT_PER_IP = 10  # par heure
+_REGISTER_PER_IP = 10  # par heure
+_RESET_PER_IP = 10  # par heure
+
+
+def _phone_key(phone_number: str) -> str:
+    """Clé stable quel que soit le format saisi (07…, +225 07…) : 10 derniers chiffres."""
+    return re.sub(r"\D", "", phone_number)[-10:]
 
 
 @router.post(
@@ -17,8 +37,11 @@ users_router = APIRouter()
     status_code=status.HTTP_201_CREATED,
     summary="Créer un compte",
 )
-async def register(payload: schemas.RegisterRequest, db: DbSession) -> schemas.RegisterResponse:
+async def register(
+    payload: schemas.RegisterRequest, db: DbSession, request: Request
+) -> schemas.RegisterResponse:
     """Crée un compte utilisateur avec numéro de téléphone + mot de passe. Email optionnel."""
+    await rate_limiter.hit(f"register:ip:{client_ip(request)}", _REGISTER_PER_IP, _HOUR)
     service = AuthService(db)
     user = await service.register(payload)
     message = (
@@ -38,8 +61,14 @@ async def register(payload: schemas.RegisterRequest, db: DbSession) -> schemas.R
     response_model=schemas.TokenResponse,
     summary="Obtenir un JWT",
 )
-async def login(payload: schemas.LoginRequest, db: DbSession) -> schemas.TokenResponse:
+async def login(
+    payload: schemas.LoginRequest, db: DbSession, request: Request
+) -> schemas.TokenResponse:
     """Authentifie l'utilisateur via numéro de téléphone + mot de passe."""
+    await rate_limiter.hit(f"login:ip:{client_ip(request)}", _LOGIN_PER_IP, _MINUTE)
+    await rate_limiter.hit(
+        f"login:phone:{_phone_key(payload.phone_number)}", _LOGIN_PER_PHONE, _MINUTE
+    )
     service = AuthService(db)
     return await service.login(payload)
 
@@ -60,8 +89,12 @@ async def refresh(payload: schemas.RefreshRequest, db: DbSession) -> schemas.Tok
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Demander un email de reset",
 )
-async def forgot_password(payload: schemas.ForgotPasswordRequest, db: DbSession) -> None:
+async def forgot_password(
+    payload: schemas.ForgotPasswordRequest, db: DbSession, request: Request
+) -> None:
     """Envoie un email de réinitialisation. Renvoie 204 même si l'email n'existe pas."""
+    await rate_limiter.hit(f"forgot:ip:{client_ip(request)}", _FORGOT_PER_IP, _HOUR)
+    await rate_limiter.hit(f"forgot:email:{payload.email.lower()}", _FORGOT_PER_EMAIL, _HOUR)
     service = AuthService(db)
     await service.send_password_reset(payload.email)
 
@@ -71,8 +104,11 @@ async def forgot_password(payload: schemas.ForgotPasswordRequest, db: DbSession)
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Confirmer la réinitialisation",
 )
-async def reset_password(payload: schemas.ResetPasswordRequest, db: DbSession) -> None:
+async def reset_password(
+    payload: schemas.ResetPasswordRequest, db: DbSession, request: Request
+) -> None:
     """Réinitialise le mot de passe via le token reçu par email."""
+    await rate_limiter.hit(f"reset:ip:{client_ip(request)}", _RESET_PER_IP, _HOUR)
     service = AuthService(db)
     await service.reset_password(payload.token, payload.new_password)
 

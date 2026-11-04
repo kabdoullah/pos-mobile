@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import settings
 from app.core.db import assert_store_active, get_db, get_tenant_db
+from app.core.rate_limit import rate_limiter
 from app.core.security import create_admin_token
 from app.main import app
 from app.modules.admin.dependencies import CurrentAdminId, get_admin_db
@@ -100,6 +101,12 @@ async def _migrate_test_db() -> None:
 def anyio_backend() -> str:
     """Force le backend asyncio pour les tests."""
     return "asyncio"
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter() -> None:
+    """Compteurs de rate limiting vierges : aucun test n'hérite d'un autre."""
+    rate_limiter.reset()
 
 
 @pytest.fixture
