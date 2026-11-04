@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request, status
 
 from app.core.db import DbSession, TenantDbSession
 from app.core.dependencies import CurrentUserId
+from app.core.exceptions import UnauthorizedError
 from app.core.rate_limit import client_ip, rate_limiter
 from app.modules.auth import schemas
 from app.modules.auth.service import AuthService, UserService
@@ -18,8 +19,14 @@ _HOUR = 3600
 
 # Limites strictes par compte visé, plus larges par IP : les opérateurs mobiles
 # partagent souvent une IP entre de nombreux abonnés (CGNAT).
-_LOGIN_PER_PHONE = 5  # par minute
-_LOGIN_PER_IP = 30  # par minute
+#
+# Login : seuls les ÉCHECS comptent, et un succès remet les compteurs à zéro.
+# La limite stricte porte sur (numéro, IP) : un tiers ne peut pas bloquer le
+# compte d'un commerçant depuis une seule IP. La limite par numéro seul, plus
+# large, freine le brute force distribué sur plusieurs IP.
+_LOGIN_FAILS_PER_PHONE_IP = 5  # par minute
+_LOGIN_FAILS_PER_PHONE = 20  # par 15 minutes
+_LOGIN_PER_IP = 30  # par minute, toutes tentatives
 _FORGOT_PER_EMAIL = 3  # par heure
 _FORGOT_PER_IP = 10  # par heure
 _REGISTER_PER_IP = 10  # par heure
@@ -65,12 +72,26 @@ async def login(
     payload: schemas.LoginRequest, db: DbSession, request: Request
 ) -> schemas.TokenResponse:
     """Authentifie l'utilisateur via numéro de téléphone + mot de passe."""
-    await rate_limiter.hit(f"login:ip:{client_ip(request)}", _LOGIN_PER_IP, _MINUTE)
-    await rate_limiter.hit(
-        f"login:phone:{_phone_key(payload.phone_number)}", _LOGIN_PER_PHONE, _MINUTE
+    ip = client_ip(request)
+    phone = _phone_key(payload.phone_number)
+    await rate_limiter.hit(f"login:ip:{ip}", _LOGIN_PER_IP, _MINUTE)
+    failure_limits = (
+        (f"login:fail:{phone}:{ip}", _LOGIN_FAILS_PER_PHONE_IP, _MINUTE),
+        (f"login:fail:{phone}", _LOGIN_FAILS_PER_PHONE, 15 * _MINUTE),
     )
+    for key, limit, window in failure_limits:
+        await rate_limiter.check(key, limit, window)
+
     service = AuthService(db)
-    return await service.login(payload)
+    try:
+        tokens = await service.login(payload)
+    except UnauthorizedError:
+        for key, _, window in failure_limits:
+            await rate_limiter.record(key, window)
+        raise
+    for key, _, _ in failure_limits:
+        await rate_limiter.clear(key)
+    return tokens
 
 
 @router.post(

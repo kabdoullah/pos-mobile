@@ -4,11 +4,16 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from app.core.config import settings
 from app.core.exceptions import TooManyRequestsError
 from app.core.rate_limit import RateLimiter, client_ip
+from app.core.security import hash_password
+from tests.factories import create_user_with_store
+
+_PASSWORD = "motdepasse123"
 
 
 class _Clock:
@@ -67,6 +72,17 @@ async def test_refused_requests_are_not_counted() -> None:
     await limiter.hit("k", limit=1, window_seconds=60)
 
 
+async def test_check_record_clear() -> None:
+    limiter = RateLimiter(clock=_Clock())
+    await limiter.check("k", limit=1, window_seconds=60)  # ne compte pas
+    await limiter.check("k", limit=1, window_seconds=60)
+    await limiter.record("k", window_seconds=60)
+    with pytest.raises(TooManyRequestsError):
+        await limiter.check("k", limit=1, window_seconds=60)
+    await limiter.clear("k")
+    await limiter.check("k", limit=1, window_seconds=60)
+
+
 async def test_keys_are_independent() -> None:
     limiter = RateLimiter(clock=_Clock())
     await limiter.hit("a", limit=1, window_seconds=60)
@@ -102,14 +118,21 @@ def test_client_ip_falls_back_to_connection(monkeypatch: pytest.MonkeyPatch) -> 
 # ---------------------------------------------------------------------------
 
 
-async def _login(client: AsyncClient, phone: str) -> int:
+async def _login(
+    client: AsyncClient,
+    phone: str,
+    password: str = "wrong-password",
+    ip: str = "41.0.0.1",
+) -> int:
     response = await client.post(
-        "/api/v1/auth/login", json={"phone_number": phone, "password": "wrong-password"}
+        "/api/v1/auth/login",
+        json={"phone_number": phone, "password": password},
+        headers={"X-Forwarded-For": ip},
     )
     return response.status_code
 
 
-async def test_login_limited_per_phone(client: AsyncClient) -> None:
+async def test_login_failures_limited_per_phone_and_ip(client: AsyncClient) -> None:
     for _ in range(5):
         assert await _login(client, "0700000001") == 401
 
@@ -117,6 +140,7 @@ async def test_login_limited_per_phone(client: AsyncClient) -> None:
         "/api/v1/auth/login",
         # Même numéro, autre format : même compteur.
         json={"phone_number": "+2250700000001", "password": "wrong-password"},
+        headers={"X-Forwarded-For": "41.0.0.1"},
     )
     assert response.status_code == 429
     assert int(response.headers["retry-after"]) > 0
@@ -128,6 +152,44 @@ async def test_login_limited_per_phone(client: AsyncClient) -> None:
 
     # Un autre compte n'est pas bloqué.
     assert await _login(client, "0700000002") == 401
+
+
+async def test_third_party_cannot_lock_account_from_one_ip(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user, _ = await create_user_with_store(db_session, "victime@example.com")
+    user.password_hash = hash_password(_PASSWORD)
+    await db_session.flush()
+
+    for _ in range(6):
+        await _login(client, user.phone_number, ip="6.6.6.6")
+    assert await _login(client, user.phone_number, ip="6.6.6.6") == 429
+
+    # Le commerçant, depuis son propre réseau, se connecte toujours.
+    assert await _login(client, user.phone_number, _PASSWORD, ip="41.0.0.9") == 200
+
+
+async def test_login_success_resets_failures(client: AsyncClient, db_session: AsyncSession) -> None:
+    user, _ = await create_user_with_store(db_session, "oubli@example.com")
+    user.password_hash = hash_password(_PASSWORD)
+    await db_session.flush()
+
+    for _ in range(4):
+        assert await _login(client, user.phone_number) == 401
+    assert await _login(client, user.phone_number, _PASSWORD) == 200
+
+    # Compteur remis à zéro : 5 nouvelles erreurs de saisie sont permises.
+    for _ in range(5):
+        assert await _login(client, user.phone_number) == 401
+    assert await _login(client, user.phone_number) == 429
+
+
+async def test_login_failures_limited_per_phone_across_ips(client: AsyncClient) -> None:
+    # Brute force distribué : 4 échecs depuis chacune de 5 IP = 20 échecs.
+    for i in range(5):
+        for _ in range(4):
+            assert await _login(client, "0700000003", ip=f"41.0.1.{i}") == 401
+    assert await _login(client, "0700000003", ip="41.0.2.1") == 429
 
 
 async def test_forgot_password_limited_per_email_before_any_send(client: AsyncClient) -> None:

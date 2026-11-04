@@ -38,18 +38,46 @@ class RateLimiter:
         """
         async with self._lock:
             now = self._clock()
-            self._calls += 1
-            if self._calls % _SWEEP_EVERY == 0:
-                self._sweep(now)
-
-            hits = self._hits.setdefault(key, deque())
-            self._windows[key] = window_seconds
-            while hits and hits[0] <= now - window_seconds:
-                hits.popleft()
-            if len(hits) >= limit:
-                retry_after = hits[0] + window_seconds - now
-                raise TooManyRequestsError(retry_after=max(1, math.ceil(retry_after)))
+            hits = self._active_hits(key, window_seconds, now)
+            self._raise_if_full(hits, limit, window_seconds, now)
             hits.append(now)
+
+    async def check(self, key: str, limit: int, window_seconds: float) -> None:
+        """Comme `hit`, mais sans compter la requête (cf. `record`)."""
+        async with self._lock:
+            now = self._clock()
+            self._raise_if_full(
+                self._active_hits(key, window_seconds, now), limit, window_seconds, now
+            )
+
+    async def record(self, key: str, window_seconds: float) -> None:
+        """Compte un événement pour `key` sans vérifier la limite (ex. un échec de login)."""
+        async with self._lock:
+            now = self._clock()
+            self._active_hits(key, window_seconds, now).append(now)
+
+    async def clear(self, key: str) -> None:
+        """Oublie le compteur de `key` (ex. login réussi)."""
+        async with self._lock:
+            self._hits.pop(key, None)
+            self._windows.pop(key, None)
+
+    def _active_hits(self, key: str, window_seconds: float, now: float) -> deque[float]:
+        """Hits de `key` encore dans la fenêtre (purge les expirés au passage)."""
+        self._calls += 1
+        if self._calls % _SWEEP_EVERY == 0:
+            self._sweep(now)
+        hits = self._hits.setdefault(key, deque())
+        self._windows[key] = window_seconds
+        while hits and hits[0] <= now - window_seconds:
+            hits.popleft()
+        return hits
+
+    @staticmethod
+    def _raise_if_full(hits: deque[float], limit: int, window_seconds: float, now: float) -> None:
+        if len(hits) >= limit:
+            retry_after = hits[0] + window_seconds - now
+            raise TooManyRequestsError(retry_after=max(1, math.ceil(retry_after)))
 
     def reset(self) -> None:
         """Oublie tous les compteurs (tests)."""
