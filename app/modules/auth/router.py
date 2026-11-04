@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request, status
 
 from app.core.db import DbSession, TenantDbSession
 from app.core.dependencies import CurrentUserId
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import StoreSuspendedError
 from app.core.rate_limit import client_ip, rate_limiter
 from app.modules.auth import schemas
 from app.modules.auth.service import AuthService, UserService, normalize_login_phone
@@ -83,11 +83,10 @@ async def login(
     service = AuthService(db)
     try:
         tokens = await service.login(payload)
-    except UnauthorizedError:
-        raise  # échec : la tentative reste comptée
-    except Exception:
-        # Mot de passe juste mais connexion refusée (boutique suspendue…) ou
-        # erreur serveur : ce n'est pas un échec d'identifiants.
+    except StoreSuspendedError:
+        # Levée seulement après vérification du mot de passe : identifiants
+        # justes, ce n'est pas un échec. Toute autre erreur (identifiants
+        # refusés, panne) laisse la tentative comptée.
         await _clear_login_attempts(attempt_keys)
         raise
     await _clear_login_attempts(attempt_keys)

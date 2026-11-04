@@ -204,6 +204,19 @@ async def test_concurrent_login_burst_is_limited(client: AsyncClient) -> None:
     assert statuses.count(429) == 5
 
 
+async def test_unexpected_error_keeps_attempt_counted(client: AsyncClient) -> None:
+    async def crash(*_: object) -> None:
+        raise RuntimeError("panne base de données")
+
+    with patch("app.modules.auth.service.AuthService.login", new=crash):
+        for _ in range(5):
+            with pytest.raises(RuntimeError):
+                await _login(client, "0700000005")
+
+    # Les erreurs imprévues n'ont pas remis le compteur à zéro.
+    assert await _login(client, "0700000005") == 429
+
+
 async def test_login_failures_limited_per_phone_across_ips(client: AsyncClient) -> None:
     # Brute force distribué : 4 échecs depuis chacune de 5 IP = 20 échecs.
     for i in range(5):
