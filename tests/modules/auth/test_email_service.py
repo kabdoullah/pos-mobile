@@ -5,11 +5,14 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
+from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.email import EmailService
+from app.core.config import settings
+from app.core.email import EmailSendError, EmailService
 from app.core.exceptions import ValidationError
 from app.core.security import hash_password, verify_password
 from app.modules.auth import schemas
@@ -65,6 +68,54 @@ async def test_send_password_reset_email_calls_send() -> None:
             raw_token="xyz789token",
         )
     mock_send.assert_called_once()
+
+
+def _brevo_settings(monkeypatch: pytest.MonkeyPatch, *, enabled: bool = True) -> None:
+    monkeypatch.setattr(settings, "email_enabled", enabled)
+    monkeypatch.setattr(settings, "brevo_api_key", SecretStr("xkeysib-test"))
+    monkeypatch.setattr(settings, "mail_from_email", "expediteur@example.com")
+    monkeypatch.setattr(settings, "mail_from_name", "Ma Caisse")
+
+
+@pytest.mark.asyncio
+async def test_send_posts_to_brevo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_send appelle l'API Brevo avec la clé et le corps attendus."""
+    _brevo_settings(monkeypatch)
+    post = AsyncMock(return_value=httpx.Response(201, json={"messageId": "<id>"}))
+    with patch.object(httpx.AsyncClient, "post", post):
+        await EmailService()._send("user@example.com", "Sujet", "<p>html</p>", "texte")
+
+    post.assert_awaited_once()
+    assert post.call_args.args[0] == "https://api.brevo.com/v3/smtp/email"
+    assert post.call_args.kwargs["headers"] == {"api-key": "xkeysib-test"}
+    assert post.call_args.kwargs["json"] == {
+        "sender": {"name": "Ma Caisse", "email": "expediteur@example.com"},
+        "to": [{"email": "user@example.com"}],
+        "subject": "Sujet",
+        "htmlContent": "<p>html</p>",
+        "textContent": "texte",
+    }
+
+
+@pytest.mark.asyncio
+async def test_send_raises_on_brevo_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Une erreur Brevo remonte avec son statut et son corps (cause exacte)."""
+    _brevo_settings(monkeypatch)
+    body = '{"code":"unauthorized","message":"Sender not valid"}'
+    post = AsyncMock(return_value=httpx.Response(400, text=body))
+    with patch.object(httpx.AsyncClient, "post", post), pytest.raises(EmailSendError) as exc:
+        await EmailService()._send("user@example.com", "Sujet", "<p>html</p>", "texte")
+    assert exc.value.status_code == 400
+    assert exc.value.body == body
+
+
+@pytest.mark.asyncio
+async def test_send_does_nothing_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    _brevo_settings(monkeypatch, enabled=False)
+    post = AsyncMock()
+    with patch.object(httpx.AsyncClient, "post", post):
+        await EmailService()._send("user@example.com", "Sujet", "<p>html</p>", "texte")
+    post.assert_not_awaited()
 
 
 # ---------------------------------------------------------------------------
