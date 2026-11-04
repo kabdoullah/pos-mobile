@@ -16,11 +16,13 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.core.config import settings
 from app.core.db import assert_store_active, get_db, get_tenant_db
+from app.core.email import EmailService, get_email_service
 from app.core.rate_limit import rate_limiter
 from app.core.security import create_admin_token
 from app.main import app
 from app.modules.admin.dependencies import CurrentAdminId, get_admin_db
 from app.modules.admin.models import PlatformAdmin
+from tests.factories import FakeEmailSender
 
 _TEST_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/pos_test"
 _ADMIN_DB_URL = settings.database_url.rsplit("/", 1)[0] + "/postgres"
@@ -133,7 +135,19 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+def email_sender() -> FakeEmailSender:
+    return FakeEmailSender()
+
+
+@pytest.fixture
+def email_service(email_sender: FakeEmailSender) -> EmailService:
+    return EmailService(email_sender)
+
+
+@pytest.fixture
+async def client(
+    db_session: AsyncSession, email_service: EmailService
+) -> AsyncGenerator[AsyncClient, None]:
     """Client HTTP async pour tester les endpoints FastAPI.
 
     Override get_tenant_db pour activer RLS (SET LOCAL ROLE pos_app) :
@@ -153,6 +167,8 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_tenant_db] = override_get_tenant_db
+    # Aucun appel réel au provider email pendant les tests
+    app.dependency_overrides[get_email_service] = lambda: email_service
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
