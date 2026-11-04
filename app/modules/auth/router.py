@@ -1,7 +1,5 @@
 """Routes du module auth."""
 
-import re
-
 from fastapi import APIRouter, Request, status
 
 from app.core.db import DbSession, TenantDbSession
@@ -9,7 +7,7 @@ from app.core.dependencies import CurrentUserId
 from app.core.exceptions import UnauthorizedError
 from app.core.rate_limit import client_ip, rate_limiter
 from app.modules.auth import schemas
-from app.modules.auth.service import AuthService, UserService
+from app.modules.auth.service import AuthService, UserService, normalize_login_phone
 
 router = APIRouter()
 users_router = APIRouter()
@@ -20,7 +18,8 @@ _HOUR = 3600
 # Limites strictes par compte visé, plus larges par IP : les opérateurs mobiles
 # partagent souvent une IP entre de nombreux abonnés (CGNAT).
 #
-# Login : seuls les ÉCHECS comptent, et un succès remet les compteurs à zéro.
+# Login : chaque tentative est comptée, et un succès remet les compteurs à
+# zéro (seuls les échecs restent donc comptés).
 # La limite stricte porte sur (numéro, IP) : un tiers ne peut pas bloquer le
 # compte d'un commerçant depuis une seule IP. La limite par numéro seul, plus
 # large, freine le brute force distribué sur plusieurs IP.
@@ -31,11 +30,6 @@ _FORGOT_PER_EMAIL = 3  # par heure
 _FORGOT_PER_IP = 10  # par heure
 _REGISTER_PER_IP = 10  # par heure
 _RESET_PER_IP = 10  # par heure
-
-
-def _phone_key(phone_number: str) -> str:
-    """Clé stable quel que soit le format saisi (07…, +225 07…) : 10 derniers chiffres."""
-    return re.sub(r"\D", "", phone_number)[-10:]
 
 
 @router.post(
@@ -73,25 +67,36 @@ async def login(
 ) -> schemas.TokenResponse:
     """Authentifie l'utilisateur via numéro de téléphone + mot de passe."""
     ip = client_ip(request)
-    phone = _phone_key(payload.phone_number)
+    # Même normalisation que la recherche en base : une clé ⇔ un compte visé.
+    phone = normalize_login_phone(payload.phone_number)
     await rate_limiter.hit(f"login:ip:{ip}", _LOGIN_PER_IP, _MINUTE)
-    failure_limits = (
-        (f"login:fail:{phone}:{ip}", _LOGIN_FAILS_PER_PHONE_IP, _MINUTE),
-        (f"login:fail:{phone}", _LOGIN_FAILS_PER_PHONE, 15 * _MINUTE),
+    # Familles de clés aux préfixes distincts ; l'IP (sans « | ») précède le
+    # numéro saisi librement, pour qu'aucune saisie ne fabrique la clé d'un autre.
+    attempt_keys = (
+        (f"login:attempt:phone_ip:{ip}|{phone}", _LOGIN_FAILS_PER_PHONE_IP, _MINUTE),
+        (f"login:attempt:phone:{phone}", _LOGIN_FAILS_PER_PHONE, 15 * _MINUTE),
     )
-    for key, limit, window in failure_limits:
-        await rate_limiter.check(key, limit, window)
+    # La tentative est comptée AVANT la vérification (atomiquement) : des
+    # requêtes concurrentes ne peuvent pas toutes passer avant le 1er échec.
+    await rate_limiter.hit_many(attempt_keys)
 
     service = AuthService(db)
     try:
         tokens = await service.login(payload)
     except UnauthorizedError:
-        for key, _, window in failure_limits:
-            await rate_limiter.record(key, window)
+        raise  # échec : la tentative reste comptée
+    except Exception:
+        # Mot de passe juste mais connexion refusée (boutique suspendue…) ou
+        # erreur serveur : ce n'est pas un échec d'identifiants.
+        await _clear_login_attempts(attempt_keys)
         raise
-    for key, _, _ in failure_limits:
-        await rate_limiter.clear(key)
+    await _clear_login_attempts(attempt_keys)
     return tokens
+
+
+async def _clear_login_attempts(keys: tuple[tuple[str, int, int], ...]) -> None:
+    for key, _, _ in keys:
+        await rate_limiter.clear(key)
 
 
 @router.post(

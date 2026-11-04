@@ -9,7 +9,7 @@ import asyncio
 import math
 import time
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from fastapi import Request
 
@@ -36,25 +36,26 @@ class RateLimiter:
         Lève `TooManyRequestsError` si `limit` requêtes ont déjà eu lieu sur les
         `window_seconds` dernières secondes ; la requête refusée n'est pas comptée.
         """
-        async with self._lock:
-            now = self._clock()
-            hits = self._active_hits(key, window_seconds, now)
-            self._raise_if_full(hits, limit, window_seconds, now)
-            hits.append(now)
+        await self.hit_many([(key, limit, window_seconds)])
 
-    async def check(self, key: str, limit: int, window_seconds: float) -> None:
-        """Comme `hit`, mais sans compter la requête (cf. `record`)."""
-        async with self._lock:
-            now = self._clock()
-            self._raise_if_full(
-                self._active_hits(key, window_seconds, now), limit, window_seconds, now
-            )
+    async def hit_many(self, limits: Sequence[tuple[str, int, float]]) -> None:
+        """Enregistre une requête sur plusieurs clés `(key, limit, window_seconds)`.
 
-    async def record(self, key: str, window_seconds: float) -> None:
-        """Compte un événement pour `key` sans vérifier la limite (ex. un échec de login)."""
+        Atomique : soit toutes les clés ont de la place et la requête est
+        comptée sur chacune, soit `TooManyRequestsError` est levée et rien
+        n'est compté. Compter avant de traiter la requête empêche une rafale
+        de requêtes concurrentes de passer avant que la première soit comptée.
+        """
         async with self._lock:
             now = self._clock()
-            self._active_hits(key, window_seconds, now).append(now)
+            active = [
+                (self._active_hits(key, window, now), limit, window)
+                for key, limit, window in limits
+            ]
+            for hits, limit, window in active:
+                self._raise_if_full(hits, limit, window, now)
+            for hits, _, _ in active:
+                hits.append(now)
 
     async def clear(self, key: str) -> None:
         """Oublie le compteur de `key` (ex. login réussi)."""

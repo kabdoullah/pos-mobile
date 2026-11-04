@@ -1,5 +1,6 @@
 """Tests du rate limiting (limiteur en mémoire + branchement sur les routes d'auth)."""
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -8,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from app.core.config import settings
-from app.core.exceptions import TooManyRequestsError
+from app.core.exceptions import TooManyRequestsError, UnauthorizedError
 from app.core.rate_limit import RateLimiter, client_ip
 from app.core.security import hash_password
 from tests.factories import create_user_with_store
@@ -72,15 +73,21 @@ async def test_refused_requests_are_not_counted() -> None:
     await limiter.hit("k", limit=1, window_seconds=60)
 
 
-async def test_check_record_clear() -> None:
+async def test_hit_many_is_all_or_nothing() -> None:
     limiter = RateLimiter(clock=_Clock())
-    await limiter.check("k", limit=1, window_seconds=60)  # ne compte pas
-    await limiter.check("k", limit=1, window_seconds=60)
-    await limiter.record("k", window_seconds=60)
+    await limiter.hit("full", limit=1, window_seconds=60)
+
+    # « full » est plein : « free » ne doit pas être compté non plus.
     with pytest.raises(TooManyRequestsError):
-        await limiter.check("k", limit=1, window_seconds=60)
+        await limiter.hit_many([("free", 1, 60), ("full", 1, 60)])
+    await limiter.hit("free", limit=1, window_seconds=60)
+
+
+async def test_clear_forgets_key() -> None:
+    limiter = RateLimiter(clock=_Clock())
+    await limiter.hit("k", limit=1, window_seconds=60)
     await limiter.clear("k")
-    await limiter.check("k", limit=1, window_seconds=60)
+    await limiter.hit("k", limit=1, window_seconds=60)
 
 
 async def test_keys_are_independent() -> None:
@@ -182,6 +189,19 @@ async def test_login_success_resets_failures(client: AsyncClient, db_session: As
     for _ in range(5):
         assert await _login(client, user.phone_number) == 401
     assert await _login(client, user.phone_number) == 429
+
+
+async def test_concurrent_login_burst_is_limited(client: AsyncClient) -> None:
+    async def slow_failure(*_: object) -> None:
+        await asyncio.sleep(0.05)  # vérification du mot de passe en cours
+        raise UnauthorizedError("Invalid phone number or password.")
+
+    with patch("app.modules.auth.service.AuthService.login", new=slow_failure):
+        statuses = await asyncio.gather(*(_login(client, "0700000004") for _ in range(10)))
+
+    # Sans comptage préalable, les 10 passeraient la vérification ensemble.
+    assert statuses.count(401) == 5
+    assert statuses.count(429) == 5
 
 
 async def test_login_failures_limited_per_phone_across_ips(client: AsyncClient) -> None:
