@@ -54,9 +54,12 @@ class Settings(BaseSettings):
     android_package_names: list[str] = []
     android_cert_sha256_fingerprints: list[str] = []
 
-    # Rate limiting (app/core/rate_limit.py) : nombre de proxys de confiance
-    # devant l'API, qui ajoutent chacun une IP à droite de X-Forwarded-For
-    # (1 = l'edge Render). 0 = ignorer l'en-tête et prendre l'IP de connexion.
+    # Rate limiting (app/core/rate_limit.py) : d'où lire l'IP du client.
+    # CLIENT_IP_HEADER : en-tête écrit par un proxy de confiance qui écrase la
+    # valeur envoyée par le client. Sur Render (toujours derrière Cloudflare) :
+    # CLIENT_IP_HEADER=cf-connecting-ip. Vide = X-Forwarded-For, lu à
+    # TRUSTED_PROXY_COUNT crans de la droite (0 = IP de connexion).
+    client_ip_header: str = ""
     trusted_proxy_count: int = 1
 
     # CORS

@@ -235,7 +235,7 @@ Sur le login, seuls les échecs comptent et un succès remet les compteurs à z�
 
 En cas de dépassement, le serveur renvoie `429` au format d'erreur habituel (`code: "RATE_LIMITED"`) avec un header `Retry-After` indiquant le nombre de secondes à attendre.
 
-L'IP client est lue dans `X-Forwarded-For` à `TRUSTED_PROXY_COUNT` crans de la droite (défaut 1 : l'edge Render) ; les entrées de gauche, falsifiables par le client, sont ignorées.
+L'IP client est lue dans l'en-tête `CLIENT_IP_HEADER` s'il est défini. Sur Render, toujours derrière Cloudflare, utiliser `cf-connecting-ip`, que Cloudflare écrase. `X-Forwarded-For` y vaut `<client>, <edge Cloudflare>` et le client peut y ajouter des entrées à gauche. Sans `CLIENT_IP_HEADER`, on lit `X-Forwarded-For` à `TRUSTED_PROXY_COUNT` crans de la droite. Constaté en prod le 2026-11-04 : avec `TRUSTED_PROXY_COUNT=1`, la clé était l'IP de l'edge Cloudflare (compteur partagé entre utilisateurs).
 
 **Limite connue** : les compteurs vivent dans le process. Ils repartent à zéro à chaque redéploiement et ne sont pas partagés entre instances : passer à un stockage partagé avant de lancer plusieurs workers ou instances.
 

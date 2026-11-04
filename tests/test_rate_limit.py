@@ -120,6 +120,31 @@ def test_client_ip_falls_back_to_connection(monkeypatch: pytest.MonkeyPatch) -> 
     assert client_ip(_request("41.202.1.2", host="10.0.0.7")) == "10.0.0.7"
 
 
+def test_client_ip_reads_configured_header(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Derrière Cloudflare (Render) : l'IP vient de CF-Connecting-IP, pas de XFF."""
+    monkeypatch.setattr(settings, "client_ip_header", "cf-connecting-ip")
+    monkeypatch.setattr(settings, "trusted_proxy_count", 1)
+    request = Request(
+        {
+            "type": "http",
+            "headers": [
+                (b"x-forwarded-for", b"6.6.6.6, 41.202.1.2, 104.22.17.40"),
+                (b"cf-connecting-ip", b"41.202.1.2"),
+            ],
+            "client": ("10.21.157.68", 1234),
+        }
+    )
+    assert client_ip(request) == "41.202.1.2"
+
+
+def test_client_ip_header_missing_falls_back_to_forwarded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "client_ip_header", "cf-connecting-ip")
+    monkeypatch.setattr(settings, "trusted_proxy_count", 1)
+    assert client_ip(_request("6.6.6.6, 41.202.1.2")) == "41.202.1.2"
+
+
 # ---------------------------------------------------------------------------
 # Routes d'auth
 # ---------------------------------------------------------------------------
