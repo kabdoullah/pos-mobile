@@ -35,11 +35,12 @@ from tests.factories import FakeEmailSender
 _PHONE_COUNTER = iter(range(1000, 9999))
 
 
-async def _create_user(db: AsyncSession, email: str) -> User:
+async def _create_user(db: AsyncSession, email: str, *, verified: bool = True) -> User:
     user = User(
         phone_number=f"+22507{next(_PHONE_COUNTER):07d}",
         email=email,
         password_hash=hash_password("OldPassword1"),
+        email_verified_at=datetime.now(UTC) if verified else None,
     )
     return await UserRepository(db).create(user)
 
@@ -61,7 +62,10 @@ async def test_send_verification_email_sends_once(
     )
     assert len(email_sender.sent) == 1
     assert email_sender.sent[0]["to_email"] == "user@example.com"
-    assert "/auth/verify-email?token=abc123token" in email_sender.sent[0]["text_body"]
+    sent = email_sender.sent[0]
+    for body in (sent["html_body"], sent["text_body"]):
+        assert "/auth/verify-email#token=abc123token" in body
+        assert "?token=" not in body
 
 
 @pytest.mark.asyncio
@@ -297,7 +301,7 @@ async def test_send_password_reset_unknown_email_is_silent(
 async def test_send_password_reset_known_email_sends(
     db_session: AsyncSession, email_service: EmailService, email_sender: FakeEmailSender
 ) -> None:
-    """Email connu → token créé en DB + SMTP appelé."""
+    """Email connu et vérifié → token créé en DB + SMTP appelé."""
     user = await _create_user(db_session, "known@example.com")
 
     await AuthService(db_session, email_service).send_password_reset(user.email)  # type: ignore[arg-type]
@@ -308,3 +312,17 @@ async def test_send_password_reset_known_email_sends(
     token = (await db_session.execute(stmt)).scalar_one_or_none()
     assert token is not None
     assert token.used_at is None
+
+
+@pytest.mark.asyncio
+async def test_send_password_reset_unverified_email_is_silent(
+    db_session: AsyncSession, email_service: EmailService, email_sender: FakeEmailSender
+) -> None:
+    """Email non vérifié → aucun token ni email : un squatteur d'adresse ne reçoit rien."""
+    user = await _create_user(db_session, "unverified@example.com", verified=False)
+
+    await AuthService(db_session, email_service).send_password_reset(user.email)  # type: ignore[arg-type]
+
+    assert email_sender.sent == []
+    stmt = select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+    assert (await db_session.execute(stmt)).scalar_one_or_none() is None

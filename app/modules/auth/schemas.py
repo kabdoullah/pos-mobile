@@ -1,5 +1,6 @@
 """Schémas Pydantic du module auth."""
 
+from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -64,6 +65,12 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(..., min_length=8, max_length=128)
 
 
+class VerifyEmailRequest(BaseModel):
+    """Confirmation d'adresse email avec le token reçu par email."""
+
+    token: str = Field(..., min_length=1, max_length=256)
+
+
 class UserMeResponse(BaseModel):
     """Profil de l'utilisateur connecté."""
 
@@ -72,6 +79,8 @@ class UserMeResponse(BaseModel):
     id: UUID
     phone_number: str
     email: str | None
+    # None tant que l'email n'est pas vérifié : le reset de mot de passe est alors refusé.
+    email_verified_at: datetime | None = None
     display_name: str | None = None
 
 
