@@ -11,7 +11,7 @@ from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.email import EmailService
+from app.core.email import EmailService, password_reset_link
 from app.core.exceptions import (
     ConflictError,
     ForbiddenError,
@@ -48,6 +48,23 @@ def normalize_login_phone(phone_number: str) -> str:
     if re.match(r"^0\d{9}$", phone):
         phone = "+225" + phone
     return phone
+
+
+_PASSWORD_RESET_TTL = timedelta(hours=1)
+
+
+async def _issue_password_reset_token(
+    repo: PasswordResetTokenRepository, user_id: UUID
+) -> tuple[str, datetime]:
+    """Crée un token de reset (1h, usage unique, stocké hashé) ; retourne le token brut."""
+    raw_token = secrets.token_urlsafe(32)
+    expires_at = datetime.now(UTC) + _PASSWORD_RESET_TTL
+    await repo.create(
+        user_id=user_id,
+        token_hash=hashlib.sha256(raw_token.encode()).hexdigest(),
+        expires_at=expires_at,
+    )
+    return raw_token, expires_at
 
 
 class AuthService:
@@ -212,15 +229,7 @@ class AuthService:
             # Ne révèle ni l'existence du compte ni l'état de vérification
             return
 
-        raw_token = secrets.token_urlsafe(32)
-        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-        expires_at = datetime.now(UTC) + timedelta(hours=1)
-
-        await self.password_reset_repo.create(
-            user_id=user.id,
-            token_hash=token_hash,
-            expires_at=expires_at,
-        )
+        raw_token, _ = await _issue_password_reset_token(self.password_reset_repo, user.id)
         # Best-effort : échec SMTP ne doit pas révéler d'info ni renvoyer 500.
         try:
             await self.email_service.send_password_reset_email(
@@ -283,6 +292,19 @@ class UserService:
         await StoreService(self.db).purge_for_user(user.id)
         await self.repo.delete(user)
         logger.info("account_deleted", user_id=str(user_id))
+
+    async def issue_password_reset_link(self, user_id: UUID) -> tuple[User, str, datetime]:
+        """Lien de reset remis par le support (ADR-0014), quel que soit l'état de l'email.
+
+        Retourne (utilisateur, lien, expiration). Le lien n'est jamais journalisé.
+        """
+        user = await self.get_me(user_id)
+        if not user.is_active:
+            raise ConflictError("User account is inactive.")
+        raw_token, expires_at = await _issue_password_reset_token(
+            PasswordResetTokenRepository(self.db), user.id
+        )
+        return user, password_reset_link(raw_token), expires_at
 
     async def get_display_name(self, user_id: UUID | None) -> str | None:
         """Nom affiché d'un utilisateur (reçu), ou None s'il n'est pas renseigné."""

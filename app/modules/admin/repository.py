@@ -16,6 +16,15 @@ def _like_pattern(search: str) -> str:
     return f"%{escaped}%"
 
 
+# Compte commerçant + boutique éventuelle (lecture de stores via le flag RLS admin).
+_USERS_SOURCE = "FROM users u LEFT JOIN stores s ON s.owner_id = u.id"
+_USER_COLUMNS = (
+    "u.id, u.phone_number, u.display_name, u.email, "
+    "u.email_verified_at IS NOT NULL AS email_verified, u.is_active, "
+    "u.created_at, s.id AS store_id, s.name AS store_name"
+)
+
+
 class PlatformMetricsRow(TypedDict):
     """Ligne d'indicateurs plateforme (montants en Decimal, comptes en int)."""
 
@@ -344,16 +353,14 @@ class AdminRepository:
         elif store == "without":
             conditions.append("s.id IS NULL")
         where = " AND ".join(conditions)
-        source = "FROM users u LEFT JOIN stores s ON s.owner_id = u.id"
+        source = _USERS_SOURCE
         total = (
             await self.db.execute(text(f"SELECT count(*) {source} WHERE {where}"), params)
         ).scalar_one()
         rows = await self.db.execute(
             text(
                 f"""
-                SELECT u.id, u.phone_number, u.display_name, u.email,
-                       u.email_verified_at IS NOT NULL AS email_verified, u.is_active,
-                       u.created_at, s.id AS store_id, s.name AS store_name
+                SELECT {_USER_COLUMNS}
                 {source}
                 WHERE {where}
                 ORDER BY u.created_at DESC, u.id LIMIT :limit OFFSET :offset
@@ -363,6 +370,15 @@ class AdminRepository:
         )
         return [dict(r) for r in rows.mappings()], int(total)
 
+    async def get_user_item(self, user_id: UUID) -> dict[str, Any] | None:
+        """Un compte commerçant avec sa boutique éventuelle (flag RLS admin requis)."""
+        row = await self.db.execute(
+            text(f"SELECT {_USER_COLUMNS} {_USERS_SOURCE} WHERE u.id = :user_id"),
+            {"user_id": user_id},
+        )
+        found = row.mappings().one_or_none()
+        return dict(found) if found is not None else None
+
     async def add_audit_entry(
         self,
         *,
@@ -371,6 +387,8 @@ class AdminRepository:
         action: str,
         store_id: UUID | None = None,
         store_name: str | None = None,
+        user_id: UUID | None = None,
+        user_phone: str | None = None,
         reason: str | None = None,
     ) -> None:
         """Ajoute une entrée au journal (dans la transaction courante)."""
@@ -381,6 +399,8 @@ class AdminRepository:
                 action=action,
                 store_id=store_id,
                 store_name=store_name,
+                user_id=user_id,
+                user_phone=user_phone,
                 reason=reason,
             )
         )
@@ -398,6 +418,8 @@ class AdminRepository:
             log.admin_email,
             log.store_id,
             log.store_name,
+            log.user_id,
+            log.user_phone,
             log.reason,
         )
         count_stmt = select(func.count()).select_from(log)

@@ -25,8 +25,10 @@ from app.modules.admin.schemas import (
     AuditEntry,
     AuditPage,
     DailyPoint,
+    PasswordResetLinkResponse,
     PlatformMetrics,
 )
+from app.modules.auth.service import UserService
 from app.modules.stores.service import StoreService
 
 MAX_FAILED_LOGINS = 5
@@ -171,6 +173,29 @@ class AdminService:
             search=search, store=store, limit=limit, offset=offset
         )
         return AdminUserPage(items=[AdminUserItem(**r) for r in rows], total=total)
+
+    async def issue_password_reset_link(
+        self, user_id: UUID, admin_id: UUID, reason: str
+    ) -> PasswordResetLinkResponse:
+        """Lien de reset à transmettre au commerçant par le support (ADR-0014), journalisé."""
+        row = await self.repo.get_user_item(user_id)
+        if row is None:
+            raise NotFoundError("User not found.")
+        admin = await self.repo.get_by_id(admin_id)
+        if admin is None:
+            raise NotFoundError("Admin not found.")
+        _, link, expires_at = await UserService(self.db).issue_password_reset_link(user_id)
+        await self.repo.add_audit_entry(
+            admin_id=admin.id,
+            admin_email=admin.email,
+            action="user_password_reset_link",
+            store_id=row["store_id"],
+            store_name=row["store_name"],
+            user_id=user_id,
+            user_phone=row["phone_number"],
+            reason=reason,
+        )
+        return PasswordResetLinkResponse(link=link, expires_at=expires_at)
 
     async def list_audit(self, *, store_id: UUID | None, limit: int, offset: int) -> AuditPage:
         """Journal des actions admin."""

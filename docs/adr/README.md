@@ -28,6 +28,7 @@ Pourquoi écrire des ADRs :
 | [0010](0010-retours-clients.md) | Retours clients, remboursement manuel et validation serveur | Accepté | 2026-10-17 |
 | [0011](0011-suppression-de-compte.md) | Suppression de compte depuis l'app et purge de la boutique | Accepté | 2026-10-17 |
 | [0012](0012-acces-administrateur-plateforme.md) | Accès administrateur plateforme (backoffice) | Accepté | 2026-10-31 |
+| [0014](0014-lien-reset-par-le-support.md) | Lien de réinitialisation du mot de passe généré par le support | Accepté | 2026-11-05 |
 | [0013](0013-email-obligatoire-verifie.md) | Email obligatoire et vérifié pour la récupération du compte | Proposé | 2026-11-05 |
 
 ## Comment écrire un nouvel ADR

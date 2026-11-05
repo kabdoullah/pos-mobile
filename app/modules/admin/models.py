@@ -54,14 +54,16 @@ class PlatformAdmin(Base):
 class AdminAuditLogEntry(Base):
     """Action d'un admin plateforme (immuable, survit à la purge de la boutique).
 
-    store_id n'a pas de clé étrangère : l'entrée reste après la suppression de
-    la boutique (ADR-0011). admin_email garde la trace si l'admin est supprimé.
+    store_id et user_id n'ont pas de clé étrangère : l'entrée reste après la
+    suppression de la boutique ou du compte (ADR-0011). admin_email et
+    user_phone gardent la trace.
     """
 
     __tablename__ = "admin_audit_log"
     __table_args__ = (
         CheckConstraint(
-            "action IN ('login', 'store_suspended', 'store_reactivated')",
+            "action IN ('login', 'store_suspended', 'store_reactivated', "
+            "'user_password_reset_link')",
             name="chk_admin_audit_log_action",
         ),
     )
@@ -76,6 +78,8 @@ class AdminAuditLogEntry(Base):
     action: Mapped[str] = mapped_column(String(30), nullable=False)
     store_id: Mapped[UUID | None] = mapped_column(SQLUUID(as_uuid=True), nullable=True)
     store_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    user_id: Mapped[UUID | None] = mapped_column(SQLUUID(as_uuid=True), nullable=True)
+    user_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=text("clock_timestamp()"), nullable=False
