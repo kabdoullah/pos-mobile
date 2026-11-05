@@ -10,7 +10,12 @@ from app.modules.auth.schemas import RegisterRequest
     "phone", ["+2250700000001", "+2250500000000", "+2250102030405", "+33612345678"]
 )
 def test_register_accepts_real_mobile_numbers(phone: str) -> None:
-    assert RegisterRequest(phone_number=phone, password="secret123").phone_number == phone
+    assert (
+        RegisterRequest(
+            phone_number=phone, password="secret123", email="user@example.com"
+        ).phone_number
+        == phone
+    )
 
 
 @pytest.mark.parametrize(
@@ -27,4 +32,4 @@ def test_register_accepts_real_mobile_numbers(phone: str) -> None:
 )
 def test_register_rejects_fake_numbers(phone: str) -> None:
     with pytest.raises(ValidationError):
-        RegisterRequest(phone_number=phone, password="secret123")
+        RegisterRequest(phone_number=phone, password="secret123", email="user@example.com")

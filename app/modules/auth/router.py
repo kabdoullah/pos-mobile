@@ -56,7 +56,7 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 async def register(
     payload: schemas.RegisterRequest, service: AuthServiceDep, request: Request
 ) -> schemas.RegisterResponse:
-    """Crée un compte utilisateur avec numéro de téléphone + mot de passe. Email optionnel."""
+    """Crée un compte utilisateur avec numéro de téléphone, mot de passe et email."""
     await rate_limiter.hit(f"register:ip:{client_ip(request)}", _REGISTER_PER_IP, _HOUR)
     user = await service.register(payload)
     message = (

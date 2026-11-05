@@ -61,15 +61,13 @@ class AuthService:
         self.email_service = email_service
 
     async def register(self, payload: schemas.RegisterRequest) -> User:
-        """Crée un nouvel utilisateur. Phone requis, email optionnel."""
+        """Crée un nouvel utilisateur. Phone et email requis."""
         existing_phone = await self.repo.get_by_phone(payload.phone_number)
         if existing_phone is not None:
             raise ConflictError("This phone number is already registered.", field="phone_number")
 
-        if payload.email is not None:
-            existing_email = await self.repo.get_by_email(payload.email)
-            if existing_email is not None:
-                raise ConflictError("This email is already registered.", field="email")
+        if await self.repo.get_by_email(payload.email) is not None:
+            raise ConflictError("This email is already registered.", field="email")
 
         user = User(
             phone_number=payload.phone_number,
@@ -79,25 +77,24 @@ class AuthService:
         await self.repo.create(user)
         await StoreService(self.db).create_default_for_user(user.id)
 
-        if payload.email is not None:
-            raw_token = secrets.token_urlsafe(32)
-            token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-            expires_at = datetime.now(UTC) + timedelta(hours=24)
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        expires_at = datetime.now(UTC) + timedelta(hours=24)
 
-            await self.email_verification_repo.create(
-                user_id=user.id,
-                token_hash=token_hash,
-                expires_at=expires_at,
+        await self.email_verification_repo.create(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+        # Best-effort : un échec SMTP ne doit pas bloquer l'inscription.
+        try:
+            await self.email_service.send_verification_email(
+                to_email=payload.email,
+                user_name=payload.email,
+                raw_token=raw_token,
             )
-            # Best-effort : un échec SMTP ne doit pas bloquer l'inscription.
-            try:
-                await self.email_service.send_verification_email(
-                    to_email=payload.email,
-                    user_name=payload.email,
-                    raw_token=raw_token,
-                )
-            except Exception:
-                logger.exception("verification_email_send_failed", user_id=str(user.id))
+        except Exception:
+            logger.exception("verification_email_send_failed", user_id=str(user.id))
 
         return user
 

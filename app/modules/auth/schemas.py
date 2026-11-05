@@ -12,7 +12,8 @@ class RegisterRequest(BaseModel):
 
     phone_number: str = Field(..., min_length=8, max_length=20)
     password: str = Field(..., min_length=8, max_length=128)
-    email: EmailStr | None = None
+    # Obligatoire : seul canal de réinitialisation du mot de passe.
+    email: EmailStr
 
     @field_validator("phone_number")
     @classmethod

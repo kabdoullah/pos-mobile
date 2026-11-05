@@ -17,7 +17,8 @@ async def seed_superadmin() -> None:
     """Crée le compte super admin au démarrage si SUPERADMIN_PHONE est défini.
 
     Idempotent : si le numéro existe déjà, ne fait rien.
-    Skippé silencieusement si SUPERADMIN_PHONE ou SUPERADMIN_PASSWORD sont absents.
+    Skippé silencieusement si SUPERADMIN_PHONE ou SUPERADMIN_PASSWORD sont absents,
+    avec un warning si SUPERADMIN_EMAIL manque (l'email est requis à l'inscription).
     """
     phone = settings.superadmin_phone.strip()
     password = settings.superadmin_password.get_secret_value().strip()
@@ -25,7 +26,10 @@ async def seed_superadmin() -> None:
     if not phone or not password:
         return
 
-    email: str | None = settings.superadmin_email.strip() or None
+    email = settings.superadmin_email.strip()
+    if not email:
+        logger.warning("superadmin_seed_skipped_missing_email")
+        return
 
     async with AsyncSessionLocal() as session:
         try:
