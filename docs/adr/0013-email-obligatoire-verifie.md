@@ -29,6 +29,14 @@ Conséquences observées :
 - `GET /auth/verify-email` sert une page de confirmation. Le token est envoyé à `POST /api/v1/auth/verify-email` seulement au clic, pour que les scanners de liens des messageries ne valident pas l'adresse à la place de son propriétaire.
 - `POST /api/v1/auth/resend-verification` (connecté, 3 par heure) invalide les anciens liens et en renvoie un nouveau. L'app le propose dans Paramètres → Compte, d'après `email_verified_at` exposé par `GET /api/v1/users/me`.
 
+### Comptes existants : ajouter ou corriger l'email depuis l'app
+
+- `PUT /api/v1/users/me/email` (connecté, 5 appels par heure) prend `{email, password}`. Le mot de passe est revérifié (403 s'il est faux), pour qu'une session ouverte ne suffise pas à détourner la récupération du compte.
+- Il sert à ajouter un email aux comptes créés sans, ou à corriger un email **pas encore vérifié** (faute de frappe à l'inscription). Un email vérifié ne peut pas être remplacé (409). Un email déjà utilisé par un autre compte donne aussi un 409.
+- La nouvelle adresse repart non vérifiée : les anciens liens sont invalidés et un nouveau lien est envoyé.
+- Les emails sont enregistrés en minuscules, à l'inscription comme à la modification (contrainte `chk_users_email_lowercase`).
+- Mobile : une bannière sur l'accueil (« Ajoutez un email » / « Confirmez votre email ») ouvre directement l'action. « Plus tard » la masque 7 jours sur l'appareil. Elle n'est jamais bloquante.
+
 ### Réinitialisation du mot de passe : seulement vers une adresse vérifiée
 
 - `forgot-password` n'envoie le lien que si `email_verified_at` est renseigné. Sinon, la réponse reste un 204 silencieux, pour ne révéler ni l'existence du compte ni son état de vérification.
@@ -68,7 +76,7 @@ Rejeté pour l'instant : le lien doit aussi fonctionner depuis un PC ou un autre
 
 - **Comptes existants** : aucun n'est vérifié au déploiement. Ils ne peuvent plus réinitialiser leur mot de passe avant d'avoir confirmé leur email depuis Paramètres → Compte. Le backend et la version mobile doivent être publiés ensemble.
 - **Friction à l'inscription** : les commerçants sans email actif, cas identifié par ADR-0006, doivent en créer un ou se faire accompagner, avec un risque d'abandon.
-- **Anciens comptes sans email** : ils n'ont toujours aucune récupération en self-service, et aucun endpoint ne permet d'ajouter un email.
+- **Anciens comptes sans email** : ils doivent ajouter et confirmer un email depuis l'app, la bannière de l'accueil les y invite. Ceux qui ont déjà oublié leur mot de passe ne peuvent pas se connecter pour le faire : seul le support peut les aider.
 - **Squat d'adresse** : il reste possible de bloquer l'inscription d'une adresse sans la posséder. Résolution manuelle par le support.
 - **Ancienne app** : elle envoie une inscription sans email et reçoit une 422 tant qu'elle n'est pas mise à jour.
 
@@ -84,4 +92,4 @@ Rejeté pour l'instant : le lien doit aussi fonctionner depuis un PC ou un autre
 - **Squat signalé** : des cas réels arrivent au support. Il faudrait alors passer à l'unicité limitée aux emails vérifiés (index partiel et migration).
 - **Budget SMS disponible** : un fournisseur à coût acceptable (ou gratuit, type WhatsApp OTP) rendrait l'OTP téléphone préférable pour une base phone-first.
 - **Peu de comptes vérifiés** : beaucoup de comptes existants n'ont toujours pas vérifié leur email plusieurs semaines après le déploiement. Il faudrait alors une relance in-app plus visible (bannière à l'accueil) ou un renvoi en masse.
-- **Changement d'email** : si l'ajout ou la modification de l'email depuis l'app est développé, le changement doit repasser par la vérification, et cet ADR sera à compléter.
+- **Remplacement d'un email confirmé** : si ce besoin devient fréquent au support, il faut un flux dédié qui prévient l'ancienne adresse et permet d'annuler le changement, pour qu'un vol de session ne permette pas de détourner la récupération.

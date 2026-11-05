@@ -113,6 +113,29 @@ class AuthService:
             return
         await self._send_verification(user.id, user.email)
 
+    async def update_email(self, user_id: UUID, email: str, password: str) -> User:
+        """Ajoute un email au compte, ou corrige un email pas encore vérifié.
+
+        Mot de passe revérifié (403 s'il est faux, comme delete_me) : une session
+        ouverte ne suffit pas à détourner la récupération du compte. Un email
+        vérifié ne peut pas être remplacé ici (il faudrait prévenir l'ancienne
+        adresse). Envoie le lien de vérification à la nouvelle adresse.
+        """
+        user = await self.repo.get_by_id(user_id)
+        if user is None:
+            raise NotFoundError("User not found.")
+        if not verify_password(password, user.password_hash):
+            raise ForbiddenError("Invalid password.")
+        if user.email_verified_at is not None:
+            raise ConflictError("A verified email cannot be changed.", field="email")
+        if user.email != email:
+            if await self.repo.get_by_email(email) is not None:
+                raise ConflictError("This email is already registered.", field="email")
+            user = await self.repo.update_email(user, email)
+            logger.info("account_email_updated", user_id=str(user.id))
+        await self._send_verification(user.id, email)
+        return user
+
     async def verify_email(self, token: str) -> None:
         """Confirme l'adresse email via le token reçu par email."""
         token_hash = hashlib.sha256(token.encode()).hexdigest()
