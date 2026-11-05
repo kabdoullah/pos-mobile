@@ -66,7 +66,24 @@ class SuspendRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
 
 
-AuditAction = Literal["login", "store_suspended", "store_reactivated"]
+class PasswordResetLinkRequest(BaseModel):
+    """Génération d'un lien de reset par le support (ADR-0014)."""
+
+    reason: str = Field(
+        min_length=3,
+        max_length=500,
+        description="Comment l'identité du commerçant a été vérifiée.",
+    )
+
+
+class PasswordResetLinkResponse(BaseModel):
+    """Lien à transmettre au numéro du compte, affiché une seule fois."""
+
+    link: str
+    expires_at: datetime
+
+
+AuditAction = Literal["login", "store_suspended", "store_reactivated", "user_password_reset_link"]
 
 
 class AuditEntry(BaseModel):
@@ -78,6 +95,8 @@ class AuditEntry(BaseModel):
     admin_email: str
     store_id: UUID | None
     store_name: str | None
+    user_id: UUID | None
+    user_phone: str | None
     reason: str | None
 
 

@@ -3,7 +3,7 @@
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Query, Response, status
 
 from app.core.db import DbSession
 from app.modules.admin import schemas
@@ -133,6 +133,24 @@ async def list_users(
     return await AdminService(db).list_users(search=search, store=store, limit=limit, offset=offset)
 
 
+@router.post(
+    "/users/{user_id}/password-reset-link",
+    response_model=schemas.PasswordResetLinkResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Générer un lien de réinitialisation du mot de passe",
+)
+async def issue_password_reset_link(
+    user_id: UUID,
+    payload: schemas.PasswordResetLinkRequest,
+    response: Response,
+    db: AdminDbSession,
+    admin_id: CurrentAdminId,
+) -> schemas.PasswordResetLinkResponse:
+    """Lien 1h à usage unique, à transmettre au numéro du compte (ADR-0014)."""
+    response.headers["Cache-Control"] = "no-store"
+    return await AdminService(db).issue_password_reset_link(user_id, admin_id, payload.reason)
+
+
 @router.get(
     "/audit-log",
     response_model=schemas.AuditPage,
@@ -145,5 +163,5 @@ async def list_audit_log(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> schemas.AuditPage:
-    """Connexions, suspensions et réactivations, de la plus récente à la plus ancienne."""
+    """Connexions, suspensions, réactivations et liens de reset, du plus récent au plus ancien."""
     return await AdminService(db).list_audit(store_id=store_id, limit=limit, offset=offset)

@@ -105,10 +105,7 @@ class EmailService:
         self, to_email: str, user_name: str, raw_token: str
     ) -> None:
         """Envoie le lien de réinitialisation de mot de passe (expire 1h)."""
-        # Token dans le fragment (#) : jamais envoyé au serveur par le navigateur,
-        # il n'apparaît donc dans aucun log d'accès (page de secours, proxys).
-        # L'app le lit depuis l'App Link.
-        link = f"{settings.app_frontend_url}/auth/reset-password#token={raw_token}"
+        link = password_reset_link(raw_token)
         context = {"user_name": user_name, "link": link, "app_name": settings.mail_from_name}
         await self._sender.send(
             to_email=to_email,
@@ -116,6 +113,16 @@ class EmailService:
             html_body=self._render("password_reset.html", context),
             text_body=self._render("password_reset.txt", context),
         )
+
+
+def password_reset_link(raw_token: str) -> str:
+    """Lien de réinitialisation (email ou transmis par le support, ADR-0014).
+
+    Token dans le fragment (#) : jamais envoyé au serveur par le navigateur,
+    il n'apparaît donc dans aucun log d'accès (page de secours, proxys).
+    L'app le lit depuis l'App Link.
+    """
+    return f"{settings.app_frontend_url}/auth/reset-password#token={raw_token}"
 
 
 def get_email_service() -> EmailService:
