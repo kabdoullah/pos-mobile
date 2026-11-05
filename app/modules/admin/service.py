@@ -90,6 +90,7 @@ class AdminService:
             stores_active_7d=row["stores_active_7d"],
             stores_inactive_14d=row["stores_inactive_14d"],
             stores_suspended=row["stores_suspended"],
+            stores_email_verified=row["stores_email_verified"],
             sales_today_count=row["sales_today_count"],
             sales_today_amount=str(row["sales_today_amount"]),
             sales_7d_count=row["sales_7d_count"],
