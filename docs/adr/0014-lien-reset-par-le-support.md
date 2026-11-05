@@ -2,7 +2,7 @@
 
 ## Statut
 
-Proposé — 5 novembre 2026. Complète ADR-0012 (fin de « aucune action sur les comptes utilisateurs ») et ADR-0013 (récupération des comptes sans email vérifié).
+Accepté — 5 novembre 2026. Complète ADR-0012 (fin de « aucune action sur les comptes utilisateurs ») et ADR-0013 (récupération des comptes sans email vérifié).
 
 ## Contexte
 
