@@ -16,9 +16,15 @@ from app.core.security import create_admin_token, hash_password, verify_password
 from app.modules.admin.repository import AdminRepository
 from app.modules.admin.schemas import (
     AdminLoginRequest,
+    AdminStoreDetail,
     AdminStoreItem,
     AdminStorePage,
     AdminTokenResponse,
+    AdminUserItem,
+    AdminUserPage,
+    AuditEntry,
+    AuditPage,
+    DailyPoint,
     PlatformMetrics,
 )
 from app.modules.stores.service import StoreService
@@ -64,6 +70,7 @@ class AdminService:
             raise UnauthorizedError(_INVALID_CREDENTIALS)
 
         await self.repo.register_successful_login(admin.id)
+        await self.repo.add_audit_entry(admin_id=admin.id, admin_email=admin.email, action="login")
         return AdminTokenResponse(
             access_token=create_admin_token(admin.id),
             token_type="bearer",  # noqa: S106
@@ -91,6 +98,7 @@ class AdminService:
             stores_inactive_14d=row["stores_inactive_14d"],
             stores_suspended=row["stores_suspended"],
             stores_email_verified=row["stores_email_verified"],
+            users_without_store=row["users_without_store"],
             sales_today_count=row["sales_today_count"],
             sales_today_amount=str(row["sales_today_amount"]),
             sales_7d_count=row["sales_7d_count"],
@@ -114,11 +122,57 @@ class AdminService:
         return AdminStorePage(items=[AdminStoreItem(**r) for r in rows], total=total)
 
     async def set_store_suspension(
-        self, store_id: UUID, suspended: bool, reason: str | None = None
+        self, store_id: UUID, suspended: bool, admin_id: UUID, reason: str | None = None
     ) -> AdminStoreItem:
-        """Suspend ou réactive une boutique (écriture via le module stores)."""
+        """Suspend ou réactive une boutique (écriture via le module stores) et le journalise."""
         await StoreService(self.db).set_suspension(store_id, suspended, reason)
         row = await self.repo.get_store_item(store_id)
         if row is None:
             raise NotFoundError("Store not found.")
+        admin = await self.repo.get_by_id(admin_id)
+        if admin is None:
+            raise NotFoundError("Admin not found.")
+        await self.repo.add_audit_entry(
+            admin_id=admin.id,
+            admin_email=admin.email,
+            action="store_suspended" if suspended else "store_reactivated",
+            store_id=store_id,
+            store_name=row["name"],
+            reason=reason if suspended else None,
+        )
         return AdminStoreItem(**row)
+
+    async def get_store_detail(self, store_id: UUID) -> AdminStoreDetail:
+        """Fiche boutique avec ses 20 dernières actions admin."""
+        row = await self.repo.get_store_detail(store_id)
+        if row is None:
+            raise NotFoundError("Store not found.")
+        history, _ = await self.repo.list_audit(store_id=store_id, limit=20, offset=0)
+        return AdminStoreDetail(
+            **{**row, "sales_30d_amount": str(row["sales_30d_amount"])},
+            history=[AuditEntry(**h) for h in history],
+        )
+
+    async def get_daily_metrics(self, days: int) -> list[DailyPoint]:
+        """Série quotidienne de l'activité plateforme."""
+        rows = await self.repo.daily_metrics(days)
+        return [DailyPoint(**{**r, "sales_amount": str(r["sales_amount"])}) for r in rows]
+
+    async def list_users(
+        self,
+        *,
+        search: str | None,
+        store: Literal["all", "with", "without"],
+        limit: int,
+        offset: int,
+    ) -> AdminUserPage:
+        """Comptes commerçants, avec ou sans boutique."""
+        rows, total = await self.repo.list_users(
+            search=search, store=store, limit=limit, offset=offset
+        )
+        return AdminUserPage(items=[AdminUserItem(**r) for r in rows], total=total)
+
+    async def list_audit(self, *, store_id: UUID | None, limit: int, offset: int) -> AuditPage:
+        """Journal des actions admin."""
+        rows, total = await self.repo.list_audit(store_id=store_id, limit=limit, offset=offset)
+        return AuditPage(items=[AuditEntry(**r) for r in rows], total=total)

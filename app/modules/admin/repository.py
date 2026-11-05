@@ -4,10 +4,16 @@ from decimal import Decimal
 from typing import Any, Literal, TypedDict, cast
 from uuid import UUID
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modules.admin.models import PlatformAdmin
+from app.modules.admin.models import AdminAuditLogEntry, PlatformAdmin
+
+
+def _like_pattern(search: str) -> str:
+    """Motif ILIKE « contient », jokers échappés (à utiliser avec ESCAPE '\\')."""
+    escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
 
 
 class PlatformMetricsRow(TypedDict):
@@ -19,6 +25,7 @@ class PlatformMetricsRow(TypedDict):
     stores_active_7d: int
     stores_inactive_14d: int
     stores_email_verified: int
+    users_without_store: int
     sales_today_count: int
     sales_today_amount: Decimal
     sales_7d_count: int
@@ -136,12 +143,16 @@ class AdminRepository:
                             WHERE created_at >= now() - interval '7 days'), 0
                         ) AS sales_7d_amount
                     FROM sales
+                ), user_stats AS (
+                    SELECT count(*) AS users_without_store
+                    FROM users u
+                    WHERE NOT EXISTS (SELECT 1 FROM stores s WHERE s.owner_id = u.id)
                 )
                 SELECT stores_total, stores_new_7d, stores_suspended, stores_active_7d,
-                       stores_inactive_14d, stores_email_verified, sales_today_count,
-                       sales_today_amount,
+                       stores_inactive_14d, stores_email_verified, users_without_store,
+                       sales_today_count, sales_today_amount,
                        sales_7d_count, sales_7d_amount
-                FROM store_stats, sale_stats
+                FROM store_stats, sale_stats, user_stats
                 """
             )
         )
@@ -161,8 +172,7 @@ class AdminRepository:
         conditions = ["TRUE"]
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if search:
-            escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-            params["pattern"] = f"%{escaped}%"
+            params["pattern"] = _like_pattern(search)
             conditions.append(
                 "(s.name ILIKE :pattern ESCAPE '\\' OR u.phone_number ILIKE :pattern ESCAPE '\\' "
                 "OR u.email ILIKE :pattern ESCAPE '\\')"
@@ -235,3 +245,167 @@ class AdminRepository:
         )
         row = rows.mappings().first()
         return dict(row) if row else None
+
+    async def get_store_detail(self, store_id: UUID) -> dict[str, Any] | None:
+        """Fiche boutique : champs de la liste + profil, propriétaire et activité 30 j."""
+        rows = await self.db.execute(
+            text(
+                """
+                SELECT s.id, s.name, u.phone_number AS owner_phone, u.email AS owner_email,
+                       u.email_verified_at IS NOT NULL AS owner_email_verified,
+                       s.created_at, s.suspended_at, s.suspension_reason,
+                       s.address, s.phone, s.ncc, s.vat_subject,
+                       u.display_name AS owner_display_name, u.created_at AS owner_created_at,
+                       u.is_active AS owner_is_active,
+                       (SELECT count(*) FROM products p
+                        WHERE p.store_id = s.id AND p.deleted_at IS NULL) AS products_count,
+                       st.last_sale_at, COALESCE(st.sales_count, 0) AS sales_count,
+                       COALESCE(st.sales_30d_count, 0) AS sales_30d_count,
+                       COALESCE(st.sales_30d_amount, 0) AS sales_30d_amount
+                FROM stores s
+                JOIN users u ON u.id = s.owner_id
+                LEFT JOIN (
+                    SELECT store_id, max(created_at) AS last_sale_at, count(*) AS sales_count,
+                           count(*) FILTER (
+                               WHERE created_at >= now() - interval '30 days') AS sales_30d_count,
+                           SUM(total_amount) FILTER (
+                               WHERE created_at >= now() - interval '30 days') AS sales_30d_amount
+                    FROM sales WHERE store_id = :sid GROUP BY store_id
+                ) st ON st.store_id = s.id
+                WHERE s.id = :sid
+                """
+            ),
+            {"sid": store_id},
+        )
+        row = rows.mappings().first()
+        return dict(row) if row else None
+
+    async def daily_metrics(self, days: int) -> list[dict[str, Any]]:
+        """Activité jour par jour (Africa/Abidjan) sur ``days`` jours, jours vides à 0."""
+        rows = await self.db.execute(
+            text(
+                """
+                WITH bounds AS (
+                    SELECT (now() AT TIME ZONE 'Africa/Abidjan')::date AS today,
+                           (now() AT TIME ZONE 'Africa/Abidjan')::date
+                               - (CAST(:days AS integer) - 1) AS first_day
+                ), since AS (
+                    SELECT first_day, first_day::timestamp AT TIME ZONE 'Africa/Abidjan' AS ts
+                    FROM bounds
+                ), days AS (
+                    SELECT generate_series(first_day, today, interval '1 day')::date AS day
+                    FROM bounds
+                ), u AS (
+                    SELECT (created_at AT TIME ZONE 'Africa/Abidjan')::date AS day, count(*) AS n
+                    FROM users WHERE created_at >= (SELECT ts FROM since) GROUP BY 1
+                ), st AS (
+                    SELECT (created_at AT TIME ZONE 'Africa/Abidjan')::date AS day, count(*) AS n
+                    FROM stores WHERE created_at >= (SELECT ts FROM since) GROUP BY 1
+                ), sa AS (
+                    SELECT (created_at AT TIME ZONE 'Africa/Abidjan')::date AS day,
+                           count(DISTINCT store_id) AS active_stores, count(*) AS sales_count,
+                           SUM(total_amount) AS sales_amount
+                    FROM sales WHERE created_at >= (SELECT ts FROM since) GROUP BY 1
+                )
+                SELECT d.day, COALESCE(u.n, 0) AS new_users, COALESCE(st.n, 0) AS new_stores,
+                       COALESCE(sa.active_stores, 0) AS active_stores,
+                       COALESCE(sa.sales_count, 0) AS sales_count,
+                       COALESCE(sa.sales_amount, 0) AS sales_amount
+                FROM days d
+                LEFT JOIN u ON u.day = d.day
+                LEFT JOIN st ON st.day = d.day
+                LEFT JOIN sa ON sa.day = d.day
+                ORDER BY d.day
+                """
+            ),
+            {"days": days},
+        )
+        return [dict(r) for r in rows.mappings()]
+
+    async def list_users(
+        self,
+        *,
+        search: str | None,
+        store: Literal["all", "with", "without"],
+        limit: int,
+        offset: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Comptes commerçants paginés, avec leur boutique éventuelle (flag RLS admin requis)."""
+        conditions = ["TRUE"]
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if search:
+            params["pattern"] = _like_pattern(search)
+            conditions.append(
+                "(u.phone_number ILIKE :pattern ESCAPE '\\' OR u.email ILIKE :pattern ESCAPE '\\' "
+                "OR u.display_name ILIKE :pattern ESCAPE '\\')"
+            )
+        if store == "with":
+            conditions.append("s.id IS NOT NULL")
+        elif store == "without":
+            conditions.append("s.id IS NULL")
+        where = " AND ".join(conditions)
+        source = "FROM users u LEFT JOIN stores s ON s.owner_id = u.id"
+        total = (
+            await self.db.execute(text(f"SELECT count(*) {source} WHERE {where}"), params)
+        ).scalar_one()
+        rows = await self.db.execute(
+            text(
+                f"""
+                SELECT u.id, u.phone_number, u.display_name, u.email,
+                       u.email_verified_at IS NOT NULL AS email_verified, u.is_active,
+                       u.created_at, s.id AS store_id, s.name AS store_name
+                {source}
+                WHERE {where}
+                ORDER BY u.created_at DESC, u.id LIMIT :limit OFFSET :offset
+                """
+            ),
+            params,
+        )
+        return [dict(r) for r in rows.mappings()], int(total)
+
+    async def add_audit_entry(
+        self,
+        *,
+        admin_id: UUID,
+        admin_email: str,
+        action: str,
+        store_id: UUID | None = None,
+        store_name: str | None = None,
+        reason: str | None = None,
+    ) -> None:
+        """Ajoute une entrée au journal (dans la transaction courante)."""
+        self.db.add(
+            AdminAuditLogEntry(
+                admin_id=admin_id,
+                admin_email=admin_email,
+                action=action,
+                store_id=store_id,
+                store_name=store_name,
+                reason=reason,
+            )
+        )
+        await self.db.flush()
+
+    async def list_audit(
+        self, *, store_id: UUID | None, limit: int, offset: int
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Journal paginé, du plus récent au plus ancien, filtrable par boutique."""
+        log = AdminAuditLogEntry
+        stmt = select(
+            log.id,
+            log.created_at,
+            log.action,
+            log.admin_email,
+            log.store_id,
+            log.store_name,
+            log.reason,
+        )
+        count_stmt = select(func.count()).select_from(log)
+        if store_id is not None:
+            stmt = stmt.where(log.store_id == store_id)
+            count_stmt = count_stmt.where(log.store_id == store_id)
+        total = (await self.db.execute(count_stmt)).scalar_one()
+        rows = await self.db.execute(
+            stmt.order_by(log.created_at.desc(), log.id).limit(limit).offset(offset)
+        )
+        return [dict(r) for r in rows.mappings()], int(total)

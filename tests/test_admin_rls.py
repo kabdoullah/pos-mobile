@@ -12,6 +12,7 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.catalog.models import Product
 from app.modules.sales.models import Sale
 from tests.factories import create_user_with_store
 from tests.test_rls_isolation import _reset_store_context, _set_store_context
@@ -117,3 +118,25 @@ async def test_no_flag_no_tenant_context_sees_no_store(db_session: AsyncSession)
     await db_session.execute(text("SET LOCAL ROLE pos_app"))
 
     assert (await db_session.execute(text("SELECT count(*) FROM stores"))).scalar_one() == 0
+
+
+@pytest.mark.asyncio
+async def test_products_admin_policy_needs_flag(db_session: AsyncSession) -> None:
+    """Sans le flag admin, un tenant ne lit que ses produits ; avec, tous."""
+    await _reset_store_context(db_session)
+    _, store_a = await create_user_with_store(db_session, "prod-a@test.com")
+    _, store_b = await create_user_with_store(db_session, "prod-b@test.com")
+    db_session.add_all(
+        [
+            Product(store_id=store_a.id, name="A", selling_price=Decimal("1.00")),
+            Product(store_id=store_b.id, name="B", selling_price=Decimal("1.00")),
+        ]
+    )
+    await db_session.flush()
+
+    await _set_store_context(db_session, store_a.id)
+    tenant = (await db_session.execute(text("SELECT count(*) FROM products"))).scalar_one()
+    await db_session.execute(text("SET LOCAL app.is_platform_admin = 'on'"))
+    admin = (await db_session.execute(text("SELECT count(*) FROM products"))).scalar_one()
+
+    assert (tenant, admin) == (1, 2)

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, status
 
 from app.core.db import DbSession
 from app.modules.admin import schemas
-from app.modules.admin.dependencies import AdminDbSession
+from app.modules.admin.dependencies import AdminDbSession, CurrentAdminId
 from app.modules.admin.service import AdminService
 
 router = APIRouter()
@@ -38,6 +38,19 @@ async def get_metrics(db: AdminDbSession) -> schemas.PlatformMetrics:
 
 
 @router.get(
+    "/metrics/daily",
+    response_model=list[schemas.DailyPoint],
+    status_code=status.HTTP_200_OK,
+    summary="Activité quotidienne de la plateforme",
+)
+async def get_daily_metrics(
+    db: AdminDbSession, days: Annotated[int, Query(ge=7, le=90)] = 30
+) -> list[schemas.DailyPoint]:
+    """Nouveaux comptes, nouvelles boutiques, boutiques actives et ventes par jour."""
+    return await AdminService(db).get_daily_metrics(days)
+
+
+@router.get(
     "/stores",
     response_model=schemas.AdminStorePage,
     status_code=status.HTTP_200_OK,
@@ -63,6 +76,17 @@ async def list_stores(
     )
 
 
+@router.get(
+    "/stores/{store_id}",
+    response_model=schemas.AdminStoreDetail,
+    status_code=status.HTTP_200_OK,
+    summary="Fiche d'une boutique",
+)
+async def get_store(store_id: UUID, db: AdminDbSession) -> schemas.AdminStoreDetail:
+    """Profil, propriétaire, activité sur 30 jours et historique admin de la boutique."""
+    return await AdminService(db).get_store_detail(store_id)
+
+
 @router.post(
     "/stores/{store_id}/suspend",
     response_model=schemas.AdminStoreItem,
@@ -70,10 +94,13 @@ async def list_stores(
     summary="Suspendre une boutique",
 )
 async def suspend_store(
-    store_id: UUID, payload: schemas.SuspendRequest, db: AdminDbSession
+    store_id: UUID,
+    payload: schemas.SuspendRequest,
+    db: AdminDbSession,
+    admin_id: CurrentAdminId,
 ) -> schemas.AdminStoreItem:
     """Suspend la boutique (le commerçant est bloqué au prochain contact serveur)."""
-    return await AdminService(db).set_store_suspension(store_id, True, payload.reason)
+    return await AdminService(db).set_store_suspension(store_id, True, admin_id, payload.reason)
 
 
 @router.post(
@@ -82,6 +109,41 @@ async def suspend_store(
     status_code=status.HTTP_200_OK,
     summary="Réactiver une boutique",
 )
-async def reactivate_store(store_id: UUID, db: AdminDbSession) -> schemas.AdminStoreItem:
+async def reactivate_store(
+    store_id: UUID, db: AdminDbSession, admin_id: CurrentAdminId
+) -> schemas.AdminStoreItem:
     """Lève la suspension de la boutique."""
-    return await AdminService(db).set_store_suspension(store_id, False)
+    return await AdminService(db).set_store_suspension(store_id, False, admin_id)
+
+
+@router.get(
+    "/users",
+    response_model=schemas.AdminUserPage,
+    status_code=status.HTTP_200_OK,
+    summary="Liste des comptes commerçants",
+)
+async def list_users(
+    db: AdminDbSession,
+    search: Annotated[str | None, Query(max_length=100)] = None,
+    store: Literal["all", "with", "without"] = "all",
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> schemas.AdminUserPage:
+    """Comptes commerçants, filtrables selon qu'ils ont créé leur boutique ou non."""
+    return await AdminService(db).list_users(search=search, store=store, limit=limit, offset=offset)
+
+
+@router.get(
+    "/audit-log",
+    response_model=schemas.AuditPage,
+    status_code=status.HTTP_200_OK,
+    summary="Journal des actions admin",
+)
+async def list_audit_log(
+    db: AdminDbSession,
+    store_id: UUID | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> schemas.AuditPage:
+    """Connexions, suspensions et réactivations, de la plus récente à la plus ancienne."""
+    return await AdminService(db).list_audit(store_id=store_id, limit=limit, offset=offset)
