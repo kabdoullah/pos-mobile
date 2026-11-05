@@ -4,9 +4,10 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from pydantic import BaseModel
 
 from app.core.config import settings
 from app.core.exceptions import register_exception_handlers
@@ -104,6 +105,31 @@ async def health() -> dict[str, str | int]:
         "version": app.version,
         "min_app_build": settings.min_app_build,
     }
+
+
+class SupportContact(BaseModel):
+    """Coordonnées du support (mêmes valeurs que l'erreur STORE_SUSPENDED)."""
+
+    support_contact: str | None
+    support_whatsapp: str | None
+
+
+@app.get(
+    f"{api_v1_prefix}/support",
+    response_model=SupportContact,
+    status_code=status.HTTP_200_OK,
+    tags=["system"],
+    summary="Coordonnées du support",
+)
+async def support_contact() -> SupportContact:
+    """Public : l'app les affiche avant connexion (mot de passe oublié, lien invalide).
+
+    ``support_contact`` est un email ou un numéro ; null si non configuré.
+    """
+    return SupportContact(
+        support_contact=settings.support_contact or None,
+        support_whatsapp=settings.support_whatsapp or None,
+    )
 
 
 @app.get("/", tags=["system"])
