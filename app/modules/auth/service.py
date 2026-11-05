@@ -56,7 +56,11 @@ _PASSWORD_RESET_TTL = timedelta(hours=1)
 async def _issue_password_reset_token(
     repo: PasswordResetTokenRepository, user_id: UUID
 ) -> tuple[str, datetime]:
-    """Crée un token de reset (1h, usage unique, stocké hashé) ; retourne le token brut."""
+    """Crée un token de reset (1h, usage unique, stocké hashé) ; retourne le token brut.
+
+    Les tokens précédents non utilisés sont invalidés : un seul lien valide à la fois.
+    """
+    await repo.invalidate_unused(user_id)
     raw_token = secrets.token_urlsafe(32)
     expires_at = datetime.now(UTC) + _PASSWORD_RESET_TTL
     await repo.create(
@@ -243,20 +247,14 @@ class AuthService:
     async def reset_password(self, token: str, new_password: str) -> None:
         """Réinitialise le mot de passe via le token reçu par email."""
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        db_token = await self.password_reset_repo.get_by_hash(token_hash)
-
-        if db_token is None or db_token.used_at is not None:
-            raise ValidationError("Invalid or expired token.")
-
-        if db_token.expires_at < datetime.now(UTC):
-            raise ValidationError("Invalid or expired token.")
-
-        user = await self.repo.get_by_id(db_token.user_id)
+        user_id = await self.password_reset_repo.consume(token_hash)
+        user = await self.repo.get_by_id(user_id) if user_id is not None else None
         if user is None:
             raise ValidationError("Invalid or expired token.")
 
         await self.repo.update_password(user, hash_password(new_password))
-        await self.password_reset_repo.mark_used(db_token)
+        # Les autres liens encore valides (email, support) ne doivent plus servir.
+        await self.password_reset_repo.invalidate_unused(user.id)
 
 
 class UserService:

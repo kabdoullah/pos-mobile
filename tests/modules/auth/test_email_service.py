@@ -260,10 +260,8 @@ async def test_reset_password_used_token_raises(
     expires_at = datetime.now(UTC) + timedelta(hours=1)
 
     reset_repo = PasswordResetTokenRepository(db_session)
-    db_token = await reset_repo.create(
-        user_id=user.id, token_hash=token_hash, expires_at=expires_at
-    )
-    await reset_repo.mark_used(db_token)
+    await reset_repo.create(user_id=user.id, token_hash=token_hash, expires_at=expires_at)
+    assert await reset_repo.consume(token_hash) == user.id
 
     with pytest.raises(ValidationError, match="Invalid or expired token"):
         await AuthService(db_session, email_service).reset_password(raw_token, "NewPassword456")
@@ -285,6 +283,58 @@ async def test_reset_password_expired_token_raises(
 
     with pytest.raises(ValidationError, match="Invalid or expired token"):
         await AuthService(db_session, email_service).reset_password(raw_token, "NewPassword456")
+
+
+async def _reset_tokens(db: AsyncSession, user_id: object) -> list[PasswordResetToken]:
+    stmt = (
+        select(PasswordResetToken)
+        .where(PasswordResetToken.user_id == user_id)
+        # expires_at calculé en Python (strictement croissant), created_at = now() de la transaction.
+        .order_by(PasswordResetToken.expires_at)
+        .execution_options(populate_existing=True)
+    )
+    return list((await db.execute(stmt)).scalars())
+
+
+@pytest.mark.asyncio
+async def test_new_reset_link_invalidates_previous(
+    db_session: AsyncSession, email_service: EmailService
+) -> None:
+    """Un seul lien valide à la fois : le nouveau invalide l'ancien."""
+    user = await _create_user(db_session, "twice@example.com")
+    service = AuthService(db_session, email_service)
+
+    await service.send_password_reset(user.email)  # type: ignore[arg-type]
+    await service.send_password_reset(user.email)  # type: ignore[arg-type]
+
+    first, second = await _reset_tokens(db_session, user.id)
+    assert first.used_at is not None
+    assert second.used_at is None
+
+
+@pytest.mark.asyncio
+async def test_reset_password_invalidates_other_links(
+    db_session: AsyncSession, email_service: EmailService
+) -> None:
+    """Après un reset, aucun autre lien encore valide ne doit servir."""
+    user = await _create_user(db_session, "others@example.com")
+    reset_repo = PasswordResetTokenRepository(db_session)
+    expires_at = datetime.now(UTC) + timedelta(hours=1)
+    raw_a, raw_b = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+    for raw in (raw_a, raw_b):
+        await reset_repo.create(
+            user_id=user.id,
+            token_hash=hashlib.sha256(raw.encode()).hexdigest(),
+            expires_at=expires_at,
+        )
+    service = AuthService(db_session, email_service)
+
+    await service.reset_password(raw_a, "NewPassword456")
+
+    with pytest.raises(ValidationError, match="Invalid or expired token"):
+        await service.reset_password(raw_b, "Attacker789")
+    await db_session.refresh(user)
+    assert verify_password("NewPassword456", user.password_hash)
 
 
 @pytest.mark.asyncio
