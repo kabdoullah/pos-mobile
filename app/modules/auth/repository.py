@@ -54,6 +54,11 @@ class UserRepository:
         await self.db.flush()
         return user
 
+    async def mark_email_verified(self, user: User) -> None:
+        """Marque l'adresse email de l'utilisateur comme vérifiée."""
+        user.email_verified_at = datetime.now(UTC)
+        await self.db.flush()
+
     async def delete(self, user: User) -> None:
         """Supprime définitivement l'utilisateur (tokens e-mail/reset en CASCADE)."""
         await self.db.execute(delete(User).where(User.id == user.id))

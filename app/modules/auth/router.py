@@ -35,6 +35,8 @@ _FORGOT_PER_EMAIL = 3  # par heure
 _FORGOT_PER_IP = 10  # par heure
 _REGISTER_PER_IP = 10  # par heure
 _RESET_PER_IP = 10  # par heure
+_VERIFY_PER_IP = 10  # par heure
+_RESEND_VERIFICATION_PER_USER = 3  # par heure
 
 
 def get_auth_service(
@@ -56,18 +58,13 @@ AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 async def register(
     payload: schemas.RegisterRequest, service: AuthServiceDep, request: Request
 ) -> schemas.RegisterResponse:
-    """Crée un compte utilisateur avec numéro de téléphone + mot de passe. Email optionnel."""
+    """Crée un compte utilisateur avec numéro de téléphone, mot de passe et email."""
     await rate_limiter.hit(f"register:ip:{client_ip(request)}", _REGISTER_PER_IP, _HOUR)
     user = await service.register(payload)
-    message = (
-        "Account created. Check your email to verify your address."
-        if user.email is not None
-        else "Account created."
-    )
     return schemas.RegisterResponse(
         user_id=user.id,
         phone_number=user.phone_number,
-        message=message,
+        message="Account created. Check your email to verify your address.",
     )
 
 
@@ -147,6 +144,36 @@ async def reset_password(
     """Réinitialise le mot de passe via le token reçu par email."""
     await rate_limiter.hit(f"reset:ip:{client_ip(request)}", _RESET_PER_IP, _HOUR)
     await service.reset_password(payload.token, payload.new_password)
+
+
+@router.post(
+    "/verify-email",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Confirmer l'adresse email",
+)
+async def verify_email(
+    payload: schemas.VerifyEmailRequest, service: AuthServiceDep, request: Request
+) -> None:
+    """Confirme l'adresse email via le token reçu par email (appelé par la page /auth/verify-email)."""
+    await rate_limiter.hit(f"verify:ip:{client_ip(request)}", _VERIFY_PER_IP, _HOUR)
+    await service.verify_email(payload.token)
+
+
+@router.post(
+    "/resend-verification",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Renvoyer l'email de vérification",
+)
+async def resend_verification(
+    db: TenantDbSession,
+    user_id: CurrentUserId,
+    email_service: Annotated[EmailService, Depends(get_email_service)],
+) -> None:
+    """Renvoie le lien de vérification à l'utilisateur connecté. 204 si déjà vérifié."""
+    await rate_limiter.hit(
+        f"resend_verification:user:{user_id}", _RESEND_VERIFICATION_PER_USER, _HOUR
+    )
+    await AuthService(db, email_service).resend_verification(user_id)
 
 
 # ---------------------------------------------------------------------------

@@ -61,15 +61,13 @@ class AuthService:
         self.email_service = email_service
 
     async def register(self, payload: schemas.RegisterRequest) -> User:
-        """Crée un nouvel utilisateur. Phone requis, email optionnel."""
+        """Crée un nouvel utilisateur. Phone et email requis."""
         existing_phone = await self.repo.get_by_phone(payload.phone_number)
         if existing_phone is not None:
             raise ConflictError("This phone number is already registered.", field="phone_number")
 
-        if payload.email is not None:
-            existing_email = await self.repo.get_by_email(payload.email)
-            if existing_email is not None:
-                raise ConflictError("This email is already registered.", field="email")
+        if await self.repo.get_by_email(payload.email) is not None:
+            raise ConflictError("This email is already registered.", field="email")
 
         user = User(
             phone_number=payload.phone_number,
@@ -79,27 +77,59 @@ class AuthService:
         await self.repo.create(user)
         await StoreService(self.db).create_default_for_user(user.id)
 
-        if payload.email is not None:
-            raw_token = secrets.token_urlsafe(32)
-            token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-            expires_at = datetime.now(UTC) + timedelta(hours=24)
-
-            await self.email_verification_repo.create(
-                user_id=user.id,
-                token_hash=token_hash,
-                expires_at=expires_at,
-            )
-            # Best-effort : un échec SMTP ne doit pas bloquer l'inscription.
-            try:
-                await self.email_service.send_verification_email(
-                    to_email=payload.email,
-                    user_name=payload.email,
-                    raw_token=raw_token,
-                )
-            except Exception:
-                logger.exception("verification_email_send_failed", user_id=str(user.id))
-
+        await self._send_verification(user.id, payload.email)
         return user
+
+    async def _send_verification(self, user_id: UUID, email: str) -> None:
+        """Émet un token de vérification (24h) et l'envoie par email.
+
+        Les tokens précédents non utilisés sont invalidés : seul le dernier lien marche.
+        """
+        raw_token = secrets.token_urlsafe(32)
+        await self.email_verification_repo.invalidate_previous(user_id)
+        await self.email_verification_repo.create(
+            user_id=user_id,
+            token_hash=hashlib.sha256(raw_token.encode()).hexdigest(),
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
+        )
+        # Best-effort : un échec d'envoi ne doit pas faire échouer la requête.
+        try:
+            await self.email_service.send_verification_email(
+                to_email=email,
+                user_name=email,
+                raw_token=raw_token,
+            )
+        except Exception:
+            logger.exception("verification_email_send_failed", user_id=str(user_id))
+
+    async def resend_verification(self, user_id: UUID) -> None:
+        """Renvoie le lien de vérification. Sans effet si l'email est déjà vérifié."""
+        user = await self.repo.get_by_id(user_id)
+        if user is None:
+            raise NotFoundError("User not found.")
+        if user.email is None:
+            raise ValidationError("No email address on this account.", field="email")
+        if user.email_verified_at is not None:
+            return
+        await self._send_verification(user.id, user.email)
+
+    async def verify_email(self, token: str) -> None:
+        """Confirme l'adresse email via le token reçu par email."""
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        db_token = await self.email_verification_repo.get_by_hash(token_hash)
+
+        if db_token is None or db_token.used_at is not None:
+            raise ValidationError("Invalid or expired token.")
+        if db_token.expires_at < datetime.now(UTC):
+            raise ValidationError("Invalid or expired token.")
+
+        user = await self.repo.get_by_id(db_token.user_id)
+        if user is None:
+            raise ValidationError("Invalid or expired token.")
+
+        if user.email_verified_at is None:
+            await self.repo.mark_email_verified(user)
+        await self.email_verification_repo.mark_used(db_token)
 
     async def _active_store_id(self, user_id: UUID) -> UUID | None:
         """Id de la boutique de l'utilisateur (None sans boutique) ; refuse si suspendue."""
@@ -149,10 +179,14 @@ class AuthService:
         )
 
     async def send_password_reset(self, email: EmailStr) -> None:
-        """Envoie un email de réinitialisation. Silencieux si l'email n'existe pas ou n'est pas renseigné."""
+        """Envoie un email de réinitialisation, uniquement vers une adresse vérifiée.
+
+        Silencieux si le compte n'existe pas ou si son email n'est pas vérifié :
+        sinon, quiconque inscrit avec l'email d'autrui pourrait en recevoir les liens.
+        """
         user = await self.repo.get_by_email(email)
-        if user is None or user.email is None:
-            # Ne révèle ni l'existence du compte ni l'absence d'email
+        if user is None or user.email is None or user.email_verified_at is None:
+            # Ne révèle ni l'existence du compte ni l'état de vérification
             return
 
         raw_token = secrets.token_urlsafe(32)

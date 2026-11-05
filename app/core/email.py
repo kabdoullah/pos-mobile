@@ -91,7 +91,8 @@ class EmailService:
 
     async def send_verification_email(self, to_email: str, user_name: str, raw_token: str) -> None:
         """Envoie le lien de vérification d'adresse email (expire 24h)."""
-        link = f"{settings.app_frontend_url}/auth/verify-email?token={raw_token}"
+        # Token dans le fragment (#), comme pour le reset : absent des logs d'accès.
+        link = f"{settings.app_frontend_url}/auth/verify-email#token={raw_token}"
         context = {"user_name": user_name, "link": link, "app_name": settings.mail_from_name}
         await self._sender.send(
             to_email=to_email,
