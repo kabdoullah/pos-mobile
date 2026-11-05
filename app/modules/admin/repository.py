@@ -18,6 +18,7 @@ class PlatformMetricsRow(TypedDict):
     stores_suspended: int
     stores_active_7d: int
     stores_inactive_14d: int
+    stores_email_verified: int
     sales_today_count: int
     sales_today_amount: Decimal
     sales_7d_count: int
@@ -114,7 +115,12 @@ class AdminRepository:
                             AND NOT EXISTS (
                                 SELECT 1 FROM sales s WHERE s.store_id = stores.id
                                 AND s.created_at >= now() - interval '14 days'
-                            )) AS stores_inactive_14d
+                            )) AS stores_inactive_14d,
+                        count(*) FILTER (
+                            WHERE EXISTS (
+                                SELECT 1 FROM users u WHERE u.id = stores.owner_id
+                                AND u.email_verified_at IS NOT NULL
+                            )) AS stores_email_verified
                     FROM stores
                 ), sale_stats AS (
                     SELECT
@@ -132,7 +138,8 @@ class AdminRepository:
                     FROM sales
                 )
                 SELECT stores_total, stores_new_7d, stores_suspended, stores_active_7d,
-                       stores_inactive_14d, sales_today_count, sales_today_amount,
+                       stores_inactive_14d, stores_email_verified, sales_today_count,
+                       sales_today_amount,
                        sales_7d_count, sales_7d_amount
                 FROM store_stats, sale_stats
                 """
@@ -157,7 +164,8 @@ class AdminRepository:
             escaped = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             params["pattern"] = f"%{escaped}%"
             conditions.append(
-                "(s.name ILIKE :pattern ESCAPE '\\' OR u.phone_number ILIKE :pattern ESCAPE '\\')"
+                "(s.name ILIKE :pattern ESCAPE '\\' OR u.phone_number ILIKE :pattern ESCAPE '\\' "
+                "OR u.email ILIKE :pattern ESCAPE '\\')"
             )
         if status == "active":
             conditions.append("s.suspended_at IS NULL")
@@ -190,7 +198,9 @@ class AdminRepository:
         rows = await self.db.execute(
             text(
                 f"""
-                SELECT s.id, s.name, u.phone_number AS owner_phone, s.created_at,
+                SELECT s.id, s.name, u.phone_number AS owner_phone, u.email AS owner_email,
+                       u.email_verified_at IS NOT NULL AS owner_email_verified,
+                       s.created_at,
                        st.last_sale_at, COALESCE(st.sales_count, 0) AS sales_count,
                        s.suspended_at, s.suspension_reason
                 {stores_from} {sales_join}
@@ -207,7 +217,9 @@ class AdminRepository:
         rows = await self.db.execute(
             text(
                 """
-                SELECT s.id, s.name, u.phone_number AS owner_phone, s.created_at,
+                SELECT s.id, s.name, u.phone_number AS owner_phone, u.email AS owner_email,
+                       u.email_verified_at IS NOT NULL AS owner_email_verified,
+                       s.created_at,
                        st.last_sale_at, COALESCE(st.sales_count, 0) AS sales_count,
                        s.suspended_at, s.suspension_reason
                 FROM stores s

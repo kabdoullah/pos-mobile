@@ -62,6 +62,7 @@ async def test_metrics_empty_platform(
     client, headers = admin_client
     data = (await client.get("/api/v1/admin/metrics", headers=headers)).json()
     assert data["stores_total"] == 0
+    assert data["stores_email_verified"] == 0
     assert Decimal(data["sales_7d_amount"]) == Decimal("0")
 
 
@@ -104,3 +105,21 @@ async def test_metrics_definition_edges(
     assert Decimal(data["sales_today_amount"]) == Decimal("100.00")
     assert data["sales_7d_count"] == 2
     assert Decimal(data["sales_7d_amount"]) == Decimal("300.00")
+
+
+@pytest.mark.asyncio
+async def test_metrics_counts_stores_with_verified_owner_email(
+    admin_client: tuple[AsyncClient, dict[str, str]], db_session: AsyncSession
+) -> None:
+    client, headers = admin_client
+    verified, _ = await create_numbered_store(db_session, 1)
+    verified.email_verified_at = datetime.now(UTC)
+    await create_numbered_store(db_session, 2)
+    no_email, _ = await create_numbered_store(db_session, 3)
+    no_email.email = None
+    await db_session.commit()
+
+    data = (await client.get("/api/v1/admin/metrics", headers=headers)).json()
+
+    assert data["stores_total"] == 3
+    assert data["stores_email_verified"] == 1

@@ -130,6 +130,41 @@ async def test_list_search_by_name_and_phone(
 
 
 @pytest.mark.asyncio
+async def test_list_stores_owner_email_state(
+    admin_client: _Admin, db_session: AsyncSession
+) -> None:
+    """Le support voit l'email du propriétaire et s'il est confirmé (ADR-0013)."""
+    client, headers = admin_client
+    verified, _ = await create_numbered_store(db_session, 1)
+    verified.email_verified_at = datetime.now(UTC)
+    await create_numbered_store(db_session, 2)
+    no_email, _ = await create_numbered_store(db_session, 3)
+    no_email.email = None
+    await db_session.commit()
+
+    items = (await client.get("/api/v1/admin/stores", headers=headers)).json()["items"]
+
+    state = {i["owner_phone"]: (i["owner_email"], i["owner_email_verified"]) for i in items}
+    assert state == {
+        verified.phone_number: ("s1@test.com", True),
+        "+225070000002": ("s2@test.com", False),
+        no_email.phone_number: (None, False),
+    }
+
+
+@pytest.mark.asyncio
+async def test_list_search_by_email(admin_client: _Admin, db_session: AsyncSession) -> None:
+    client, headers = admin_client
+    _, a = await create_numbered_store(db_session, 1)
+    await create_numbered_store(db_session, 2)
+    await db_session.commit()
+
+    response = await client.get("/api/v1/admin/stores?search=S1@TEST", headers=headers)
+
+    assert _ids(response.json()) == [str(a.id)]
+
+
+@pytest.mark.asyncio
 async def test_list_search_escapes_wildcards(
     admin_client: _Admin, db_session: AsyncSession
 ) -> None:

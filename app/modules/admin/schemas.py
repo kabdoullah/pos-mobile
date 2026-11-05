@@ -30,6 +30,7 @@ class PlatformMetrics(BaseModel):
     stores_active_7d: int
     stores_inactive_14d: int
     stores_suspended: int
+    stores_email_verified: int
     sales_today_count: int
     sales_today_amount: str
     sales_7d_count: int
@@ -42,6 +43,8 @@ class AdminStoreItem(BaseModel):
     id: UUID
     name: str
     owner_phone: str
+    owner_email: str | None
+    owner_email_verified: bool
     created_at: datetime
     last_sale_at: datetime | None
     sales_count: int
