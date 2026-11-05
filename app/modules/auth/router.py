@@ -37,6 +37,7 @@ _REGISTER_PER_IP = 10  # par heure
 _RESET_PER_IP = 10  # par heure
 _VERIFY_PER_IP = 10  # par heure
 _RESEND_VERIFICATION_PER_USER = 3  # par heure
+_UPDATE_EMAIL_PER_USER = 5  # par heure (chaque appel envoie un email)
 
 
 def get_auth_service(
@@ -196,6 +197,27 @@ async def update_me(
 ) -> schemas.UserMeResponse:
     """Met à jour le nom affiché « Vendeur : … » sur les reçus (vide = retiré)."""
     user = await UserService(db).update_me(user_id, payload)
+    return schemas.UserMeResponse.model_validate(user)
+
+
+@users_router.put(
+    "/me/email", response_model=schemas.UserMeResponse, summary="Ajouter ou corriger mon email"
+)
+async def update_my_email(
+    payload: schemas.UpdateEmailRequest,
+    db: TenantDbSession,
+    user_id: CurrentUserId,
+    email_service: Annotated[EmailService, Depends(get_email_service)],
+) -> schemas.UserMeResponse:
+    """Ajoute un email (comptes créés sans) ou corrige un email non vérifié.
+
+    Mot de passe revérifié (403 s'il est faux), 409 si l'email est déjà pris ou
+    si l'email actuel est déjà vérifié. Envoie le lien de vérification.
+    """
+    await rate_limiter.hit(f"update_email:user:{user_id}", _UPDATE_EMAIL_PER_USER, _HOUR)
+    user = await AuthService(db, email_service).update_email(
+        user_id, payload.email, payload.password
+    )
     return schemas.UserMeResponse.model_validate(user)
 
 

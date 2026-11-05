@@ -54,6 +54,14 @@ class UserRepository:
         await self.db.flush()
         return user
 
+    async def update_email(self, user: User, email: str) -> User:
+        """Remplace l'email du compte ; la nouvelle adresse repart non vérifiée."""
+        user.email = email
+        user.email_verified_at = None
+        await self.db.flush()
+        await self.db.refresh(user)
+        return user
+
     async def mark_email_verified(self, user: User) -> None:
         """Marque l'adresse email de l'utilisateur comme vérifiée."""
         user.email_verified_at = datetime.now(UTC)

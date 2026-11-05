@@ -1,11 +1,16 @@
 """Schémas Pydantic du module auth."""
 
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.core.validators import validate_mobile_number
+
+# Stocké en minuscules (contrainte chk_users_email_lowercase) : EmailStr ne met
+# en minuscules que le domaine, et les claviers mobiles capitalisent la 1re lettre.
+LowerEmailStr = Annotated[EmailStr, AfterValidator(str.lower)]
 
 
 class RegisterRequest(BaseModel):
@@ -14,7 +19,7 @@ class RegisterRequest(BaseModel):
     phone_number: str = Field(..., min_length=8, max_length=20)
     password: str = Field(..., min_length=8, max_length=128)
     # Obligatoire : seul canal de réinitialisation du mot de passe.
-    email: EmailStr
+    email: LowerEmailStr
 
     @field_validator("phone_number")
     @classmethod
@@ -69,6 +74,13 @@ class VerifyEmailRequest(BaseModel):
     """Confirmation d'adresse email avec le token reçu par email."""
 
     token: str = Field(..., min_length=1, max_length=256)
+
+
+class UpdateEmailRequest(BaseModel):
+    """Ajout ou correction de l'email du compte ; le mot de passe est revérifié."""
+
+    email: LowerEmailStr
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class UserMeResponse(BaseModel):
