@@ -206,9 +206,13 @@ Réservé à l'administrateur de la plateforme (jeton distinct, `aud = "pos-admi
 ```
 POST   /api/v1/admin/auth/login                 Connexion admin (email, mot de passe) ; 5 échecs = blocage 15 min
 GET    /api/v1/admin/metrics                    Indicateurs plateforme
-GET    /api/v1/admin/stores                     Liste des boutiques (search, status=all|active|suspended, inactive, sort=last_sale|created, limit 1-100, offset)
+GET    /api/v1/admin/metrics/daily              Activité par jour, Africa/Abidjan (days 7-90, défaut 30)
+GET    /api/v1/admin/stores                     Liste des boutiques (search nom/téléphone/email, status=all|active|suspended, inactive, sort=last_sale|created, limit 1-100, offset)
+GET    /api/v1/admin/stores/{id}                Fiche boutique : propriétaire, produits, ventes 30 j, 20 dernières actions admin
 POST   /api/v1/admin/stores/{id}/suspend        Suspendre une boutique (body {reason?})
 POST   /api/v1/admin/stores/{id}/reactivate     Réactiver une boutique
+GET    /api/v1/admin/users                      Comptes commerçants (search téléphone/email/nom, store=all|with|without, limit 1-100, offset)
+GET    /api/v1/admin/audit-log                  Journal des actions admin (store_id?, limit 1-100, offset)
 ```
 
 ### Système
