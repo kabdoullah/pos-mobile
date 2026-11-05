@@ -229,8 +229,13 @@ class AuthService:
         sinon, quiconque inscrit avec l'email d'autrui pourrait en recevoir les liens.
         """
         user = await self.repo.get_by_email(email)
-        if user is None or user.email is None or user.email_verified_at is None:
-            # Ne révèle ni l'existence du compte ni l'état de vérification
+        # La réponse HTTP ne révèle ni l'existence du compte ni l'état de
+        # vérification ; seuls les logs serveur disent pourquoi rien n'est parti.
+        if user is None or user.email is None:
+            logger.info("password_reset_skipped", reason="unknown_email")
+            return
+        if user.email_verified_at is None:
+            logger.info("password_reset_skipped", reason="email_not_verified", user_id=str(user.id))
             return
 
         raw_token, _ = await _issue_password_reset_token(self.password_reset_repo, user.id)
@@ -243,6 +248,8 @@ class AuthService:
             )
         except Exception:
             logger.exception("password_reset_email_send_failed", user_id=str(user.id))
+        else:
+            logger.info("password_reset_email_sent", user_id=str(user.id))
 
     async def reset_password(self, token: str, new_password: str) -> None:
         """Réinitialise le mot de passe via le token reçu par email."""

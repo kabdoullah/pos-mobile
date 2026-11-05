@@ -10,6 +10,7 @@ import pytest
 from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from structlog.testing import capture_logs
 
 from app.core.config import settings
 from app.core.email import (
@@ -145,9 +146,12 @@ async def test_get_email_service_sends_nothing_when_disabled(
     service = get_email_service()
     assert isinstance(service._sender, NullEmailSender)
     post = AsyncMock()
-    with patch.object(httpx.AsyncClient, "post", post):
+    with patch.object(httpx.AsyncClient, "post", post), capture_logs() as logs:
         await service.send_verification_email("user@example.com", "user", "tok")
     post.assert_not_awaited()
+    # Envoi désactivé en prod = erreur de config : il doit se voir dans les logs.
+    assert [e["event"] for e in logs] == ["email_not_sent_disabled"]
+    assert "user@example.com" not in str(logs)
 
 
 # ---------------------------------------------------------------------------
@@ -342,9 +346,14 @@ async def test_send_password_reset_unknown_email_is_silent(
     db_session: AsyncSession, email_service: EmailService, email_sender: FakeEmailSender
 ) -> None:
     """Email inconnu → pas d'exception, pas d'email envoyé."""
-    await AuthService(db_session, email_service).send_password_reset("unknown@example.com")  # type: ignore[arg-type]
+    with capture_logs() as logs:
+        await AuthService(db_session, email_service).send_password_reset("unknown@example.com")  # type: ignore[arg-type]
 
     assert email_sender.sent == []
+    assert {"event": "password_reset_skipped", "reason": "unknown_email"} in [
+        {k: e[k] for k in ("event", "reason") if k in e} for e in logs
+    ]
+    assert "unknown@example.com" not in str(logs)
 
 
 @pytest.mark.asyncio
@@ -354,9 +363,13 @@ async def test_send_password_reset_known_email_sends(
     """Email connu et vérifié → token créé en DB + SMTP appelé."""
     user = await _create_user(db_session, "known@example.com")
 
-    await AuthService(db_session, email_service).send_password_reset(user.email)  # type: ignore[arg-type]
+    with capture_logs() as logs:
+        await AuthService(db_session, email_service).send_password_reset(user.email)  # type: ignore[arg-type]
 
     assert len(email_sender.sent) == 1
+    sent = [e for e in logs if e["event"] == "password_reset_email_sent"]
+    assert [e["user_id"] for e in sent] == [str(user.id)]
+    assert "known@example.com" not in str(logs)
 
     stmt = select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
     token = (await db_session.execute(stmt)).scalar_one_or_none()
@@ -371,8 +384,11 @@ async def test_send_password_reset_unverified_email_is_silent(
     """Email non vérifié → aucun token ni email : un squatteur d'adresse ne reçoit rien."""
     user = await _create_user(db_session, "unverified@example.com", verified=False)
 
-    await AuthService(db_session, email_service).send_password_reset(user.email)  # type: ignore[arg-type]
+    with capture_logs() as logs:
+        await AuthService(db_session, email_service).send_password_reset(user.email)  # type: ignore[arg-type]
 
     assert email_sender.sent == []
+    skipped = [e for e in logs if e["event"] == "password_reset_skipped"]
+    assert [(e["reason"], e["user_id"]) for e in skipped] == [("email_not_verified", str(user.id))]
     stmt = select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
     assert (await db_session.execute(stmt)).scalar_one_or_none() is None
