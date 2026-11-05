@@ -53,7 +53,7 @@ Rejetée pour la même raison qu'ADR-0013 : coût récurrent.
 
 ### Neutres
 
-- Générer un lien n'invalide pas les liens précédents encore valides (même comportement que `forgot-password`).
+- Un seul lien valide à la fois par compte : générer un lien (support ou `forgot-password`) invalide les précédents non utilisés, et un reset réussi invalide tous les liens restants. La consommation du jeton est atomique (un seul `UPDATE … RETURNING`).
 
 ## Critères qui justifieraient de revisiter cette décision
 
