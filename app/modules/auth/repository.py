@@ -137,7 +137,30 @@ class PasswordResetTokenRepository:
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def mark_used(self, token: PasswordResetToken) -> None:
-        """Marque le token comme utilisé."""
-        token.used_at = datetime.now(UTC)
-        await self.db.flush()
+    async def consume(self, token_hash: str) -> UUID | None:
+        """Marque le token utilisé s'il est valide et retourne son user_id, sinon None.
+
+        Une seule requête UPDATE : deux requêtes simultanées avec le même token ne
+        peuvent pas réussir toutes les deux (la seconde revoit used_at après le verrou).
+        """
+        now = datetime.now(UTC)
+        stmt = (
+            update(PasswordResetToken)
+            .where(
+                PasswordResetToken.token_hash == token_hash,
+                PasswordResetToken.used_at.is_(None),
+                PasswordResetToken.expires_at > now,
+            )
+            .values(used_at=now)
+            .returning(PasswordResetToken.user_id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def invalidate_unused(self, user_id: UUID) -> None:
+        """Invalide tous les tokens non utilisés d'un utilisateur."""
+        stmt = (
+            update(PasswordResetToken)
+            .where(PasswordResetToken.user_id == user_id, PasswordResetToken.used_at.is_(None))
+            .values(used_at=datetime.now(UTC))
+        )
+        await self.db.execute(stmt)
