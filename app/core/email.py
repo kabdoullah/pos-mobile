@@ -14,12 +14,15 @@ from pathlib import Path
 from typing import Protocol
 
 import httpx
+import structlog
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.core.config import settings
 
 _TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "emails"
 _BREVO_SEND_URL = "https://api.brevo.com/v3/smtp/email"
+
+logger = structlog.get_logger()
 
 
 class EmailSendError(Exception):
@@ -72,8 +75,9 @@ class BrevoEmailSender:
 class NullEmailSender:
     """N'envoie rien : utilisé quand `EMAIL_ENABLED=false` (dev, CI)."""
 
-    async def send(self, to_email: str, subject: str, html_body: str, text_body: str) -> None:
-        """Ignore l'email."""
+    async def send(self, to_email: str, subject: str, html_body: str, text_body: str) -> None:  # noqa: ARG002 (signature du Protocol)
+        """Ignore l'email, en le signalant : en prod, c'est une erreur de config."""
+        logger.warning("email_not_sent_disabled", subject=subject)
 
 
 class EmailService:
