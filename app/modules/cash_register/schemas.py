@@ -78,6 +78,24 @@ class CashMovementCreate(BaseModel):
         return check_client_timestamp(v, "created_at")
 
 
+class CashSessionClose(BaseModel):
+    """Clôture d'une session (spec §5.6).
+
+    `client_expected_amount` est ce que l'app affichait : conservé pour la
+    traçabilité, jamais utilisé pour le calcul (le serveur recalcule).
+    """
+
+    counted_amount: Decimal = Field(..., ge=Decimal("0"), max_digits=12, decimal_places=2)
+    client_expected_amount: Decimal = Field(..., ge=Decimal("0"), max_digits=12, decimal_places=2)
+    closing_note: str | None = Field(default=None, max_length=500)
+    closed_at: datetime
+
+    @field_validator("closed_at")
+    @classmethod
+    def check_closed_at(cls, v: datetime) -> datetime:
+        return check_client_timestamp(v, "closed_at")
+
+
 class CashSessionResponse(BaseModel):
     """Session de caisse (spec §5.8). Montants sérialisés en chaînes."""
 

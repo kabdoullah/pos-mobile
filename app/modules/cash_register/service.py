@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import NotFoundError
+from app.core.exceptions import NotFoundError, ValidationError
 from app.core.pagination import encode_cursor
 from app.modules.cash_register.exceptions import (
     CashSessionAlreadyOpenError,
@@ -19,6 +19,7 @@ from app.modules.cash_register.repository import CashSessionRepository
 from app.modules.cash_register.schemas import (
     CashMovementCreate,
     CashMovementResponse,
+    CashSessionClose,
     CashSessionDetailResponse,
     CashSessionOpen,
     CashSessionPage,
@@ -185,6 +186,63 @@ class CashSessionService:
             # Retry concurrent : l'autre requête a inséré entre-temps.
             self._check_movement_replay(stored, session_id, payload)
         return stored, inserted
+
+    async def close(
+        self, store_id: UUID, user_id: UUID, session_id: UUID, payload: CashSessionClose
+    ) -> CashSessionDetailResponse:
+        """Clôture la session (spec §5.6), dans la transaction de la requête.
+
+        1. Session verrouillée (FOR UPDATE) : une vente concurrente (KEY SHARE
+           via la FK) est soit commitée avant et comptée, soit après et visible
+           dans late_impact.
+        2. Déjà clôturée avec les mêmes counted_amount et closed_at : retry,
+           détail existant. Valeurs différentes : CashSessionClosedError.
+        3. expected_amount = solde recalculé en base sous le verrou ;
+           client_expected_amount n'est jamais utilisé pour le calcul.
+        4. Écart non nul sans note (vide ou blanche) : ValidationError.
+        5. Un seul UPDATE : status, montants, note, closed_at, closed_by,
+           closure_recorded_at = now().
+        """
+        session = await self.repo.get_for_update(session_id)
+        if session is None or session.store_id != store_id:
+            raise NotFoundError("Cash session not found.")
+
+        if session.status == "closed":
+            if (
+                session.counted_amount == payload.counted_amount
+                and session.closed_at == payload.closed_at
+            ):
+                return await self._detail(session)
+            raise CashSessionClosedError(
+                "Cash session is already closed with a different count or closing time."
+            )
+
+        if payload.closed_at < session.opened_at:
+            raise ValidationError("closed_at cannot be before opened_at.", field="closed_at")
+
+        expected = (await self.compute_balance(session)).expected_amount
+        note = (
+            payload.closing_note if payload.closing_note and payload.closing_note.strip() else None
+        )
+        if payload.counted_amount != expected and note is None:
+            raise ValidationError(
+                "closing_note is required when the count differs from the expected amount.",
+                field="closing_note",
+            )
+
+        closed = await self.repo.close_session(
+            session,
+            expected_amount=expected,
+            client_expected_amount=payload.client_expected_amount,
+            counted_amount=payload.counted_amount,
+            closing_note=note,
+            closed_at=payload.closed_at,
+            closed_by=user_id,
+        )
+        if not closed:
+            # Exclu par le verrou FOR UPDATE : la session était ouverte.
+            raise CashSessionClosedError("Cash session is already closed.")
+        return await self._detail(session)
 
     @staticmethod
     def _check_movement_replay(

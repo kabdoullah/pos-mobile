@@ -9,6 +9,7 @@ from app.core.dependencies import CurrentStoreId, CurrentUserId
 from app.modules.cash_register.schemas import (
     CashMovementCreate,
     CashMovementResponse,
+    CashSessionClose,
     CashSessionDetailResponse,
     CashSessionOpen,
     CashSessionPage,
@@ -123,3 +124,32 @@ async def record_cash_movement(
     )
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return CashMovementResponse.model_validate(movement)
+
+
+@router.post(
+    "/{session_id}/close",
+    response_model=CashSessionDetailResponse,
+    status_code=status.HTTP_200_OK,
+    responses={
+        status.HTTP_404_NOT_FOUND: {"description": "Session inconnue ou d'une autre boutique"},
+        status.HTTP_409_CONFLICT: {
+            "description": "CASH_SESSION_CLOSED : session déjà clôturée avec d'autres valeurs"
+        },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": "VALIDATION_ERROR (note manquante sur écart, closed_at invalide…)"
+        },
+    },
+    summary="Clôturer une session de caisse",
+)
+async def close_cash_session(
+    session_id: UUID,
+    payload: CashSessionClose,
+    db: TenantDbSession,
+    store_id: CurrentStoreId,
+    user_id: CurrentUserId,
+) -> CashSessionDetailResponse:
+    """Clôture atomique : solde recalculé par le serveur, écart, note si écart.
+
+    **200** aussi pour un retry (mêmes `counted_amount` et `closed_at`).
+    """
+    return await CashSessionService(db).close(store_id, user_id, session_id, payload)

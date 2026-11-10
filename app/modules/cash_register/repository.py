@@ -9,7 +9,7 @@ from decimal import Decimal
 from typing import TypedDict
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, case, func, select, tuple_
+from sqlalchemy import ColumnElement, case, func, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -55,10 +55,59 @@ class CashSessionRepository:
         return await self.db.get(CashSession, session_id)
 
     async def get_for_update(self, session_id: UUID) -> CashSession | None:
-        """Session verrouillée (SELECT … FOR UPDATE) jusqu'à la fin de la transaction."""
-        stmt = select(CashSession).where(CashSession.id == session_id).with_for_update()
+        """Session verrouillée (SELECT … FOR UPDATE) jusqu'à la fin de la transaction.
+
+        populate_existing : un objet déjà présent dans l'identity map est
+        rafraîchi avec les valeurs lues sous le verrou (sinon une clôture
+        commitée entre-temps resterait invisible).
+        """
+        stmt = (
+            select(CashSession)
+            .where(CashSession.id == session_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def close_session(
+        self,
+        session: CashSession,
+        *,
+        expected_amount: Decimal,
+        client_expected_amount: Decimal,
+        counted_amount: Decimal,
+        closing_note: str | None,
+        closed_at: datetime,
+        closed_by: UUID,
+    ) -> bool:
+        """Écrit la clôture en un seul UPDATE et rafraîchit `session` ; False si déjà close.
+
+        La session doit être ouverte et verrouillée (get_for_update) : l'écart
+        est dérivé ici de counted - expected, comme l'exige
+        chk_cash_sessions_state ; closure_recorded_at prend l'horloge serveur.
+        """
+        stmt = (
+            update(CashSession)
+            .where(CashSession.id == session.id, CashSession.status == "open")
+            .values(
+                status="closed",
+                expected_amount=expected_amount,
+                client_expected_amount=client_expected_amount,
+                counted_amount=counted_amount,
+                discrepancy_amount=counted_amount - expected_amount,
+                closing_note=closing_note,
+                closed_at=closed_at,
+                closed_by=closed_by,
+                closure_recorded_at=func.now(),
+            )
+            .execution_options(synchronize_session=False)
+        )
+        result = await self.db.execute(stmt)
+        if result.rowcount != 1:  # type: ignore[attr-defined]
+            return False
+        await self.db.refresh(session)
+        return True
 
     async def get_open_for_device(self, device_id: UUID) -> CashSession | None:
         """Session ouverte de l'appareil (au plus une, index unique partiel)."""

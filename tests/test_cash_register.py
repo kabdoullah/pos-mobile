@@ -1,7 +1,7 @@
 """Tests des sessions de caisse par appareil (ADR-0015)."""
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.cash_register.exceptions import CashSessionAlreadyOpenError
 from app.modules.cash_register.models import CashMovement, CashSession
 from app.modules.cash_register.repository import CashSessionRepository
-from app.modules.cash_register.schemas import CashSessionOpen
+from app.modules.cash_register.schemas import CashSessionClose, CashSessionOpen
 from app.modules.cash_register.service import CashSessionService
 from app.modules.returns.schemas import SaleReturnCreate
 from app.modules.returns.service import ReturnService
@@ -861,13 +861,12 @@ async def _expected_amount(client: AsyncClient, headers: dict[str, str], session
 
 
 async def _close_via_sql(db: AsyncSession, session_id: str) -> None:
-    """Clôture la session en SQL (endpoint de clôture : Task 5).
+    """Clôture la session en SQL, derrière le dos de l'identity map de `db`.
 
-    expire_all : le client HTTP partage `db`, l'objet session de l'identity
-    map serait sinon resté « open ».
+    Le client HTTP partage `db` : le verrou FOR UPDATE (populate_existing)
+    doit rafraîchir l'objet resté « open » en mémoire.
     """
     await _close_session(db, UUID(session_id))
-    db.expire_all()
 
 
 @pytest.mark.asyncio
@@ -1061,3 +1060,309 @@ async def test_movement_on_session_of_another_store_is_404(
     hidden = await _post_movement(client, headers_b, session_b, payload)
     assert hidden.status_code == 409, hidden.text
     assert hidden.json()["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+# ---------------------------------------------------------------------------
+# API : clôture (spec §5.6, §6)
+# ---------------------------------------------------------------------------
+
+
+def _close_payload(
+    counted: str = "10000",
+    client_expected: str | None = None,
+    note: str | None = None,
+    closed_at: datetime | None = None,
+) -> dict[str, Any]:
+    return {
+        "counted_amount": counted,
+        "client_expected_amount": client_expected if client_expected is not None else counted,
+        "closing_note": note,
+        "closed_at": (closed_at or datetime.now(UTC)).isoformat(),
+    }
+
+
+async def _post_close(
+    client: AsyncClient, headers: dict[str, str], session_id: str, payload: dict[str, Any]
+) -> Any:
+    return await client.post(f"{_CASH_URL}/{session_id}/close", json=payload, headers=headers)
+
+
+@pytest.mark.asyncio
+async def test_close_balanced_session(client: AsyncClient, db_session: AsyncSession) -> None:
+    user_id, _, headers = await _http_store(db_session, "cash-close-balanced@test.com")
+    session_id = await _http_open(client, headers)
+    payload = _close_payload("10000.00", client_expected="10000")
+
+    response = await _post_close(client, headers, session_id, payload)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    session = body["session"]
+    assert session["status"] == "closed"
+    assert Decimal(session["expected_amount"]) == Decimal("10000")
+    assert Decimal(session["counted_amount"]) == Decimal("10000")
+    assert Decimal(session["discrepancy_amount"]) == Decimal("0")
+    assert isinstance(session["discrepancy_amount"], str)
+    assert session["closing_note"] is None
+    assert session["closed_by"] == str(user_id)
+    assert datetime.fromisoformat(session["closed_at"]) == datetime.fromisoformat(
+        payload["closed_at"]
+    )
+    assert Decimal(body["summary"]["expected_amount"]) == Decimal("10000")
+    assert Decimal(body["summary"]["late_impact"]) == Decimal("0")
+    assert body["summary"]["server_recalculated"] is False
+
+    # L'appareil n'a plus de session active ; closure_recorded_at est posé.
+    active = await client.get(
+        f"{_CASH_URL}/active", params={"device_id": session["device_id"]}, headers=headers
+    )
+    assert active.status_code == 404
+    recorded = (
+        await db_session.execute(
+            text("SELECT closure_recorded_at FROM cash_sessions WHERE id = :id"),
+            {"id": session_id},
+        )
+    ).scalar()
+    assert recorded is not None
+
+
+@pytest.mark.asyncio
+async def test_close_with_shortage_requires_note(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-close-shortage@test.com")
+    session_id = await _http_open(client, headers)
+
+    for note in (None, "   "):
+        missing = await _post_close(client, headers, session_id, _close_payload("9500", note=note))
+        assert missing.status_code == 422, missing.text
+        assert missing.json()["code"] == "VALIDATION_ERROR"
+        assert missing.json()["field"] == "closing_note"
+    still_open = await _expected_amount(client, headers, session_id)
+    assert still_open["session"]["status"] == "open"
+
+    response = await _post_close(
+        client, headers, session_id, _close_payload("9500", note="Monnaie rendue en trop")
+    )
+
+    assert response.status_code == 200, response.text
+    session = response.json()["session"]
+    assert Decimal(session["discrepancy_amount"]) == Decimal("-500")
+    assert session["closing_note"] == "Monnaie rendue en trop"
+
+
+@pytest.mark.asyncio
+async def test_close_with_surplus_and_decimal_amounts(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Review Focus 3 : arithmétique Decimal exacte, aucun float."""
+    _, _, headers = await _http_store(db_session, "cash-close-surplus@test.com")
+    session_id = await _http_open(client, headers, amount="1000.50")
+    cash_in = await _post_movement(
+        client, headers, session_id, _movement_payload("cash_in", "500", note=None)
+    )
+    assert cash_in.status_code == 201, cash_in.text
+
+    response = await _post_close(
+        client,
+        headers,
+        session_id,
+        _close_payload("1600.00", client_expected="1500.50", note="Excédent"),
+    )
+
+    assert response.status_code == 200, response.text
+    session = response.json()["session"]
+    assert Decimal(session["expected_amount"]) == Decimal("1500.50")
+    assert Decimal(session["discrepancy_amount"]) == Decimal("99.50")
+
+
+@pytest.mark.asyncio
+async def test_server_ignores_client_expected_amount(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-close-recalc@test.com")
+    session_id = await _http_open(client, headers)
+
+    response = await _post_close(
+        client, headers, session_id, _close_payload("10000", client_expected="99999")
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert Decimal(body["session"]["expected_amount"]) == Decimal("10000")
+    assert Decimal(body["session"]["client_expected_amount"]) == Decimal("99999")
+    assert Decimal(body["session"]["discrepancy_amount"]) == Decimal("0")
+    assert Decimal(body["summary"]["expected_amount"]) == Decimal("10000")
+    assert Decimal(body["summary"]["late_impact"]) == Decimal("0")
+    assert body["summary"]["server_recalculated"] is True
+
+
+@pytest.mark.asyncio
+async def test_close_retry_with_same_payload_returns_200_same_result(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Review Focus 2 : une clôture rejouée ne change rien et répond 200."""
+    _, _, headers = await _http_store(db_session, "cash-close-retry@test.com")
+    session_id = await _http_open(client, headers)
+    payload = _close_payload("9500", note="Manque 500")
+
+    first = await _post_close(client, headers, session_id, payload)
+    assert first.status_code == 200, first.text
+    retry = await _post_close(client, headers, session_id, payload)
+    assert retry.status_code == 200, retry.text
+    assert retry.json() == first.json()
+
+    # Mêmes valeurs écrites autrement (montant, fuseau) : toujours le même retry.
+    closed_at = datetime.fromisoformat(payload["closed_at"])
+    same = {
+        **payload,
+        "counted_amount": "9500.00",
+        "closed_at": closed_at.astimezone(timezone(timedelta(hours=1))).isoformat(),
+    }
+    again = await _post_close(client, headers, session_id, same)
+    assert again.status_code == 200, again.text
+    assert again.json() == first.json()
+
+
+@pytest.mark.asyncio
+async def test_second_close_with_different_count_is_409_session_closed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-close-409@test.com")
+    session_id = await _http_open(client, headers)
+    payload = _close_payload("10000")
+    assert (await _post_close(client, headers, session_id, payload)).status_code == 200
+
+    closed_at = datetime.fromisoformat(payload["closed_at"])
+    for changed in (
+        {"counted_amount": "9000", "closing_note": "Manque"},
+        {"closed_at": (closed_at + timedelta(seconds=1)).isoformat()},
+    ):
+        response = await _post_close(client, headers, session_id, {**payload, **changed})
+        assert response.status_code == 409, response.text
+        assert response.json()["code"] == "CASH_SESSION_CLOSED"
+
+    detail = await _expected_amount(client, headers, session_id)
+    assert Decimal(detail["session"]["counted_amount"]) == Decimal("10000")
+
+
+@pytest.mark.asyncio
+async def test_sale_after_closure_is_in_late_impact_not_in_expected(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user_id, store_id, headers = await _http_store(db_session, "cash-close-late@test.com")
+    session_id = await _http_open(client, headers)
+    closed = await _post_close(client, headers, session_id, _close_payload("10000"))
+    assert closed.status_code == 200, closed.text
+
+    # Le contexte tenant (SET LOCAL) du dernier appel HTTP reste actif sur db_session.
+    await SaleService(db_session).create_sale(store_id, _sale(UUID(session_id), "3000"), user_id)
+
+    summary = (await _expected_amount(client, headers, session_id))["summary"]
+    assert Decimal(summary["expected_amount"]) == Decimal("10000")
+    assert Decimal(summary["late_impact"]) == Decimal("3000")
+
+
+@pytest.mark.asyncio
+async def test_close_concurrent_with_sale_insert_counts_it_or_reports_it_late(
+    db_engine: Any,
+) -> None:
+    """La vente est soit dans le montant figé, soit dans l'impact après clôture, jamais perdue."""
+    session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with session_maker() as setup:
+        user_id, store_id = await _store(setup, "cash-close-race@test.com")
+        await setup.commit()
+
+    async def tenant(db: AsyncSession) -> None:
+        await db.execute(text("SET LOCAL ROLE pos_app"))
+        await db.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
+
+    for _ in range(3):
+        async with session_maker() as setup:
+            await tenant(setup)
+            session = await _open_session(setup, store_id, user_id)
+            await setup.commit()
+
+        async def close(session_id: UUID = session.id) -> None:
+            payload = CashSessionClose.model_validate(_close_payload("10000", note="Comptage"))
+            async with session_maker() as db:
+                await tenant(db)
+                await CashSessionService(db).close(store_id, user_id, session_id, payload)
+                await db.commit()
+
+        async def sell(session_id: UUID = session.id) -> None:
+            async with session_maker() as db:
+                await tenant(db)
+                await SaleService(db).create_sale(store_id, _sale(session_id, "3000"), user_id)
+                await db.commit()
+
+        await asyncio.gather(close(), sell())
+
+        async with session_maker() as check:
+            await tenant(check)
+            detail = await CashSessionService(check).get_detail(session.id)
+        assert detail.session.status == "closed"
+        assert detail.summary.expected_amount + detail.summary.late_impact == Decimal("13000")
+        assert detail.summary.expected_amount in (Decimal("10000"), Decimal("13000"))
+        assert detail.session.discrepancy_amount == (
+            Decimal("10000") - detail.summary.expected_amount
+        )
+
+
+@pytest.mark.asyncio
+async def test_close_session_of_another_store_is_404(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers_a = await _http_store(db_session, "cash-close-rls-a@test.com")
+    _, _, headers_b = await _http_store(db_session, "cash-close-rls-b@test.com")
+    session_a = await _http_open(client, headers_a)
+
+    response = await _post_close(client, headers_b, session_a, _close_payload("10000"))
+    assert response.status_code == 404, response.text
+    assert response.json()["code"] == "NOT_FOUND"
+    unknown = await _post_close(client, headers_a, str(uuid4()), _close_payload("10000"))
+    assert unknown.status_code == 404
+
+    detail = await _expected_amount(client, headers_a, session_a)
+    assert detail["session"]["status"] == "open"
+
+
+@pytest.mark.asyncio
+async def test_close_payload_validation(client: AsyncClient, db_session: AsyncSession) -> None:
+    _, _, headers = await _http_store(db_session, "cash-close-422@test.com")
+    session_id = await _http_open(client, headers)
+    without_client_expected = _close_payload("10000")
+    del without_client_expected["client_expected_amount"]
+
+    invalid = [
+        (_close_payload("-1", client_expected="10000"), "counted_amount"),
+        (without_client_expected, "client_expected_amount"),
+        (_close_payload(closed_at=datetime.now(UTC) + timedelta(minutes=10)), "closed_at"),
+        # Session ouverte il y a quelques instants : clôture la veille impossible.
+        (_close_payload(closed_at=datetime.now(UTC) - timedelta(days=1)), "closed_at"),
+    ]
+    for payload, field in invalid:
+        response = await _post_close(client, headers, session_id, payload)
+        assert response.status_code == 422, (payload, response.text)
+        assert response.json()["code"] == "VALIDATION_ERROR"
+        assert response.json()["field"] == field
+
+    detail = await _expected_amount(client, headers, session_id)
+    assert detail["session"]["status"] == "open"
+
+
+@pytest.mark.asyncio
+async def test_lock_refreshes_session_already_in_identity_map(db_session: AsyncSession) -> None:
+    """get_for_update relit la ligne sous le verrou, même si l'objet est déjà en mémoire."""
+    user_id, store_id = await _tenant(db_session, "cash-lock-refresh@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+    repo = CashSessionRepository(db_session)
+    stale = await repo.get_by_id(session.id)
+    assert stale is not None
+    assert stale.status == "open"
+
+    await _close_session(db_session, session.id)
+    locked = await repo.get_for_update(session.id)
+
+    assert locked is stale
+    assert locked.status == "closed"
