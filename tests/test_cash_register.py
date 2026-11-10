@@ -1,23 +1,27 @@
 """Tests des sessions de caisse par appareil (ADR-0015)."""
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.modules.cash_register.exceptions import CashSessionAlreadyOpenError
 from app.modules.cash_register.models import CashMovement, CashSession
 from app.modules.cash_register.repository import CashSessionRepository
+from app.modules.cash_register.schemas import CashSessionOpen
 from app.modules.cash_register.service import CashSessionService
 from app.modules.returns.schemas import SaleReturnCreate
 from app.modules.returns.service import ReturnService
 from app.modules.sales.schemas import SaleCreate
 from app.modules.sales.service import SaleService
-from tests.test_sync import _create_store, _create_user
+from tests.test_sync import _create_store, _create_user, _headers
 
 # ---------------------------------------------------------------------------
 # Contraintes de base de données (migration cash_register)
@@ -563,3 +567,253 @@ async def test_closed_session_keeps_frozen_amount_and_reports_late_impact(
     assert summary.expected_amount == Decimal("10000")
     assert summary.late_impact == Decimal("2500")
     assert summary.server_recalculated is True
+
+
+# ---------------------------------------------------------------------------
+# API : ouverture, session active, détail, historique (spec §5.1 à §5.4)
+# ---------------------------------------------------------------------------
+
+_CASH_URL = "/api/v1/cash-sessions"
+
+
+def _open_payload(
+    device_id: UUID | None = None,
+    amount: str = "25000",
+    opened_at: datetime | None = None,
+) -> dict[str, Any]:
+    return {
+        "id": str(uuid4()),
+        "device_id": str(device_id or uuid4()),
+        "opening_amount": amount,
+        "opening_note": "Fond de caisse",
+        "opened_at": (opened_at or datetime.now(UTC)).isoformat(),
+    }
+
+
+async def _http_store(db: AsyncSession, email: str) -> tuple[UUID, UUID, dict[str, str]]:
+    """Crée user + boutique (commit), retourne (user_id, store_id, headers)."""
+    user = await _create_user(db, email)
+    store = await _create_store(db, user.id)
+    await db.commit()
+    return user.id, store.id, _headers(user.id, store.id)
+
+
+@pytest.mark.asyncio
+async def test_open_session_returns_201_and_retry_returns_200(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user_id, _, headers = await _http_store(db_session, "cash-api-open@test.com")
+    payload = _open_payload()
+
+    created = await client.post(_CASH_URL, json=payload, headers=headers)
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body["id"] == payload["id"]
+    assert body["device_id"] == payload["device_id"]
+    assert body["status"] == "open"
+    assert Decimal(body["opening_amount"]) == Decimal("25000")
+    assert isinstance(body["opening_amount"], str)
+    assert body["opening_note"] == "Fond de caisse"
+    assert body["opened_by"] == str(user_id)
+    for field in (
+        "expected_amount",
+        "client_expected_amount",
+        "counted_amount",
+        "discrepancy_amount",
+        "closing_note",
+        "closed_at",
+        "closed_by",
+    ):
+        assert body[field] is None
+
+    retry = await client.post(_CASH_URL, json=payload, headers=headers)
+    assert retry.status_code == 200, retry.text
+    assert retry.json() == body
+
+
+@pytest.mark.asyncio
+async def test_open_with_same_id_different_amount_is_idempotency_conflict(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-api-idem@test.com")
+    payload = _open_payload()
+    assert (await client.post(_CASH_URL, json=payload, headers=headers)).status_code == 201
+
+    response = await client.post(
+        _CASH_URL, json={**payload, "opening_amount": "30000"}, headers=headers
+    )
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_second_open_on_same_device_is_409_already_open(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-api-already@test.com")
+    device = uuid4()
+    assert (
+        await client.post(_CASH_URL, json=_open_payload(device), headers=headers)
+    ).status_code == 201
+
+    response = await client.post(_CASH_URL, json=_open_payload(device), headers=headers)
+
+    assert response.status_code == 409
+    assert response.json()["code"] == "CASH_SESSION_ALREADY_OPEN"
+    # La transaction reste utilisable après le rollback du SAVEPOINT.
+    other = await client.post(_CASH_URL, json=_open_payload(), headers=headers)
+    assert other.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_concurrent_opens_on_same_device_only_one_succeeds(db_engine: Any) -> None:
+    session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with session_maker() as setup:
+        user_id, store_id = await _store(setup, "cash-api-concurrent@test.com")
+        await setup.commit()
+    device = uuid4()
+
+    async def attempt() -> str:
+        payload = CashSessionOpen.model_validate(_open_payload(device))
+        async with session_maker() as db:
+            await db.execute(text("SET LOCAL ROLE pos_app"))
+            await db.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
+            try:
+                await CashSessionService(db).open(store_id, user_id, payload)
+                await db.commit()
+            except CashSessionAlreadyOpenError:
+                await db.rollback()
+                return "already_open"
+            return "created"
+
+    results = await asyncio.gather(attempt(), attempt())
+
+    assert sorted(results) == ["already_open", "created"]
+
+
+@pytest.mark.asyncio
+async def test_get_active_returns_detail_or_404(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-api-active@test.com")
+    device = uuid4()
+
+    missing = await client.get(
+        f"{_CASH_URL}/active", params={"device_id": str(device)}, headers=headers
+    )
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "NOT_FOUND"
+
+    payload = _open_payload(device, amount="15000")
+    assert (await client.post(_CASH_URL, json=payload, headers=headers)).status_code == 201
+
+    active = await client.get(
+        f"{_CASH_URL}/active", params={"device_id": str(device)}, headers=headers
+    )
+    assert active.status_code == 200, active.text
+    body = active.json()
+    assert body["session"]["id"] == payload["id"]
+    assert Decimal(body["summary"]["expected_amount"]) == Decimal("15000")
+    assert body["summary"]["server_recalculated"] is False
+    assert body["movements"] == []
+
+    detail = await client.get(f"{_CASH_URL}/{payload['id']}", headers=headers)
+    assert detail.status_code == 200
+    assert detail.json() == body
+
+
+@pytest.mark.asyncio
+async def test_history_is_paginated_newest_first(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-api-history@test.com")
+    now = datetime.now(UTC)
+    ids = []
+    for hours_ago in (3, 1, 2):
+        payload = _open_payload(opened_at=now - timedelta(hours=hours_ago))
+        assert (await client.post(_CASH_URL, json=payload, headers=headers)).status_code == 201
+        ids.append(payload["id"])
+    oldest, newest, middle = ids
+
+    first = await client.get(_CASH_URL, params={"limit": 2}, headers=headers)
+    assert first.status_code == 200, first.text
+    page = first.json()
+    assert [s["id"] for s in page["items"]] == [newest, middle]
+    assert page["has_more"] is True
+    assert page["next_cursor"]
+
+    second = await client.get(
+        _CASH_URL, params={"limit": 2, "cursor": page["next_cursor"]}, headers=headers
+    )
+    page = second.json()
+    assert [s["id"] for s in page["items"]] == [oldest]
+    assert page["has_more"] is False
+    assert page["next_cursor"] is None
+
+
+@pytest.mark.asyncio
+async def test_history_filters_by_device(client: AsyncClient, db_session: AsyncSession) -> None:
+    _, _, headers = await _http_store(db_session, "cash-api-history-device@test.com")
+    device = uuid4()
+    mine = _open_payload(device)
+    for payload in (mine, _open_payload()):
+        assert (await client.post(_CASH_URL, json=payload, headers=headers)).status_code == 201
+
+    response = await client.get(_CASH_URL, params={"device_id": str(device)}, headers=headers)
+
+    assert [s["id"] for s in response.json()["items"]] == [mine["id"]]
+
+
+@pytest.mark.asyncio
+async def test_store_cannot_see_or_open_on_session_of_another_store(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers_a = await _http_store(db_session, "cash-api-rls-a@test.com")
+    _, _, headers_b = await _http_store(db_session, "cash-api-rls-b@test.com")
+    device = uuid4()
+    payload = _open_payload(device)
+    assert (await client.post(_CASH_URL, json=payload, headers=headers_a)).status_code == 201
+
+    detail = await client.get(f"{_CASH_URL}/{payload['id']}", headers=headers_b)
+    assert detail.status_code == 404
+    assert detail.json()["code"] == "NOT_FOUND"
+    active = await client.get(
+        f"{_CASH_URL}/active", params={"device_id": str(device)}, headers=headers_b
+    )
+    assert active.status_code == 404
+    history = await client.get(_CASH_URL, headers=headers_b)
+    assert history.json()["items"] == []
+
+
+@pytest.mark.asyncio
+async def test_negative_opening_amount_and_future_opened_at_are_422(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-api-422@test.com")
+
+    negative = await client.post(_CASH_URL, json=_open_payload(amount="-1"), headers=headers)
+    assert negative.status_code == 422
+    assert negative.json()["field"] == "opening_amount"
+
+    future = await client.post(
+        _CASH_URL,
+        json=_open_payload(opened_at=datetime.now(UTC) + timedelta(minutes=10)),
+        headers=headers,
+    )
+    assert future.status_code == 422
+    assert future.json()["code"] == "VALIDATION_ERROR"
+
+    naive = _open_payload()
+    naive["opened_at"] = datetime.now().replace(tzinfo=None).isoformat()
+    assert (await client.post(_CASH_URL, json=naive, headers=headers)).status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_open_other_integrity_error_is_not_already_open(db_session: AsyncSession) -> None:
+    """Seul l'index partiel donne CASH_SESSION_ALREADY_OPEN : une FK violée remonte telle quelle."""
+    _, store_id = await _tenant(db_session, "cash-api-fk@test.com")
+    payload = CashSessionOpen.model_validate(_open_payload())
+
+    with pytest.raises(IntegrityError, match="fk_cash_sessions_opened_by"):
+        await CashSessionService(db_session).open(store_id, uuid4(), payload)

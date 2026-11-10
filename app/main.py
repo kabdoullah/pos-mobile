@@ -17,10 +17,7 @@ from app.core.seed import seed_platform_admin, seed_superadmin
 from app.modules.admin.router import router as admin_router
 from app.modules.auth.deeplink_router import router as deeplink_router
 from app.modules.auth.router import router as auth_router, users_router
-
-# Enregistre cash_sessions dans les métadonnées : sales et sale_returns y ont une FK.
-# À retirer quand le router cash_register sera importé ici.
-from app.modules.cash_register import models as _cash_register_models  # noqa: F401
+from app.modules.cash_register.router import router as cash_router
 from app.modules.catalog.router import categories_router, router as catalog_router
 from app.modules.inventory.router import router as inventory_router
 from app.modules.sales.router import router as sales_router
@@ -68,6 +65,7 @@ app.include_router(stores_router, prefix=f"{api_v1_prefix}/stores", tags=["store
 app.include_router(catalog_router, prefix=f"{api_v1_prefix}/products", tags=["catalog"])
 app.include_router(categories_router, prefix=f"{api_v1_prefix}/categories", tags=["catalog"])
 app.include_router(sales_router, prefix=f"{api_v1_prefix}/sales", tags=["sales"])
+app.include_router(cash_router, prefix=f"{api_v1_prefix}/cash-sessions", tags=["cash"])
 app.include_router(sync_router, prefix=f"{api_v1_prefix}/sync", tags=["sync"])
 app.include_router(inventory_router, prefix=f"{api_v1_prefix}/inventory", tags=["inventory"])
 # Hors /api/v1 : chemins imposés par Android App Links et par le lien de l'email.

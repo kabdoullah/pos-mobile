@@ -4,14 +4,36 @@ Toutes les requêtes passent par la session tenant : la RLS restreint les
 lignes à la boutique courante.
 """
 
+from datetime import datetime
 from decimal import Decimal
+from typing import TypedDict
 from uuid import UUID
 
-from sqlalchemy import ColumnElement, case, func, select
+from sqlalchemy import ColumnElement, case, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import decode_cursor
 from app.modules.cash_register.models import CashMovement, CashSession
+
+
+class _CursorData(TypedDict):
+    id: UUID
+    opened_at: datetime
+
+
+def _parse_cursor(cursor: str) -> _CursorData | None:
+    """Décode et valide un cursor opaque. Retourne None si invalide."""
+    raw = decode_cursor(cursor)
+    if raw is None:
+        return None
+    try:
+        return _CursorData(
+            id=UUID(str(raw["id"])),
+            opened_at=datetime.fromisoformat(str(raw["opened_at"])),
+        )
+    except (KeyError, ValueError):
+        return None
 
 
 def _columns(row: CashSession | CashMovement) -> dict[str, object]:
@@ -45,6 +67,25 @@ class CashSessionRepository:
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def list_page(
+        self, device_id: UUID | None, cursor: str | None, limit: int
+    ) -> tuple[list[CashSession], bool]:
+        """Historique paginé, tri (opened_at DESC, id DESC). Retourne (items, has_more)."""
+        stmt = select(CashSession)
+        if device_id is not None:
+            stmt = stmt.where(CashSession.device_id == device_id)
+        if cursor:
+            parsed = _parse_cursor(cursor)
+            if parsed is not None:
+                stmt = stmt.where(
+                    tuple_(CashSession.opened_at, CashSession.id)
+                    < (parsed["opened_at"], parsed["id"])
+                )
+        stmt = stmt.order_by(CashSession.opened_at.desc(), CashSession.id.desc()).limit(limit + 1)
+        rows = list((await self.db.execute(stmt)).scalars().all())
+        has_more = len(rows) > limit
+        return rows[:limit], has_more
 
     async def insert_session(self, session: CashSession) -> bool:
         """Insère la session ; False si l'id existe déjà (retry idempotent).
