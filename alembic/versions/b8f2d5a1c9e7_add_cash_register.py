@@ -337,6 +337,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Sans RLS pour le contrôle : sous FORCE RLS (ou un rôle soumis à RLS), le
+    # EXISTS verrait 0 ligne et le downgrade détruirait les données. Avec
+    # row_security = off, un rôle soumis à RLS échoue bruyamment au lieu de filtrer.
+    op.execute("SET LOCAL row_security = off;")
     op.execute("""
         DO $$
         BEGIN

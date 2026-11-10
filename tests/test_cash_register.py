@@ -15,12 +15,18 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.modules.cash_register.exceptions import CashSessionAlreadyOpenError
 from app.modules.cash_register.models import CashMovement, CashSession
 from app.modules.cash_register.repository import CashSessionRepository
-from app.modules.cash_register.schemas import CashSessionClose, CashSessionOpen
+from app.modules.cash_register.schemas import (
+    CashMovementCreate,
+    CashSessionClose,
+    CashSessionOpen,
+)
 from app.modules.cash_register.service import CashSessionService
 from app.modules.returns.schemas import SaleReturnCreate
 from app.modules.returns.service import ReturnService
 from app.modules.sales.schemas import SaleCreate
 from app.modules.sales.service import SaleService
+from app.modules.sync.schemas import ReturnsBatchSyncRequest, SalesBatchSyncRequest
+from app.modules.sync.service import SyncService
 from tests.test_sync import _create_store, _create_user, _headers
 
 # ---------------------------------------------------------------------------
@@ -1599,3 +1605,206 @@ async def test_pull_exposes_cash_session_id_on_sales_and_returns(
     assert sales[legacy["id"]]["cash_session_id"] is None
     returns = {r["id"]: r for r in body["returns"]}
     assert returns[sale_return["id"]]["cash_session_id"] == session_id
+
+
+# ---------------------------------------------------------------------------
+# Revue finale : retry concurrent d'une sortie, POST /sales, sync robuste
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_cash_out_retry_blocked_on_lock_replays_instead_of_insufficient_cash(
+    db_engine: Any,
+) -> None:
+    """Le retry B attend le verrou pendant que A insère la même sortie : B rejoue.
+
+    6000 sur 10000 : après l'insertion de A, le solde vaut 4000 < 6000. Sans
+    relecture de l'id sous le verrou, B renverrait INSUFFICIENT_CASH.
+    """
+    session_maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with session_maker() as setup:
+        user_id, store_id = await _store(setup, "cash-mvt-retry-race@test.com")
+        await setup.commit()
+
+    async def tenant(db: AsyncSession) -> None:
+        await db.execute(text("SET LOCAL ROLE pos_app"))
+        await db.execute(
+            text("SELECT set_config('app.current_store_id', :sid, true)"), {"sid": str(store_id)}
+        )
+
+    async with session_maker() as setup:
+        await tenant(setup)
+        session = await _open_session(setup, store_id, user_id, opening="10000")
+        await setup.commit()
+
+    payload = CashMovementCreate.model_validate(
+        _movement_payload("cash_out", "6000", reason="expense", note=None)
+    )
+
+    async with session_maker() as holder:
+        # A : verrou sur la session et insertion de la sortie, sans commit.
+        await tenant(holder)
+        await holder.execute(
+            text("SELECT id FROM cash_sessions WHERE id = :id FOR UPDATE"), {"id": session.id}
+        )
+        await holder.execute(
+            text(
+                "INSERT INTO cash_movements "
+                "(id, store_id, session_id, type, reason, amount, created_at, created_by) "
+                "VALUES (:id, :store_id, :session_id, 'cash_out', 'expense', :amount, "
+                ":created_at, :user_id)"
+            ),
+            {
+                "id": payload.id,
+                "store_id": store_id,
+                "session_id": session.id,
+                "amount": payload.amount,
+                "created_at": payload.created_at,
+                "user_id": user_id,
+            },
+        )
+
+        async def retry() -> tuple[CashMovement, bool]:
+            async with session_maker() as db:
+                await tenant(db)
+                result = await CashSessionService(db).record_movement(
+                    store_id, user_id, session.id, payload
+                )
+                await db.commit()
+                return result
+
+        task = asyncio.create_task(retry())
+        # Attendre que B soit bloqué sur le verrou de A (déterministe).
+        async with session_maker() as monitor:
+            for _ in range(200):
+                waiting = (
+                    await monitor.execute(
+                        text(
+                            "SELECT count(*) FROM pg_stat_activity "
+                            "WHERE datname = current_database() AND wait_event_type = 'Lock'"
+                        )
+                    )
+                ).scalar()
+                if waiting:
+                    break
+                await asyncio.sleep(0.01)
+            else:
+                pytest.fail("the retry never blocked on the session lock")
+        assert not task.done()
+        await holder.commit()
+
+    movement, created = await task
+
+    assert created is False
+    assert movement.id == payload.id
+    assert movement.amount == Decimal("6000")
+    async with session_maker() as check:
+        await tenant(check)
+        detail = await CashSessionService(check).get_detail(session.id)
+    assert len(detail.movements) == 1
+    assert detail.summary.expected_amount == Decimal("4000")
+
+
+@pytest.mark.asyncio
+async def test_direct_sale_with_unknown_or_foreign_session_is_404(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers_a = await _http_store(db_session, "cash-direct-sale-a@test.com")
+    _, _, headers_b = await _http_store(db_session, "cash-direct-sale-b@test.com")
+    session_a = await _http_open(client, headers_a)
+
+    for session_id, headers in ((str(uuid4()), headers_a), (session_a, headers_b)):
+        sale = _sale_json(session_id, "3000")
+        response = await client.post("/api/v1/sales", json=sale, headers=headers)
+
+        assert response.status_code == 404, response.text
+        assert response.json()["code"] == "NOT_FOUND"
+        assert response.json()["field"] == "cash_session_id"
+        count = (
+            await db_session.execute(
+                text("SELECT count(*) FROM sales WHERE id = :id"), {"id": sale["id"]}
+            )
+        ).scalar()
+        assert count == 0
+
+    valid = await client.post("/api/v1/sales", json=_sale_json(session_a), headers=headers_a)
+    assert valid.status_code == 201, valid.text
+    assert valid.json()["cash_session_id"] == session_a
+
+
+@pytest.mark.asyncio
+async def test_sync_mixed_batch_unknown_session_then_valid_sale(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-sync-mixed@test.com")
+    session_id = await _http_open(client, headers)
+    unknown = _sale_json(str(uuid4()), "1000")
+    valid = _sale_json(session_id, "3000")
+
+    response = await client.post(_SYNC_SALES_URL, json={"sales": [unknown, valid]}, headers=headers)
+
+    assert response.status_code == 200, response.text
+    results = response.json()["results"]
+    assert [r["status"] for r in results] == ["failed", "created"]
+    assert results[0]["error"] == "cash session not found"
+    stored = (
+        await db_session.execute(
+            text("SELECT cash_session_id FROM sales WHERE id = :id"), {"id": valid["id"]}
+        )
+    ).scalar()
+    assert str(stored) == session_id
+
+
+async def _failing_exists(self: CashSessionService, session_id: UUID) -> bool:
+    """exists() qui provoque une vraie erreur base (transaction avortée)."""
+    await self.db.execute(text("SELECT 1 / 0"))
+    return True
+
+
+@pytest.mark.asyncio
+async def test_sync_sales_db_error_on_session_lookup_fails_only_that_item(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-sync-exists-error@test.com")
+    broken = _sale(uuid4(), "1000")
+    legacy = _sale(None, "3000")
+    original = CashSessionService.exists
+
+    async def exists(self: CashSessionService, session_id: UUID) -> bool:
+        if session_id == broken.cash_session_id:
+            return await _failing_exists(self, session_id)
+        return await original(self, session_id)
+
+    monkeypatch.setattr(CashSessionService, "exists", exists)
+
+    response = await SyncService(db_session).sync_sales_batch(
+        store_id, SalesBatchSyncRequest(sales=[broken, legacy]), user_id
+    )
+
+    assert [r.status.value for r in response.results] == ["failed", "created"]
+    count = (
+        await db_session.execute(
+            text("SELECT count(*) FROM sales WHERE id = :id"), {"id": legacy.id}
+        )
+    ).scalar()
+    assert count == 1
+
+
+@pytest.mark.asyncio
+async def test_sync_returns_db_error_on_session_lookup_is_failed_not_rejected(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-sync-return-exists-error@test.com")
+    sale, _ = await SaleService(db_session).create_sale(store_id, _sale(None, "3000"), user_id)
+    broken = _return(sale, uuid4(), "3000")
+    monkeypatch.setattr(CashSessionService, "exists", _failing_exists)
+
+    response = await SyncService(db_session).sync_returns_batch(
+        store_id, ReturnsBatchSyncRequest(returns=[broken]), user_id
+    )
+
+    result = response.results[0]
+    assert result.status.value == "failed"
+    assert result.error_code is None
+    # La transaction reste utilisable après le rollback du SAVEPOINT.
+    assert (await db_session.execute(text("SELECT 1"))).scalar() == 1

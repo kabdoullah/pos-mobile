@@ -7,8 +7,10 @@ from fastapi import APIRouter, Query, Response, status
 
 from app.core.db import TenantDbSession
 from app.core.dependencies import CurrentStoreId, CurrentUserId
+from app.core.exceptions import NotFoundError
 from app.core.pagination import CursorPage
 from app.modules.auth.service import UserService
+from app.modules.cash_register.service import CashSessionService
 from app.modules.sales.receipt_pdf import build_receipt_pdf
 from app.modules.sales.schemas import DailySalesSummary, SaleCreate, SaleResponse
 from app.modules.sales.service import SaleService
@@ -29,7 +31,16 @@ async def create_sale(
     store_id: CurrentStoreId,
     user_id: CurrentUserId,
 ) -> SaleResponse:
-    """Enregistre une vente. Idempotent : si l'id existe déjà, retourne la vente existante."""
+    """Enregistre une vente. Idempotent : si l'id existe déjà, retourne la vente existante.
+
+    404 (field `cash_session_id`) si la session de caisse citée est inconnue
+    ou d'une autre boutique. Le contrôle vit ici : cash_register.service
+    importe sales.service, l'inverse créerait un cycle.
+    """
+    if payload.cash_session_id is not None and not await CashSessionService(db).exists(
+        payload.cash_session_id
+    ):
+        raise NotFoundError("Cash session not found.", field="cash_session_id")
     sale, _ = await SaleService(db).create_sale(store_id, payload, user_id)
     return SaleResponse.model_validate(sale)
 

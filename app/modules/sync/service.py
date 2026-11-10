@@ -43,6 +43,11 @@ _SYNC_TOLERANCE_MS = 1
 # échec réessayable, jamais un refus définitif (spec §5.7).
 _CASH_SESSION_NOT_FOUND = "cash session not found"
 
+
+class _CashSessionNotFoundError(Exception):
+    """Sentinelle interne : session de caisse citée invisible pour la boutique."""
+
+
 # Ordre du pull : une catégorie arrive toujours avant ses produits, une vente
 # avant ses retours.
 _PHASES = ("categories", "products", "sales", "returns")
@@ -92,23 +97,16 @@ class SyncService:
     ) -> SalesBatchSyncResponse:
         """Sync best-effort d'un lot de ventes.
 
-        Chaque vente est insérée dans son propre SAVEPOINT pour que l'échec
-        d'une vente n'annule pas les autres.
+        Chaque vente (contrôle de sa session de caisse compris) est traitée
+        dans son propre SAVEPOINT pour que l'échec d'une vente n'annule pas
+        les autres.
         """
         results: list[SaleSyncResult] = []
         for sale_payload in payload.sales:
-            if await self._cash_session_missing(sale_payload.cash_session_id):
-                logger.info("sale_sync_failed_unknown_cash_session", sale_id=str(sale_payload.id))
-                results.append(
-                    SaleSyncResult(
-                        id=sale_payload.id,
-                        status=SaleSyncResultStatus.failed,
-                        error=_CASH_SESSION_NOT_FOUND,
-                    )
-                )
-                continue
             try:
                 async with self.db.begin_nested():
+                    if await self._cash_session_missing(sale_payload.cash_session_id):
+                        raise _CashSessionNotFoundError
                     sale, was_created = await self.sale_service.create_sale(
                         store_id, sale_payload, user_id
                     )
@@ -119,6 +117,15 @@ class SyncService:
                 )
                 results.append(
                     SaleSyncResult(id=sale.id, status=status, receipt_number=sale.receipt_number)
+                )
+            except _CashSessionNotFoundError:
+                logger.info("sale_sync_failed_unknown_cash_session", sale_id=str(sale_payload.id))
+                results.append(
+                    SaleSyncResult(
+                        id=sale_payload.id,
+                        status=SaleSyncResultStatus.failed,
+                        error=_CASH_SESSION_NOT_FOUND,
+                    )
                 )
             except Exception as exc:
                 logger.warning(
@@ -145,20 +152,10 @@ class SyncService:
         """
         results: list[ReturnSyncResult] = []
         for return_payload in payload.returns:
-            if await self._cash_session_missing(return_payload.cash_session_id):
-                logger.info(
-                    "return_sync_failed_unknown_cash_session", return_id=str(return_payload.id)
-                )
-                results.append(
-                    ReturnSyncResult(
-                        id=return_payload.id,
-                        status=ReturnSyncResultStatus.failed,
-                        error=_CASH_SESSION_NOT_FOUND,
-                    )
-                )
-                continue
             try:
                 async with self.db.begin_nested():
+                    if await self._cash_session_missing(return_payload.cash_session_id):
+                        raise _CashSessionNotFoundError
                     sale_return, was_created = await self.return_service.create_return(
                         store_id, return_payload, user_id
                     )
@@ -169,6 +166,17 @@ class SyncService:
                         if was_created
                         else ReturnSyncResultStatus.already_exists,
                         return_number=sale_return.return_number,
+                    )
+                )
+            except _CashSessionNotFoundError:
+                logger.info(
+                    "return_sync_failed_unknown_cash_session", return_id=str(return_payload.id)
+                )
+                results.append(
+                    ReturnSyncResult(
+                        id=return_payload.id,
+                        status=ReturnSyncResultStatus.failed,
+                        error=_CASH_SESSION_NOT_FOUND,
                     )
                 )
             except ReturnRejectedError as exc:

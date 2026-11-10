@@ -137,11 +137,11 @@ class CashSessionService:
         """Enregistre une entrée/sortie ; (mouvement, créé ?). Idempotent sur l'id client.
 
         Ordre (spec §3, §5.5) : retry du même id → existant ; session
-        verrouillée (FOR UPDATE) ; clôturée et created_at > closed_at →
-        CashSessionClosedError ; sortie sur session ouverte au-delà du solde →
-        InsufficientCashError. Sur une session clôturée, un mouvement antérieur
-        à la clôture est accepté sans contrôle de solde (l'argent a déjà bougé)
-        et apparaît dans late_impact.
+        verrouillée (FOR UPDATE) ; nouvelle lecture de l'id sous le verrou ;
+        clôturée et created_at > closed_at → CashSessionClosedError ; sortie
+        sur session ouverte au-delà du solde → InsufficientCashError. Sur une
+        session clôturée, un mouvement antérieur à la clôture est accepté sans
+        contrôle de solde (l'argent a déjà bougé) et apparaît dans late_impact.
         """
         existing = await self.repo.get_movement(payload.id)
         if existing is not None:
@@ -151,6 +151,13 @@ class CashSessionService:
         session = await self.repo.get_for_update(session_id)
         if session is None:
             raise NotFoundError("Cash session not found.")
+        # Retry concurrent : la requête qui tenait le verrou a pu insérer ce
+        # même mouvement. Rejouer avant tout contrôle, sinon le solde (qui
+        # l'inclut déjà) ou la clôture refuseraient à tort le retry.
+        existing = await self.repo.get_movement(payload.id)
+        if existing is not None:
+            self._check_movement_replay(existing, session_id, payload)
+            return existing, False
         if session.status == "closed":
             if session.closed_at is None:
                 # Exclu par chk_cash_sessions_state.
