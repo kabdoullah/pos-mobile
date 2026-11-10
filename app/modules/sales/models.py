@@ -13,6 +13,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     Numeric,
     String,
@@ -48,6 +49,14 @@ class Sale(Base):
     __tablename__ = "sales"
     __table_args__ = (
         UniqueConstraint("store_id", "receipt_number", name="uq_sales_store_receipt_number"),
+        # FK composite : la session doit être de la même boutique (MATCH SIMPLE,
+        # non vérifiée si cash_session_id est NULL).
+        ForeignKeyConstraint(
+            ["store_id", "cash_session_id"],
+            ["cash_sessions.store_id", "cash_sessions.id"],
+            name="fk_sales_cash_session",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(
             "total_amount >= 0 AND vat_amount >= 0",
             name="chk_sales_amounts_positive",
@@ -112,11 +121,7 @@ class Sale(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     # Session de caisse de l'appareil (ADR-0015), posée à l'INSERT ; NULL hors session.
-    cash_session_id: Mapped[UUID | None] = mapped_column(
-        SQLUUID(as_uuid=True),
-        ForeignKey("cash_sessions.id", ondelete="RESTRICT", name="fk_sales_cash_session"),
-        nullable=True,
-    )
+    cash_session_id: Mapped[UUID | None] = mapped_column(SQLUUID(as_uuid=True), nullable=True)
 
     items: Mapped[list["SaleItem"]] = relationship(
         back_populates="sale", cascade="all, delete-orphan", lazy="raise"

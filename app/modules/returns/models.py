@@ -14,6 +14,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     Numeric,
     String,
@@ -53,6 +54,14 @@ class SaleReturn(Base):
     __tablename__ = "sale_returns"
     __table_args__ = (
         UniqueConstraint("store_id", "return_number", name="uq_sale_returns_store_return_number"),
+        # FK composite : la session doit être de la même boutique (MATCH SIMPLE,
+        # non vérifiée si cash_session_id est NULL).
+        ForeignKeyConstraint(
+            ["store_id", "cash_session_id"],
+            ["cash_sessions.store_id", "cash_sessions.id"],
+            name="fk_sale_returns_cash_session",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(_in_list("reason", RETURN_REASONS), name="chk_sale_returns_reason"),
         CheckConstraint(
             "reason != 'other' OR (note IS NOT NULL AND length(trim(note)) > 0)",
@@ -94,11 +103,7 @@ class SaleReturn(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     # Session de caisse de l'appareil (ADR-0015), posée à l'INSERT ; NULL hors session.
-    cash_session_id: Mapped[UUID | None] = mapped_column(
-        SQLUUID(as_uuid=True),
-        ForeignKey("cash_sessions.id", ondelete="RESTRICT", name="fk_sale_returns_cash_session"),
-        nullable=True,
-    )
+    cash_session_id: Mapped[UUID | None] = mapped_column(SQLUUID(as_uuid=True), nullable=True)
 
     items: Mapped[list["SaleReturnItem"]] = relationship(
         back_populates="sale_return", cascade="all, delete-orphan", lazy="raise"

@@ -11,7 +11,16 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Numeric,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID as SQLUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,11 +36,12 @@ _CLOSING_REQUIRED = (
     "expected_amount",
     "counted_amount",
     "discrepancy_amount",
+    "client_expected_amount",
     "closed_at",
     "closure_recorded_at",
 )
 # Nuls tant que la session est ouverte, facultatifs une fois closed.
-_CLOSING_OPTIONAL = ("client_expected_amount", "closing_note", "closed_by")
+_CLOSING_OPTIONAL = ("closing_note", "closed_by")
 
 
 def _in_list(column: str, values: tuple[str, ...]) -> str:
@@ -54,6 +64,9 @@ class CashSession(Base):
 
     __tablename__ = "cash_sessions"
     __table_args__ = (
+        # Cible des FK composites (store_id, cash_session_id) : une ligne ne peut
+        # viser que la session de sa propre boutique (les FK ignorent la RLS).
+        UniqueConstraint("store_id", "id", name="uq_cash_sessions_store_id_id"),
         CheckConstraint(_in_list("status", SESSION_STATUSES), name="chk_cash_sessions_status"),
         CheckConstraint("opening_amount >= 0", name="chk_cash_sessions_opening_amount_positive"),
         CheckConstraint(
@@ -134,6 +147,12 @@ class CashMovement(Base):
 
     __tablename__ = "cash_movements"
     __table_args__ = (
+        ForeignKeyConstraint(
+            ["store_id", "session_id"],
+            ["cash_sessions.store_id", "cash_sessions.id"],
+            name="fk_cash_movements_session",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint(_in_list("type", MOVEMENT_TYPES), name="chk_cash_movements_type"),
         CheckConstraint(
             f"(type = 'cash_in' AND {_in_list('reason', CASH_IN_REASONS)}) "
@@ -154,11 +173,8 @@ class CashMovement(Base):
         ForeignKey("stores.id", ondelete="RESTRICT", name="fk_cash_movements_store"),
         nullable=False,
     )
-    session_id: Mapped[UUID] = mapped_column(
-        SQLUUID(as_uuid=True),
-        ForeignKey("cash_sessions.id", ondelete="RESTRICT", name="fk_cash_movements_session"),
-        nullable=False,
-    )
+    # FK composite (store_id, session_id), voir __table_args__.
+    session_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)
     type: Mapped[str] = mapped_column(String(10), nullable=False)
     reason: Mapped[str] = mapped_column(String(20), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

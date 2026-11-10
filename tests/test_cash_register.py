@@ -55,7 +55,7 @@ async def _close_session(
     await db.execute(
         text(
             "UPDATE cash_sessions SET status = 'closed', expected_amount = :expected, "
-            "counted_amount = :counted, discrepancy_amount = :discrepancy, "
+            "client_expected_amount = :expected, counted_amount = :counted, discrepancy_amount = :discrepancy, "
             "closing_note = :note, closed_at = :closed_at, closure_recorded_at = now() "
             "WHERE id = :id"
         ),
@@ -248,3 +248,67 @@ async def test_purge_store_removes_cash_register_data(db_session: AsyncSession) 
 
     sessions = (await db_session.execute(text("SELECT COUNT(*) FROM cash_sessions"))).scalar()
     assert sessions == 0
+
+
+async def test_closed_session_requires_client_expected_amount(db_session: AsyncSession) -> None:
+    _, store_id = await _store(db_session, "cash-client-expected@test.com")
+    session_id = await _insert_open_session(db_session, store_id, uuid4())
+    await _close_session(db_session, session_id)
+
+    other = await _insert_open_session(db_session, store_id, uuid4())
+    with pytest.raises(IntegrityError, match="chk_cash_sessions_state"):
+        async with db_session.begin_nested():
+            await db_session.execute(
+                text(
+                    "UPDATE cash_sessions SET status = 'closed', expected_amount = 0, "
+                    "counted_amount = 0, discrepancy_amount = 0, closed_at = now(), "
+                    "closure_recorded_at = now() WHERE id = :id"
+                ),
+                {"id": other},
+            )
+
+
+async def test_movement_cannot_reference_session_of_another_store(
+    db_session: AsyncSession,
+) -> None:
+    _, store_a = await _store(db_session, "cash-xstore-mvt-a@test.com")
+    _, store_b = await _store(db_session, "cash-xstore-mvt-b@test.com")
+    session_a = await _insert_open_session(db_session, store_a, uuid4())
+
+    with pytest.raises(IntegrityError, match="fk_cash_movements_session"):
+        async with db_session.begin_nested():
+            await _insert_movement(db_session, store_b, session_a, "cash_in", "top_up")
+
+
+async def test_sale_cannot_reference_session_of_another_store(db_session: AsyncSession) -> None:
+    _, store_a = await _store(db_session, "cash-xstore-sale-a@test.com")
+    _, store_b = await _store(db_session, "cash-xstore-sale-b@test.com")
+    session_a = await _insert_open_session(db_session, store_a, uuid4())
+    insert_sale = text(
+        "INSERT INTO sales (id, store_id, total_amount, payment_method, created_at, "
+        "cash_session_id) VALUES (:id, :store_id, 1000, 'cash', now(), :session_id)"
+    )
+
+    with pytest.raises(IntegrityError, match="fk_sales_cash_session"):
+        async with db_session.begin_nested():
+            await db_session.execute(
+                insert_sale, {"id": uuid4(), "store_id": store_b, "session_id": session_a}
+            )
+
+    # Même boutique : accepté ; sans session (NULL) : non vérifié.
+    await db_session.execute(
+        insert_sale, {"id": uuid4(), "store_id": store_a, "session_id": session_a}
+    )
+    await db_session.execute(insert_sale, {"id": uuid4(), "store_id": store_b, "session_id": None})
+
+
+async def test_rls_rejects_session_inserted_for_another_store(db_session: AsyncSession) -> None:
+    _, store_a = await _store(db_session, "cash-rls-check-a@test.com")
+    _, store_b = await _store(db_session, "cash-rls-check-b@test.com")
+    await db_session.flush()
+
+    await db_session.execute(text("SET LOCAL ROLE pos_app"))
+    await db_session.execute(text(f"SET LOCAL app.current_store_id = '{store_a}'"))
+    with pytest.raises(DBAPIError, match="row-level security"):
+        async with db_session.begin_nested():
+            await _insert_open_session(db_session, store_b, uuid4())

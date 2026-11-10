@@ -43,17 +43,18 @@ depends_on: str | Sequence[str] | None = None
 
 _RLS_USING = "store_id = NULLIF(current_setting('app.current_store_id', true), '')::uuid"
 
-# Champs renseignés à la clôture. closed_by (FK SET NULL), closing_note
-# (exigée seulement en cas d'écart) et client_expected_amount (traçabilité)
-# sont nuls tant que la session est ouverte, mais facultatifs une fois close.
+# Champs renseignés à la clôture. closed_by (FK SET NULL) et closing_note
+# (exigée seulement en cas d'écart) sont nuls tant que la session est ouverte,
+# mais facultatifs une fois close.
 _CLOSING_REQUIRED = (
     "expected_amount",
     "counted_amount",
     "discrepancy_amount",
+    "client_expected_amount",
     "closed_at",
     "closure_recorded_at",
 )
-_CLOSING_OPTIONAL = ("client_expected_amount", "closing_note", "closed_by")
+_CLOSING_OPTIONAL = ("closing_note", "closed_by")
 
 # Ordre imposé par les clés étrangères (enfants avant parents). Version
 # d'origine : e5b2c8d4f1a6_account_deletion_purge_store.
@@ -183,6 +184,8 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["store_id"], ["stores.id"], name="fk_cash_sessions_store", ondelete="RESTRICT"
         ),
+        # Cible des FK composites : une ligne ne peut viser que la session de sa boutique.
+        sa.UniqueConstraint("store_id", "id", name="uq_cash_sessions_store_id_id"),
         sa.ForeignKeyConstraint(
             ["opened_by"], ["users.id"], name="fk_cash_sessions_opened_by", ondelete="SET NULL"
         ),
@@ -239,7 +242,7 @@ def upgrade() -> None:
     )
 
     op.execute("""
-        CREATE TRIGGER set_updated_at
+        CREATE TRIGGER trg_cash_sessions_updated_at
             BEFORE UPDATE ON cash_sessions
             FOR EACH ROW
             EXECUTE FUNCTION update_updated_at_column();
@@ -272,9 +275,10 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["store_id"], ["stores.id"], name="fk_cash_movements_store", ondelete="RESTRICT"
         ),
+        # FK composite : les FK ignorent la RLS, le store_id doit être celui de la session.
         sa.ForeignKeyConstraint(
-            ["session_id"],
-            ["cash_sessions.id"],
+            ["store_id", "session_id"],
+            ["cash_sessions.store_id", "cash_sessions.id"],
             name="fk_cash_movements_session",
             ondelete="RESTRICT",
         ),
@@ -315,12 +319,13 @@ def upgrade() -> None:
     # ============================================================
     for table in ("sales", "sale_returns"):
         op.add_column(table, sa.Column("cash_session_id", UUID(as_uuid=True), nullable=True))
+        # FK composite (MATCH SIMPLE : non vérifiée si cash_session_id est NULL).
         op.create_foreign_key(
             f"fk_{table}_cash_session",
             table,
             "cash_sessions",
-            ["cash_session_id"],
-            ["id"],
+            ["store_id", "cash_session_id"],
+            ["store_id", "id"],
             ondelete="RESTRICT",
         )
         op.execute(f"""
@@ -359,7 +364,7 @@ def downgrade() -> None:
     op.execute(
         "DROP TRIGGER IF EXISTS trg_cash_sessions_prevent_closed_modification ON cash_sessions;"
     )
-    op.execute("DROP TRIGGER IF EXISTS set_updated_at ON cash_sessions;")
+    op.execute("DROP TRIGGER IF EXISTS trg_cash_sessions_updated_at ON cash_sessions;")
     op.drop_table("cash_sessions")
 
     op.execute("DROP FUNCTION IF EXISTS prevent_closed_cash_session_modification();")
