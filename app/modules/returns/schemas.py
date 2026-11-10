@@ -55,6 +55,8 @@ class SaleReturnCreate(BaseModel):
     refund_amount: Amount
     created_at: datetime
     items: list[SaleReturnItemCreate] = Field(..., min_length=1, max_length=100)
+    # Session de caisse de l'appareil qui rembourse (ADR-0015).
+    cash_session_id: UUID | None = None
 
     @field_validator("note", mode="before")
     @classmethod

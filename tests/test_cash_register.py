@@ -1,6 +1,8 @@
 """Tests des sessions de caisse par appareil (ADR-0015)."""
 
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -8,6 +10,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.cash_register.models import CashMovement, CashSession
+from app.modules.cash_register.repository import CashSessionRepository
+from app.modules.cash_register.service import CashSessionService
+from app.modules.returns.schemas import SaleReturnCreate
+from app.modules.returns.service import ReturnService
+from app.modules.sales.schemas import SaleCreate
+from app.modules.sales.service import SaleService
 from tests.test_sync import _create_store, _create_user
 
 # ---------------------------------------------------------------------------
@@ -312,3 +321,245 @@ async def test_rls_rejects_session_inserted_for_another_store(db_session: AsyncS
     with pytest.raises(DBAPIError, match="row-level security"):
         async with db_session.begin_nested():
             await _insert_open_session(db_session, store_b, uuid4())
+
+
+# ---------------------------------------------------------------------------
+# Solde théorique (spec §3) — helpers, contexte tenant (pos_app + RLS)
+# ---------------------------------------------------------------------------
+
+
+async def _tenant(db: AsyncSession, email: str) -> tuple[UUID, UUID]:
+    """Crée user + boutique, puis bascule la transaction dans le contexte tenant."""
+    user = await _create_user(db, email)
+    store = await _create_store(db, user.id)
+    await db.commit()
+    await db.execute(text("SET LOCAL ROLE pos_app"))
+    await db.execute(text(f"SET LOCAL app.current_store_id = '{store.id}'"))
+    return user.id, store.id
+
+
+async def _open_session(
+    db: AsyncSession, store_id: UUID, user_id: UUID, opening: str = "10000"
+) -> CashSession:
+    session = CashSession(
+        id=uuid4(),
+        store_id=store_id,
+        device_id=uuid4(),
+        status="open",
+        opening_amount=Decimal(opening),
+        opened_at=datetime.now(UTC),
+        opened_by=user_id,
+    )
+    assert await CashSessionRepository(db).insert_session(session)
+    return session
+
+
+def _sale(
+    session_id: UUID | None,
+    total: str,
+    payment_method: str = "cash",
+    *,
+    cash_amount: str | None = None,
+    mobile_money_amount: str | None = None,
+) -> SaleCreate:
+    """Vente d'une ligne au prix `total`, rattachée à `session_id`."""
+    return SaleCreate.model_validate(
+        {
+            "id": str(uuid4()),
+            "items": [
+                {
+                    "id": str(uuid4()),
+                    "product_name_at_sale": "Article",
+                    "unit_price_at_sale": total,
+                    "quantity": 1,
+                    "line_total": total,
+                }
+            ],
+            "total_amount": total,
+            "payment_method": payment_method,
+            "cash_amount": cash_amount,
+            "mobile_money_amount": mobile_money_amount,
+            "created_at": datetime.now(UTC).isoformat(),
+            "cash_session_id": str(session_id) if session_id else None,
+        }
+    )
+
+
+def _return(
+    sale: Any, session_id: UUID, amount: str, refund_method: str = "cash"
+) -> SaleReturnCreate:
+    """Retour total de la (seule) ligne de `sale`."""
+    item = sale.items[0]
+    return SaleReturnCreate.model_validate(
+        {
+            "id": str(uuid4()),
+            "sale_id": str(sale.id),
+            "reason": "defective",
+            "refund_method": refund_method,
+            "refund_amount": amount,
+            "created_at": datetime.now(UTC).isoformat(),
+            "cash_session_id": str(session_id),
+            "items": [
+                {
+                    "id": str(uuid4()),
+                    "sale_item_id": str(item.id),
+                    "quantity": 1,
+                    "condition": "damaged",
+                    "refund_amount": amount,
+                }
+            ],
+        }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Solde théorique
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_balance_without_operations_is_opening_amount(db_session: AsyncSession) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-empty@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert summary.expected_amount == Decimal("10000")
+    assert summary.opening_amount == Decimal("10000")
+    assert (summary.cash_sales, summary.cash_sales_count) == (Decimal("0"), 0)
+    assert summary.mobile_money_sales == Decimal("0")
+    assert (summary.cash_in, summary.cash_out, summary.cash_refunds) == (0, 0, 0)
+    assert summary.late_impact == Decimal("0")
+    assert summary.server_recalculated is False
+
+
+@pytest.mark.asyncio
+async def test_cash_sale_counts_total(db_session: AsyncSession) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-sale@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+    await SaleService(db_session).create_sale(store_id, _sale(session.id, "3000"), user_id)
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert summary.expected_amount == Decimal("13000")
+    assert (summary.cash_sales, summary.cash_sales_count) == (Decimal("3000"), 1)
+
+
+@pytest.mark.asyncio
+async def test_mobile_money_sale_is_excluded(db_session: AsyncSession) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-momo@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+    await SaleService(db_session).create_sale(
+        store_id, _sale(session.id, "5000", "mobile_money_wave"), user_id
+    )
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert summary.expected_amount == Decimal("10000")
+    assert summary.mobile_money_sales == Decimal("5000")
+    assert (summary.cash_sales, summary.cash_sales_count) == (Decimal("0"), 0)
+
+
+@pytest.mark.asyncio
+async def test_mixed_sale_counts_cash_part_only(db_session: AsyncSession) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-mixed@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+    payload = _sale(session.id, "8000", "mixed", cash_amount="3000", mobile_money_amount="5000")
+    await SaleService(db_session).create_sale(store_id, payload, user_id)
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert summary.expected_amount == Decimal("13000")
+    assert summary.cash_sales == Decimal("3000")
+    assert summary.mobile_money_sales == Decimal("5000")
+
+
+@pytest.mark.asyncio
+async def test_cash_refund_decreases_and_mobile_refund_does_not(db_session: AsyncSession) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-refund@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+    sales = SaleService(db_session)
+    first, _ = await sales.create_sale(store_id, _sale(session.id, "1000"), user_id)
+    second, _ = await sales.create_sale(store_id, _sale(session.id, "500"), user_id)
+    returns = ReturnService(db_session)
+    await returns.create_return(store_id, _return(first, session.id, "1000"), user_id)
+    await returns.create_return(
+        store_id, _return(second, session.id, "500", "mobile_money_orange"), user_id
+    )
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert summary.cash_refunds == Decimal("1000")
+    # 10000 + 1500 de ventes espèces - 1000 remboursés en espèces.
+    assert summary.expected_amount == Decimal("10500")
+
+
+@pytest.mark.asyncio
+async def test_cash_in_adds_and_cash_out_subtracts(db_session: AsyncSession) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-movements@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+    repo = CashSessionRepository(db_session)
+    for type_, reason, amount in (("cash_in", "top_up", "2000"), ("cash_out", "expense", "500")):
+        movement = CashMovement(
+            id=uuid4(),
+            store_id=store_id,
+            session_id=session.id,
+            type=type_,
+            reason=reason,
+            amount=Decimal(amount),
+            created_at=datetime.now(UTC),
+            created_by=user_id,
+        )
+        assert await repo.insert_movement(movement)
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert (summary.cash_in, summary.cash_out) == (Decimal("2000"), Decimal("500"))
+    assert summary.expected_amount == Decimal("11500")
+
+
+@pytest.mark.asyncio
+async def test_sales_of_another_session_are_ignored(db_session: AsyncSession) -> None:
+    user_id, store_id = await _tenant(db_session, "cash-other@test.com")
+    session = await _open_session(db_session, store_id, user_id)
+    other = await _open_session(db_session, store_id, user_id)
+    sales = SaleService(db_session)
+    await sales.create_sale(store_id, _sale(other.id, "4000"), user_id)
+    await sales.create_sale(store_id, _sale(None, "2000"), user_id)
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert summary.expected_amount == Decimal("10000")
+    assert summary.cash_sales_count == 0
+
+
+@pytest.mark.asyncio
+async def test_closed_session_keeps_frozen_amount_and_reports_late_impact(
+    db_session: AsyncSession,
+) -> None:
+    """Une vente arrivée après la clôture n'entre pas dans le montant figé."""
+    user_id, store_id = await _tenant(db_session, "cash-closed@test.com")
+    now = datetime.now(UTC)
+    session = CashSession(
+        id=uuid4(),
+        store_id=store_id,
+        device_id=uuid4(),
+        status="closed",
+        opening_amount=Decimal("10000"),
+        opened_at=now,
+        opened_by=user_id,
+        expected_amount=Decimal("10000"),
+        client_expected_amount=Decimal("9000"),
+        counted_amount=Decimal("10000"),
+        discrepancy_amount=Decimal("0"),
+        closed_at=now,
+        closure_recorded_at=now,
+    )
+    assert await CashSessionRepository(db_session).insert_session(session)
+    await SaleService(db_session).create_sale(store_id, _sale(session.id, "2500"), user_id)
+
+    summary = await CashSessionService(db_session).compute_balance(session)
+
+    assert summary.expected_amount == Decimal("10000")
+    assert summary.late_impact == Decimal("2500")
+    assert summary.server_recalculated is True

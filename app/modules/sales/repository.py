@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import TypedDict
 from uuid import UUID
 
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import case, func, select, tuple_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -98,6 +98,7 @@ class SaleRepository:
                 discount_type=sale.discount_type,
                 discount_value=sale.discount_value,
                 discount_amount=sale.discount_amount,
+                cash_session_id=sale.cash_session_id,
             )
             .on_conflict_do_nothing(index_elements=["id"])
             .returning(Sale.id)
@@ -123,6 +124,28 @@ class SaleRepository:
         if loaded is None:
             raise RuntimeError(f"Sale {sale.id} not found after successful insert")
         return loaded, True
+
+    async def cash_totals_for_session(self, session_id: UUID) -> tuple[Decimal, int, Decimal]:
+        """(part espèces, nombre de ventes avec part espèces, part mobile money).
+
+        Part espèces : total_amount pour cash, cash_amount pour mixed (le CHECK
+        garantit cash_amount + mobile_money_amount = total_amount), 0 sinon.
+        """
+        # Comparaisons explicites : la forme `case({...}, value=...)` lie les clés
+        # en VARCHAR, sans opérateur face à payment_method_enum.
+        cash_share = case(
+            (Sale.payment_method == "cash", Sale.total_amount),
+            (Sale.payment_method == "mixed", Sale.cash_amount),
+            else_=Decimal("0"),
+        )
+        zero = Decimal("0")
+        stmt = select(
+            func.coalesce(func.sum(cash_share), zero),
+            func.count(Sale.id).filter(Sale.payment_method.in_(("cash", "mixed"))),
+            func.coalesce(func.sum(Sale.total_amount - cash_share), zero),
+        ).where(Sale.cash_session_id == session_id)
+        cash, cash_count, mobile_money = (await self.db.execute(stmt)).one()
+        return cash, cash_count, mobile_money
 
     async def list_sales(
         self,

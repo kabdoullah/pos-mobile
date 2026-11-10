@@ -1,6 +1,7 @@
 """Accès aux données du module returns."""
 
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select, tuple_
@@ -35,6 +36,14 @@ class SaleReturnRepository:
         )
         result = await self.db.execute(stmt)
         return {item_id: int(quantity) for item_id, quantity in result.all()}
+
+    async def cash_refund_total_for_session(self, session_id: UUID) -> Decimal:
+        """Somme des refund_amount des retours de la session remboursés en espèces."""
+        stmt = select(func.coalesce(func.sum(SaleReturn.refund_amount), Decimal("0"))).where(
+            SaleReturn.cash_session_id == session_id, SaleReturn.refund_method == "cash"
+        )
+        total: Decimal = (await self.db.execute(stmt)).scalar_one()
+        return total
 
     async def create(self, sale_return: SaleReturn) -> SaleReturn:
         """Insère le retour et ses lignes ; relit le numéro posé par le trigger."""

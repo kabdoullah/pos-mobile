@@ -18,6 +18,7 @@ from app.modules.sales.schemas import (
     PaymentMethodSummary,
     SaleCreate,
     SaleResponse,
+    SessionSalesTotals,
     TopProduct,
 )
 
@@ -91,6 +92,7 @@ class SaleService:
             discount_value=payload.discount_value,
             discount_amount=payload.discount_amount,
             created_by=user_id,
+            cash_session_id=payload.cash_session_id,
         )
 
         created_sale, was_created = await self.repo.create_sale_atomic(sale, items)
@@ -115,6 +117,11 @@ class SaleService:
     async def get_sale_for_update(self, sale_id: UUID) -> Sale | None:
         """Vente avec ses lignes, verrouillée jusqu'à la fin de la transaction."""
         return await self.repo.get_by_id_for_update(sale_id)
+
+    async def cash_totals_for_session(self, session_id: UUID) -> SessionSalesTotals:
+        """Part espèces, nombre et part mobile money des ventes d'une session."""
+        cash, cash_count, mobile_money = await self.repo.cash_totals_for_session(session_id)
+        return SessionSalesTotals(cash=cash, cash_count=cash_count, mobile_money=mobile_money)
 
     async def list_sales(
         self,

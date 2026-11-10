@@ -1,5 +1,6 @@
 """Schémas Pydantic du module sales."""
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum
@@ -147,6 +148,8 @@ class SaleCreate(BaseModel):
     discount_type: DiscountType | None = None
     discount_value: Amount | None = None
     discount_amount: Amount = Decimal("0")
+    # Session de caisse de l'appareil au moment de la vente (ADR-0015).
+    cash_session_id: UUID | None = None
 
     @model_validator(mode="after")
     def validate_sale(self) -> "SaleCreate":
@@ -223,3 +226,17 @@ class DailySalesSummary(BaseModel):
     sales_count: int
     by_payment_method: dict[str, PaymentMethodSummary]
     top_products: list[TopProduct] = Field(default_factory=list, max_length=5)
+
+
+@dataclass(frozen=True)
+class SessionSalesTotals:
+    """Totaux des ventes d'une session de caisse (ADR-0015, spec §3).
+
+    `cash` : part espèces (total des ventes cash, cash_amount des ventes
+    mixed) ; `cash_count` : nombre de ventes avec une part espèces ;
+    `mobile_money` : le reste, informatif, hors solde.
+    """
+
+    cash: Decimal
+    cash_count: int
+    mobile_money: Decimal

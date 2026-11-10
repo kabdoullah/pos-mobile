@@ -109,6 +109,7 @@ class ReturnService:
             refund_amount=payload.refund_amount,
             created_at=payload.created_at,
             created_by=user_id,
+            cash_session_id=payload.cash_session_id,
             items=lines,
         )
         created = await self.repo.create(sale_return)
@@ -124,6 +125,10 @@ class ReturnService:
         except NotFoundError:
             return False
         return True
+
+    async def cash_refund_total_for_session(self, session_id: UUID) -> Decimal:
+        """Somme des remboursements en espèces des retours d'une session."""
+        return await self.repo.cash_refund_total_for_session(session_id)
 
     async def list_changed(
         self,
