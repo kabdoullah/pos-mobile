@@ -199,6 +199,136 @@ GET    /api/v1/sync/changes              Pull des changements depuis un timestam
 `GET /sync/changes` renvoie les phases dans l'ordre catégories → produits →
 ventes : une catégorie arrive toujours avant ses produits.
 
+### Sessions de caisse
+
+Une session de caisse suit les espèces d'un tiroir (un appareil) entre son ouverture et sa clôture (ADR-0015). Toutes les routes sont authentifiées et isolées par boutique (RLS) : une session d'une autre boutique donne 404. Les montants sont des chaînes dans le JSON, les UUID des sessions et des mouvements sont générés par l'app.
+
+```
+POST   /api/v1/cash-sessions                       Ouvrir une session (201, ou 200 si retry du même id)
+GET    /api/v1/cash-sessions/active?device_id=…    Session ouverte d'un appareil (404 si aucune)
+GET    /api/v1/cash-sessions/{id}                  Session + résumé + mouvements
+GET    /api/v1/cash-sessions                       Historique (cursor, limit 1-100 défaut 50, device_id?), opened_at décroissant
+POST   /api/v1/cash-sessions/{id}/movements        Entrée ou sortie d'espèces (201, ou 200 si retry du même id)
+POST   /api/v1/cash-sessions/{id}/close            Clôturer (200, aussi pour un retry identique)
+```
+
+Codes d'erreur propres au module :
+
+| code | HTTP | sens |
+|---|---|---|
+| `CASH_SESSION_ALREADY_OPEN` | 409 | l'appareil a déjà une autre session ouverte |
+| `CASH_SESSION_CLOSED` | 409 | mouvement postérieur à la clôture, ou clôture déjà enregistrée avec un autre `counted_amount` / `closed_at` |
+| `INSUFFICIENT_CASH` | 422 | sortie supérieure au solde théorique |
+| `IDEMPOTENCY_CONFLICT` | 409 | même UUID déjà utilisé avec un contenu différent |
+| `NOT_FOUND` | 404 | session inconnue ou d'une autre boutique |
+| `VALIDATION_ERROR` | 422 | payload invalide |
+
+**Ouverture** (`POST /cash-sessions`) :
+
+```json
+{
+  "id": "6f1c…",
+  "device_id": "a2b9…",
+  "opening_amount": "25000",
+  "opening_note": "Fond de caisse lundi",
+  "opened_at": "2026-11-10T07:58:12Z"
+}
+```
+
+`opening_amount` ≥ 0 ; `opened_at` doit porter un fuseau et ne pas dépasser `now + 5 min` (même règle que les ventes). Une seule session ouverte par appareil, y compris face à deux requêtes concurrentes (index unique partiel).
+
+**Mouvement** (`POST /cash-sessions/{id}/movements`) :
+
+```json
+{
+  "id": "0d4e…",
+  "type": "cash_out",
+  "reason": "supplies",
+  "amount": "3500",
+  "note": "Sachets",
+  "created_at": "2026-11-10T11:20:00Z"
+}
+```
+
+- `type` : `cash_in` (raisons `top_up`, `float`, `other`) ou `cash_out` (raisons `expense`, `withdrawal`, `supplies`, `other`). `amount` > 0. `note` obligatoire si `reason = other`.
+- La session est verrouillée (`FOR UPDATE`). Sur une session clôturée, un mouvement avec `created_at > closed_at` donne `CASH_SESSION_CLOSED` ; un mouvement antérieur à la clôture est accepté (sans contrôle de solde) et apparaît dans `late_impact`.
+- Sur une session ouverte, une sortie supérieure au solde courant donne `INSUFFICIENT_CASH`.
+
+**Clôture** (`POST /cash-sessions/{id}/close`) :
+
+```json
+{
+  "counted_amount": "61500",
+  "client_expected_amount": "62000",
+  "closing_note": "Manque 500, monnaie rendue en trop",
+  "closed_at": "2026-11-10T19:02:40Z"
+}
+```
+
+- `counted_amount` ≥ 0. `client_expected_amount` est **obligatoire** et peut être **négatif** (les remboursements en espèces ne sont jamais bloqués, le solde peut passer sous zéro). Il sert uniquement à la traçabilité : le serveur recalcule `expected_amount` sous verrou et ne l'utilise jamais pour le calcul.
+- `closing_note` est obligatoire seulement si `counted_amount ≠ expected_amount` (écart non nul), sinon `VALIDATION_ERROR` avec `field: closing_note`. `closed_at` ne peut pas précéder `opened_at`.
+- Déjà clôturée avec les mêmes `counted_amount` et `closed_at` : 200 avec la clôture existante (idempotence). Valeurs différentes : `CASH_SESSION_CLOSED`.
+- Une session clôturée n'est jamais rouverte ni modifiée (trigger PostgreSQL).
+
+**Solde théorique** :
+
+```
+solde = opening_amount
+      + Σ part espèces des ventes de la session
+      + Σ entrées − Σ sorties
+      − Σ refund_amount des retours en espèces de la session
+```
+
+La part espèces d'une vente vaut `total_amount` pour `cash`, `cash_amount` pour `mixed`, 0 pour le mobile money. Le rendu de monnaie n'entre pas en compte.
+
+**Réponses** :
+
+```json
+// CashSessionResponse
+{
+  "id": "6f1c…", "device_id": "a2b9…", "status": "closed",
+  "opening_amount": "25000", "opening_note": "Fond de caisse lundi",
+  "opened_at": "2026-11-10T07:58:12Z", "opened_by": "…",
+  "expected_amount": "62000", "client_expected_amount": "62000",
+  "counted_amount": "61500", "discrepancy_amount": "-500",
+  "closing_note": "Manque 500…", "closed_at": "2026-11-10T19:02:40Z", "closed_by": "…"
+}
+
+// CashMovementResponse
+{
+  "id": "0d4e…", "session_id": "6f1c…", "type": "cash_out", "reason": "supplies",
+  "amount": "3500", "note": "Sachets", "created_at": "2026-11-10T11:20:00Z",
+  "created_by": "…", "synced_at": "2026-11-10T11:20:05Z"
+}
+
+// CashSessionDetailResponse
+{
+  "session": { /* CashSessionResponse */ },
+  "summary": {
+    "opening_amount": "25000",
+    "cash_sales": "48000", "cash_sales_count": 23,
+    "mobile_money_sales": "31000",
+    "cash_in": "5000", "cash_out": "14500",
+    "cash_refunds": "2000",
+    "expected_amount": "61500",
+    "late_impact": "0",
+    "server_recalculated": false
+  },
+  "movements": [ /* CashMovementResponse, du plus récent au plus ancien */ ]
+}
+```
+
+- Session ouverte : `summary.expected_amount` est le solde courant. Session clôturée : c'est le montant figé, et `late_impact` = recalcul actuel − montant figé (opérations arrivées après la clôture).
+- `server_recalculated` vaut `true` si `expected_amount ≠ client_expected_amount`.
+- `cash_sales_count` compte les ventes qui ont une part espèces (`cash` et `mixed`). `mobile_money_sales` est informatif et n'entre jamais dans le solde.
+- `closed_by` et `opened_by` sont nullables (FK `SET NULL` si l'utilisateur est supprimé).
+
+**Synchronisation** : `SaleCreate` et `SaleReturnCreate` acceptent un champ optionnel `cash_session_id` (absent = hors session, anciennes versions de l'app). `SaleResponse` et `SaleReturnResponse` l'exposent, donc `GET /sync/changes` le transmet sans nouvelle phase.
+
+- Session inconnue du serveur (ou d'une autre boutique) : l'opération sort en `failed` avec l'erreur `cash session not found`. Elle est réessayable (l'ouverture n'est peut-être pas encore arrivée) et n'est **jamais** `rejected`.
+- Session clôturée : vente et retour sont toujours acceptés et rattachés à leur session. Ils ne modifient pas `expected_amount` figé et apparaissent dans `late_impact`.
+- Le serveur ne réattribue jamais une opération : il garde la session envoyée par l'app.
+
 ### Administration plateforme
 
 Réservé à l'administrateur de la plateforme (jeton distinct, `aud = "pos-admin"`, 120 min, pas de refresh, ADR-0012). 403 si `ADMIN_JWT_SECRET` n'est pas configuré. Les jetons commerçant sont refusés.

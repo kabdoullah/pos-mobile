@@ -12,7 +12,7 @@ Pour l'architecture multi-tenant, voir [adr/0002-multi-tenancy-rls.md](adr/0002-
 1. [Préambule : extensions et fonctions utilitaires](#préambule)
 2. [Tables hors-tenant : users, tokens](#tables-hors-tenant)
 3. [Table racine : stores](#table-racine-stores)
-4. [Tables tenant : products, sales, sale_items](#tables-tenant)
+4. [Tables tenant : products, sales, sale_items, cash_sessions, cash_movements](#tables-tenant)
 5. [Politiques Row-Level Security](#politiques-row-level-security)
 6. [Triggers automatiques](#triggers-automatiques)
 7. [Index de performance](#index-de-performance)
@@ -352,6 +352,124 @@ Avoir `store_id` directement permet une politique RLS triviale et performante.
 
 **Le coût** : on doit s'assurer que `store_id` reste cohérent avec celui de la `sales` parente. C'est garanti par le code applicatif (le service ne permet pas d'insérer un `sale_item` avec un `store_id` différent de la `sale`). On pourrait ajouter un trigger BEFORE INSERT qui le vérifie, mais c'est de la défense en profondeur optionnelle.
 
+### Table `cash_sessions`
+
+Session de caisse par appareil (ADR-0015). Source de vérité : migration `b8f2d5a1c9e7_add_cash_register.py`.
+
+```sql
+CREATE TABLE cash_sessions (
+    id                      UUID            PRIMARY KEY,  -- généré par le client
+    store_id                UUID            NOT NULL,
+    device_id               UUID            NOT NULL,
+    status                  VARCHAR(10)     NOT NULL,
+    opening_amount          NUMERIC(12, 2)  NOT NULL,
+    opening_note            VARCHAR(500)    NULL,
+    opened_at               TIMESTAMPTZ     NOT NULL,     -- horloge client
+    opened_by               UUID            NULL,
+    expected_amount         NUMERIC(12, 2)  NULL,         -- recalculé par le serveur
+    client_expected_amount  NUMERIC(12, 2)  NULL,         -- traçabilité, peut être négatif
+    counted_amount          NUMERIC(12, 2)  NULL,
+    discrepancy_amount      NUMERIC(12, 2)  NULL,
+    closing_note            VARCHAR(500)    NULL,
+    closed_at               TIMESTAMPTZ     NULL,         -- horloge client
+    closed_by               UUID            NULL,
+    closure_recorded_at     TIMESTAMPTZ     NULL,         -- horloge serveur
+    created_at              TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_cash_sessions_store
+        FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_cash_sessions_store_id_id UNIQUE (store_id, id),  -- cible des FK composites
+    CONSTRAINT fk_cash_sessions_opened_by
+        FOREIGN KEY (opened_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_cash_sessions_closed_by
+        FOREIGN KEY (closed_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT chk_cash_sessions_status CHECK (status IN ('open', 'closed')),
+    CONSTRAINT chk_cash_sessions_opening_amount_positive CHECK (opening_amount >= 0),
+    CONSTRAINT chk_cash_sessions_counted_amount_positive
+        CHECK (counted_amount IS NULL OR counted_amount >= 0),
+    CONSTRAINT chk_cash_sessions_state CHECK (
+        (status = 'open' AND expected_amount IS NULL AND counted_amount IS NULL
+            AND discrepancy_amount IS NULL AND client_expected_amount IS NULL
+            AND closed_at IS NULL AND closure_recorded_at IS NULL
+            AND closing_note IS NULL AND closed_by IS NULL)
+        OR (status = 'closed' AND expected_amount IS NOT NULL AND counted_amount IS NOT NULL
+            AND discrepancy_amount IS NOT NULL AND client_expected_amount IS NOT NULL
+            AND closed_at IS NOT NULL AND closure_recorded_at IS NOT NULL
+            AND discrepancy_amount = counted_amount - expected_amount)
+    ),
+    CONSTRAINT chk_cash_sessions_note_on_discrepancy CHECK (
+        status <> 'closed' OR discrepancy_amount = 0
+        OR (closing_note IS NOT NULL AND length(trim(closing_note)) > 0)
+    ),
+    CONSTRAINT chk_cash_sessions_closed_after_opened
+        CHECK (closed_at IS NULL OR closed_at >= opened_at)
+);
+
+CREATE INDEX idx_cash_sessions_store_opened_at ON cash_sessions (store_id, opened_at DESC);
+CREATE UNIQUE INDEX uq_cash_sessions_open_per_device
+    ON cash_sessions (store_id, device_id) WHERE status = 'open';
+```
+
+- `closing_note` n'est exigée que si `discrepancy_amount <> 0` ; `closed_by` est nullable même clôturée (FK `SET NULL`).
+- L'index unique partiel garantit une seule session ouverte par appareil, même sous requêtes concurrentes.
+- `client_expected_amount` n'a pas de `>= 0` : les remboursements en espèces ne sont jamais bloqués, le solde théorique peut être négatif.
+- Triggers : `trg_cash_sessions_updated_at` (`update_updated_at_column`) et `trg_cash_sessions_prevent_closed_modification` (`prevent_closed_cash_session_modification` : refuse tout UPDATE d'une ligne déjà `closed` et tout DELETE, sauf pendant `purge_store`).
+- RLS activée et forcée, politique `rls_cash_sessions_tenant_isolation`.
+
+### Table `cash_movements` (immuable)
+
+```sql
+CREATE TABLE cash_movements (
+    id          UUID            PRIMARY KEY,  -- généré par le client
+    store_id    UUID            NOT NULL,
+    session_id  UUID            NOT NULL,
+    type        VARCHAR(10)     NOT NULL,
+    reason      VARCHAR(20)     NOT NULL,
+    amount      NUMERIC(12, 2)  NOT NULL,
+    note        VARCHAR(500)    NULL,
+    created_at  TIMESTAMPTZ     NOT NULL,     -- horloge client
+    created_by  UUID            NULL,
+    synced_at   TIMESTAMPTZ     NOT NULL DEFAULT now(),
+
+    CONSTRAINT fk_cash_movements_store
+        FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_cash_movements_session
+        FOREIGN KEY (store_id, session_id) REFERENCES cash_sessions(store_id, id) ON DELETE RESTRICT,
+    CONSTRAINT fk_cash_movements_created_by
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT chk_cash_movements_type CHECK (type IN ('cash_in', 'cash_out')),
+    CONSTRAINT chk_cash_movements_reason CHECK (
+        (type = 'cash_in' AND reason IN ('top_up', 'float', 'other'))
+        OR (type = 'cash_out' AND reason IN ('expense', 'withdrawal', 'supplies', 'other'))
+    ),
+    CONSTRAINT chk_cash_movements_amount_positive CHECK (amount > 0),
+    CONSTRAINT chk_cash_movements_other_requires_note
+        CHECK (reason <> 'other' OR (note IS NOT NULL AND length(trim(note)) > 0))
+);
+
+CREATE INDEX idx_cash_movements_store_id ON cash_movements (store_id);
+CREATE INDEX idx_cash_movements_session_id ON cash_movements (session_id);
+```
+
+Triggers `trg_cash_movements_immutable_update` / `_delete` (fonction `prevent_sale_returns_modification`, déjà générique). RLS activée et forcée, politique `rls_cash_movements_tenant_isolation`.
+
+### Rattachement des ventes et retours
+
+```sql
+ALTER TABLE sales ADD COLUMN cash_session_id UUID NULL;
+ALTER TABLE sales ADD CONSTRAINT fk_sales_cash_session
+    FOREIGN KEY (store_id, cash_session_id) REFERENCES cash_sessions(store_id, id) ON DELETE RESTRICT;
+CREATE INDEX idx_sales_cash_session_id ON sales (cash_session_id) WHERE cash_session_id IS NOT NULL;
+-- idem pour sale_returns (fk_sale_returns_cash_session, idx_sale_returns_cash_session_id)
+```
+
+**Pourquoi des FK composites `(store_id, …)`** : une clé étrangère ignore la RLS. Avec une FK simple vers `cash_sessions(id)`, un `cash_session_id` valide d'une autre boutique serait accepté. La FK composite (`MATCH SIMPLE`, non vérifiée quand `cash_session_id` est NULL) oblige la ligne à viser une session de SA boutique, au niveau base.
+
+**`purge_store` (ADR-0011)** : la fonction est recréée par la migration pour supprimer aussi `cash_movements` puis `cash_sessions` (après `sales` et `sale_returns` qui les référencent). Sans cela, la FK `RESTRICT` bloquerait la suppression de compte.
+
+**Downgrade** : refusé s'il existe des sessions de caisse (écritures comptables). Sans session, aucun mouvement ni rattachement ne peut exister.
+
 ## Politiques Row-Level Security
 
 Activation et politiques pour chaque table tenant :
@@ -544,6 +662,13 @@ Synthèse de tous les index, par table, avec leur justification :
 - `idx_sales_store_created_at` (composite, DESC sur created_at) : historique des ventes par boutique, du plus récent au plus ancien
 - `idx_sales_store_receipt_number` (composite) : recherche par numéro de reçu
 - `uq_sales_store_receipt_number` (UNIQUE composite) : intégrité du numéro séquentiel
+
+### `cash_sessions`, `cash_movements`
+
+- `idx_cash_sessions_store_opened_at` (composite, DESC sur opened_at) : historique des sessions
+- `uq_cash_sessions_open_per_device` (UNIQUE partiel `WHERE status = 'open'`) : une session ouverte par appareil
+- `idx_cash_movements_store_id`, `idx_cash_movements_session_id` : RLS et mouvements d'une session
+- `idx_sales_cash_session_id`, `idx_sale_returns_cash_session_id` (partiels `WHERE cash_session_id IS NOT NULL`) : calcul du solde
 
 ### `sale_items`
 

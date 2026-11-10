@@ -87,6 +87,8 @@ Toutes les tables qui contiennent des données métier ont une colonne `store_id
 | `products` | Catalogue produits | Oui | Oui (état last-write-wins) |
 | `sales` | Ventes encaissées (immuables) | Oui | Oui (événementiel append-only) |
 | `sale_items` | Lignes de chaque vente | Oui | Oui (avec sales) |
+| `cash_sessions` | Sessions de caisse par appareil (ADR-0015) | Oui | Oui (ouverture et clôture) |
+| `cash_movements` | Entrées/sorties d'espèces d'une session (immuables) | Oui | Oui (append-only) |
 | `sync_queue` | File d'attente locale (uniquement SQLite) | n/a | Local uniquement |
 | `email_verification_tokens` | Tokens de validation email | Non | Non |
 | `password_reset_tokens` | Tokens de reset mot de passe | Non | Non |
@@ -184,6 +186,22 @@ Champs principaux :
 
 La dénormalisation de `product_name_at_sale` et `unit_price_at_sale` est délibérée : elle garantit que l'historique des ventes reste lisible même si le produit est ensuite supprimé ou son prix modifié.
 
+### `cash_sessions` et `cash_movements`
+
+Suivi des espèces d'un tiroir-caisse (ADR-0015). Montants en `NUMERIC(12, 2)`, UUID générés par le client.
+
+`cash_sessions` (tenant, RLS) : `id`, `store_id`, `device_id`, `status` (`open` / `closed`), `opening_amount`, `opening_note`, `opened_at`, `opened_by` (nullable, FK SET NULL), puis les champs de clôture : `expected_amount` (recalculé par le serveur), `client_expected_amount` (ce que l'app affichait, traçabilité), `counted_amount`, `discrepancy_amount` (`counted − expected`), `closing_note`, `closed_at` (horloge client), `closed_by` (nullable, FK SET NULL), `closure_recorded_at` (horloge serveur).
+
+- Ouverte : tous les champs de clôture sont NULL. Clôturée : `expected_amount`, `client_expected_amount`, `counted_amount`, `discrepancy_amount`, `closed_at` et `closure_recorded_at` sont renseignés. `closing_note` n'est requise que si l'écart est différent de 0, `closed_by` reste nullable.
+- Index unique partiel `(store_id, device_id) WHERE status = 'open'` : une seule session ouverte par appareil.
+- Trigger : une session clôturée ne peut plus être modifiée et aucune session ne peut être supprimée (sauf purge de compte, ADR-0011).
+
+`cash_movements` (tenant, RLS, immuable) : `id`, `store_id`, `session_id`, `type` (`cash_in` / `cash_out`), `reason`, `amount` (> 0), `note` (obligatoire si `reason = other`), `created_at` (horloge client), `created_by` (nullable), `synced_at`. Trigger d'immuabilité (UPDATE et DELETE refusés).
+
+Rattachement : `sales.cash_session_id` et `sale_returns.cash_session_id` (UUID NULL, posés à l'INSERT, NULL pour l'existant et les anciennes versions de l'app).
+
+Les clés étrangères vers `cash_sessions` sont **composites** `(store_id, session_id | cash_session_id) → cash_sessions(store_id, id)` : les FK ignorent la RLS, ce montage interdit au niveau base qu'une ligne référence la session d'une autre boutique.
+
 ### `sync_queue` (SQLite local uniquement)
 
 Cette table n'existe QUE côté SQLite local, jamais côté PostgreSQL serveur.
@@ -220,6 +238,9 @@ erDiagram
     stores ||--o{ sales : has
     sales ||--|{ sale_items : contains
     products ||--o{ sale_items : referenced_by
+    stores ||--o{ cash_sessions : has
+    cash_sessions ||--o{ cash_movements : contains
+    cash_sessions |o--o{ sales : groups
 
     users ||--o{ email_verification_tokens : has
     users ||--o{ password_reset_tokens : has

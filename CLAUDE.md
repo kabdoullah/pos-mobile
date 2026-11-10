@@ -88,6 +88,7 @@ Only raise exceptions from `core/exceptions.py`: `NotFoundError`, `ConflictError
 - `modules/catalog/` — products (with soft delete via `deleted_at`)
 - `modules/sales/` — append-only sales, immutable after creation
 - `modules/sync/` — sync queue, dirty-flag catalog syncs
+- `modules/cash_register/` — sessions de caisse par appareil (ouverture, mouvements d'espèces, clôture atomique avec solde recalculé par le serveur), voir ADR-0015
 - `modules/admin/` — backoffice plateforme (JWT admin distinct, `AdminDbSession` + RLS additionnel, suspension de boutiques), voir ADR-0012
 
 ## Key conventions
