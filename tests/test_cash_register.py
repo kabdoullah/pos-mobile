@@ -817,3 +817,247 @@ async def test_open_other_integrity_error_is_not_already_open(db_session: AsyncS
 
     with pytest.raises(IntegrityError, match="fk_cash_sessions_opened_by"):
         await CashSessionService(db_session).open(store_id, uuid4(), payload)
+
+
+# ---------------------------------------------------------------------------
+# API : mouvements d'espèces (spec §5.5)
+# ---------------------------------------------------------------------------
+
+
+def _movement_payload(
+    type_: str = "cash_out",
+    amount: str = "3500",
+    reason: str | None = None,
+    note: str | None = "Sachets",
+    created_at: datetime | None = None,
+) -> dict[str, Any]:
+    return {
+        "id": str(uuid4()),
+        "type": type_,
+        "reason": reason or ("supplies" if type_ == "cash_out" else "top_up"),
+        "amount": amount,
+        "note": note,
+        "created_at": (created_at or datetime.now(UTC)).isoformat(),
+    }
+
+
+async def _http_open(client: AsyncClient, headers: dict[str, str], amount: str = "10000") -> str:
+    payload = _open_payload(amount=amount)
+    response = await client.post(_CASH_URL, json=payload, headers=headers)
+    assert response.status_code == 201, response.text
+    return str(payload["id"])
+
+
+async def _post_movement(
+    client: AsyncClient, headers: dict[str, str], session_id: str, payload: dict[str, Any]
+) -> Any:
+    return await client.post(f"{_CASH_URL}/{session_id}/movements", json=payload, headers=headers)
+
+
+async def _expected_amount(client: AsyncClient, headers: dict[str, str], session_id: str) -> Any:
+    detail = await client.get(f"{_CASH_URL}/{session_id}", headers=headers)
+    assert detail.status_code == 200, detail.text
+    return detail.json()
+
+
+async def _close_via_sql(db: AsyncSession, session_id: str) -> None:
+    """Clôture la session en SQL (endpoint de clôture : Task 5).
+
+    expire_all : le client HTTP partage `db`, l'objet session de l'identity
+    map serait sinon resté « open ».
+    """
+    await _close_session(db, UUID(session_id))
+    db.expire_all()
+
+
+@pytest.mark.asyncio
+async def test_cash_in_and_out_change_balance(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    user_id, _, headers = await _http_store(db_session, "cash-mvt-balance@test.com")
+    session_id = await _http_open(client, headers)
+
+    cash_in = _movement_payload("cash_in", "5000", note=None)
+    created = await _post_movement(client, headers, session_id, cash_in)
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body["id"] == cash_in["id"]
+    assert body["session_id"] == session_id
+    assert body["type"] == "cash_in"
+    assert body["reason"] == "top_up"
+    assert isinstance(body["amount"], str)
+    assert Decimal(body["amount"]) == Decimal("5000")
+    assert body["created_by"] == str(user_id)
+    assert body["synced_at"]
+
+    cash_out = await _post_movement(
+        client, headers, session_id, _movement_payload("cash_out", "3500")
+    )
+    assert cash_out.status_code == 201, cash_out.text
+
+    detail = await _expected_amount(client, headers, session_id)
+    assert Decimal(detail["summary"]["expected_amount"]) == Decimal("11500")
+    assert Decimal(detail["summary"]["cash_in"]) == Decimal("5000")
+    assert Decimal(detail["summary"]["cash_out"]) == Decimal("3500")
+    assert len(detail["movements"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_cash_out_above_balance_is_422_insufficient_cash(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-mvt-insufficient@test.com")
+    session_id = await _http_open(client, headers)
+
+    response = await _post_movement(
+        client, headers, session_id, _movement_payload("cash_out", "10000.01")
+    )
+
+    assert response.status_code == 422, response.text
+    assert response.json()["code"] == "INSUFFICIENT_CASH"
+    assert response.json()["field"] == "amount"
+    detail = await _expected_amount(client, headers, session_id)
+    assert detail["movements"] == []
+
+
+@pytest.mark.asyncio
+async def test_cash_out_equal_to_balance_is_allowed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-mvt-equal@test.com")
+    session_id = await _http_open(client, headers)
+
+    response = await _post_movement(
+        client, headers, session_id, _movement_payload("cash_out", "10000")
+    )
+
+    assert response.status_code == 201, response.text
+    detail = await _expected_amount(client, headers, session_id)
+    assert Decimal(detail["summary"]["expected_amount"]) == Decimal("0")
+
+
+@pytest.mark.asyncio
+async def test_movement_retry_is_200_without_double_count(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-mvt-retry@test.com")
+    session_id = await _http_open(client, headers)
+    payload = _movement_payload("cash_out", "3500")
+
+    created = await _post_movement(client, headers, session_id, payload)
+    assert created.status_code == 201, created.text
+    # Montant écrit autrement mais égal : retry légitime.
+    retry = await _post_movement(client, headers, session_id, {**payload, "amount": "3500.00"})
+    assert retry.status_code == 200, retry.text
+    assert retry.json() == created.json()
+
+    detail = await _expected_amount(client, headers, session_id)
+    assert Decimal(detail["summary"]["expected_amount"]) == Decimal("6500")
+    assert len(detail["movements"]) == 1
+
+    for changed in ({"amount": "3000"}, {"type": "cash_in", "reason": "top_up"}):
+        conflict = await _post_movement(client, headers, session_id, {**payload, **changed})
+        assert conflict.status_code == 409, conflict.text
+        assert conflict.json()["code"] == "IDEMPOTENCY_CONFLICT"
+
+    other_session = await _http_open(client, headers)
+    conflict = await _post_movement(client, headers, other_session, payload)
+    assert conflict.status_code == 409
+    assert conflict.json()["code"] == "IDEMPOTENCY_CONFLICT"
+
+
+@pytest.mark.asyncio
+async def test_movement_after_closing_time_is_409_session_closed(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-mvt-closed@test.com")
+    session_id = await _http_open(client, headers)
+    await _close_via_sql(db_session, session_id)
+
+    response = await _post_movement(
+        client,
+        headers,
+        session_id,
+        _movement_payload("cash_in", "1000", created_at=datetime.now(UTC) + timedelta(minutes=1)),
+    )
+
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == "CASH_SESSION_CLOSED"
+
+
+@pytest.mark.asyncio
+async def test_movement_created_before_closure_arriving_late_is_accepted_and_in_late_impact(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Review Focus 5 : l'argent a déjà bougé, pas de contrôle de solde sur session close."""
+    _, _, headers = await _http_store(db_session, "cash-mvt-late@test.com")
+    session_id = await _http_open(client, headers)
+    await _close_via_sql(db_session, session_id)
+
+    # Sortie supérieure au solde (10000) : acceptée, la session est clôturée.
+    response = await _post_movement(
+        client,
+        headers,
+        session_id,
+        _movement_payload("cash_out", "12000", created_at=datetime.now(UTC) - timedelta(minutes=5)),
+    )
+
+    assert response.status_code == 201, response.text
+    summary = (await _expected_amount(client, headers, session_id))["summary"]
+    assert Decimal(summary["expected_amount"]) == Decimal("10000")
+    assert Decimal(summary["late_impact"]) == Decimal("-12000")
+
+
+@pytest.mark.asyncio
+async def test_other_reason_requires_note_and_amount_must_be_positive(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-mvt-422@test.com")
+    session_id = await _http_open(client, headers)
+
+    invalid = [
+        (_movement_payload("cash_out", reason="other", note=None), "note"),
+        (_movement_payload("cash_in", reason="other", note="   "), "note"),
+        (_movement_payload("cash_out", amount="0"), "amount"),
+        (_movement_payload("cash_out", amount="-5"), "amount"),
+        (_movement_payload("cash_in", reason="expense"), "reason"),
+        (_movement_payload("cash_out", reason="top_up"), "reason"),
+        (_movement_payload("transfer"), "type"),
+        (
+            _movement_payload(created_at=datetime.now(UTC) + timedelta(minutes=10)),
+            "created_at",
+        ),
+    ]
+    for payload, field in invalid:
+        response = await _post_movement(client, headers, session_id, payload)
+        assert response.status_code == 422, (payload, response.text)
+        assert response.json()["code"] == "VALIDATION_ERROR"
+        assert response.json()["field"] == field
+
+    ok = await _post_movement(
+        client, headers, session_id, _movement_payload("cash_out", reason="other", note="Taxi")
+    )
+    assert ok.status_code == 201, ok.text
+
+
+@pytest.mark.asyncio
+async def test_movement_on_session_of_another_store_is_404(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers_a = await _http_store(db_session, "cash-mvt-rls-a@test.com")
+    _, _, headers_b = await _http_store(db_session, "cash-mvt-rls-b@test.com")
+    session_a = await _http_open(client, headers_a)
+    payload = _movement_payload("cash_in", "1000")
+
+    response = await _post_movement(client, headers_b, session_a, payload)
+    assert response.status_code == 404, response.text
+    assert response.json()["code"] == "NOT_FOUND"
+    unknown = await _post_movement(client, headers_a, str(uuid4()), _movement_payload("cash_in"))
+    assert unknown.status_code == 404
+
+    # Id de mouvement déjà pris dans une autre boutique (invisible, RLS) : conflit, pas 500.
+    assert (await _post_movement(client, headers_a, session_a, payload)).status_code == 201
+    session_b = await _http_open(client, headers_b)
+    hidden = await _post_movement(client, headers_b, session_b, payload)
+    assert hidden.status_code == 409, hidden.text
+    assert hidden.json()["code"] == "IDEMPOTENCY_CONFLICT"

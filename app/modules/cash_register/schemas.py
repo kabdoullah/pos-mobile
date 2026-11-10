@@ -2,11 +2,13 @@
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from app.core.pagination import CursorPage
+from app.modules.cash_register.models import CASH_IN_REASONS, CASH_OUT_REASONS
 
 # Même tolérance d'horloge client que SaleCreate.
 _CLOCK_DRIFT_SECONDS = 300
@@ -34,6 +36,46 @@ class CashSessionOpen(BaseModel):
     @classmethod
     def check_opened_at(cls, v: datetime) -> datetime:
         return check_client_timestamp(v, "opened_at")
+
+
+_REASONS_BY_TYPE = {"cash_in": CASH_IN_REASONS, "cash_out": CASH_OUT_REASONS}
+
+
+class CashMovementCreate(BaseModel):
+    """Entrée ou sortie d'espèces (spec §5.5). L'id est généré par l'app.
+
+    Les CHECK de cash_movements imposent déjà ces règles ; les valider ici
+    donne une 422 VALIDATION_ERROR plutôt qu'une erreur base.
+    """
+
+    id: UUID
+    type: Literal["cash_in", "cash_out"]
+    reason: str
+    amount: Decimal = Field(..., gt=Decimal("0"), max_digits=12, decimal_places=2)
+    # validate_default : la note absente doit aussi être contrôlée (reason = other).
+    note: str | None = Field(default=None, max_length=500, validate_default=True)
+    created_at: datetime
+
+    @field_validator("reason")
+    @classmethod
+    def check_reason(cls, v: str, info: ValidationInfo) -> str:
+        movement_type = info.data.get("type")
+        if movement_type is not None and v not in _REASONS_BY_TYPE[movement_type]:
+            allowed = ", ".join(_REASONS_BY_TYPE[movement_type])
+            raise ValueError(f"reason must be one of {allowed} for {movement_type}")
+        return v
+
+    @field_validator("note")
+    @classmethod
+    def check_note(cls, v: str | None, info: ValidationInfo) -> str | None:
+        if info.data.get("reason") == "other" and (v is None or not v.strip()):
+            raise ValueError("note is required when reason is 'other'")
+        return v
+
+    @field_validator("created_at")
+    @classmethod
+    def check_created_at(cls, v: datetime) -> datetime:
+        return check_client_timestamp(v, "created_at")
 
 
 class CashSessionResponse(BaseModel):

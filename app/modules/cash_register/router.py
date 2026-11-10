@@ -7,6 +7,8 @@ from fastapi import APIRouter, Query, Response, status
 from app.core.db import TenantDbSession
 from app.core.dependencies import CurrentStoreId, CurrentUserId
 from app.modules.cash_register.schemas import (
+    CashMovementCreate,
+    CashMovementResponse,
     CashSessionDetailResponse,
     CashSessionOpen,
     CashSessionPage,
@@ -91,3 +93,33 @@ async def get_cash_session(
 ) -> CashSessionDetailResponse:
     """Session, résumé et mouvements. 404 si inconnue ou d'une autre boutique."""
     return await CashSessionService(db).get_detail(session_id)
+
+
+@router.post(
+    "/{session_id}/movements",
+    response_model=CashMovementResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        status.HTTP_200_OK: {"description": "Retry : mouvement déjà enregistré, même contenu"},
+        status.HTTP_404_NOT_FOUND: {"description": "Session inconnue ou d'une autre boutique"},
+        status.HTTP_409_CONFLICT: {"description": "CASH_SESSION_CLOSED ou IDEMPOTENCY_CONFLICT"},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            "description": "VALIDATION_ERROR ou INSUFFICIENT_CASH"
+        },
+    },
+    summary="Entrée ou sortie d'espèces",
+)
+async def record_cash_movement(
+    session_id: UUID,
+    payload: CashMovementCreate,
+    response: Response,
+    db: TenantDbSession,
+    store_id: CurrentStoreId,
+    user_id: CurrentUserId,
+) -> CashMovementResponse:
+    """Enregistre un mouvement. **201** : créé ; **200** : retry du même `id`."""
+    movement, created = await CashSessionService(db).record_movement(
+        store_id, user_id, session_id, payload
+    )
+    response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return CashMovementResponse.model_validate(movement)

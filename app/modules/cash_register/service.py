@@ -10,11 +10,14 @@ from app.core.exceptions import NotFoundError
 from app.core.pagination import encode_cursor
 from app.modules.cash_register.exceptions import (
     CashSessionAlreadyOpenError,
+    CashSessionClosedError,
     IdempotencyConflictError,
+    InsufficientCashError,
 )
-from app.modules.cash_register.models import CashSession
+from app.modules.cash_register.models import CashMovement, CashSession
 from app.modules.cash_register.repository import CashSessionRepository
 from app.modules.cash_register.schemas import (
+    CashMovementCreate,
     CashMovementResponse,
     CashSessionDetailResponse,
     CashSessionOpen,
@@ -126,6 +129,75 @@ class CashSessionService:
                 "Cash session id already used with different content.", field="id"
             )
         return stored, False
+
+    async def record_movement(
+        self, store_id: UUID, user_id: UUID, session_id: UUID, payload: CashMovementCreate
+    ) -> tuple[CashMovement, bool]:
+        """Enregistre une entrée/sortie ; (mouvement, créé ?). Idempotent sur l'id client.
+
+        Ordre (spec §3, §5.5) : retry du même id → existant ; session
+        verrouillée (FOR UPDATE) ; clôturée et created_at > closed_at →
+        CashSessionClosedError ; sortie sur session ouverte au-delà du solde →
+        InsufficientCashError. Sur une session clôturée, un mouvement antérieur
+        à la clôture est accepté sans contrôle de solde (l'argent a déjà bougé)
+        et apparaît dans late_impact.
+        """
+        existing = await self.repo.get_movement(payload.id)
+        if existing is not None:
+            self._check_movement_replay(existing, session_id, payload)
+            return existing, False
+
+        session = await self.repo.get_for_update(session_id)
+        if session is None:
+            raise NotFoundError("Cash session not found.")
+        if session.status == "closed":
+            if session.closed_at is None:
+                # Exclu par chk_cash_sessions_state.
+                raise RuntimeError(f"Closed cash session {session.id} has no closed_at")
+            if payload.created_at > session.closed_at:
+                raise CashSessionClosedError(
+                    "Cash session was closed before this movement.", field="created_at"
+                )
+        elif payload.type == "cash_out":
+            balance = await self.compute_balance(session)
+            if payload.amount > balance.expected_amount:
+                raise InsufficientCashError(
+                    "Cash out exceeds the session's expected cash balance.", field="amount"
+                )
+
+        movement = CashMovement(
+            id=payload.id,
+            store_id=store_id,
+            session_id=session_id,
+            type=payload.type,
+            reason=payload.reason,
+            amount=payload.amount,
+            note=payload.note,
+            created_at=payload.created_at,
+            created_by=user_id,
+        )
+        inserted = await self.repo.insert_movement(movement)
+        stored = await self.repo.get_movement(payload.id)
+        if stored is None:
+            # Id déjà pris par un mouvement invisible ici (autre boutique, RLS).
+            raise IdempotencyConflictError("Cash movement id already used.", field="id")
+        if not inserted:
+            # Retry concurrent : l'autre requête a inséré entre-temps.
+            self._check_movement_replay(stored, session_id, payload)
+        return stored, inserted
+
+    @staticmethod
+    def _check_movement_replay(
+        stored: CashMovement, session_id: UUID, payload: CashMovementCreate
+    ) -> None:
+        if (
+            stored.session_id != session_id
+            or stored.type != payload.type
+            or stored.amount != payload.amount
+        ):
+            raise IdempotencyConflictError(
+                "Cash movement id already used with different content.", field="id"
+            )
 
     async def get_active(self, device_id: UUID) -> CashSessionDetailResponse:
         """Session ouverte de l'appareil, avec résumé et mouvements ; 404 sinon."""
