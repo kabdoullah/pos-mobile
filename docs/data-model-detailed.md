@@ -676,7 +676,7 @@ Synthèse de tous les index, par table, avec leur justification :
 - `idx_sale_items_store_id` : RLS efficient
 - `idx_sale_items_product_id` (partiel) : lister les ventes d'un produit (analytics futurs)
 
-**Total** : ~15 index. Volume estimé après 1 an d'usage MVP (50 stores, 100 ventes/jour/store, 3 lignes par vente) : ~5,5M lignes dans `sale_items`. Les index restent efficients à ce volume.
+**Total** : 23 index listés ci-dessus (hors clés primaires) ; les tables des autres modules (retours, stock, catégories, administration…) ont leurs propres index, décrits dans leurs migrations. Volume estimé après 1 an d'usage MVP (50 stores, 100 ventes/jour/store, 3 lignes par vente) : ~5,5M lignes dans `sale_items`. Les index restent efficients à ce volume.
 
 ## Décisions structurantes
 
