@@ -6,7 +6,7 @@ lignes à la boutique courante.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 from uuid import UUID
 
 from sqlalchemy import ColumnElement, case, func, select, tuple_, update
@@ -15,6 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import decode_cursor
 from app.modules.cash_register.models import CashMovement, CashSession
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import CursorResult
 
 
 class _CursorData(TypedDict):
@@ -103,8 +106,8 @@ class CashSessionRepository:
             )
             .execution_options(synchronize_session=False)
         )
-        result = await self.db.execute(stmt)
-        if result.rowcount != 1:  # type: ignore[attr-defined]
+        result = cast("CursorResult[Any]", await self.db.execute(stmt))
+        if result.rowcount != 1:
             return False
         await self.db.refresh(session)
         return True

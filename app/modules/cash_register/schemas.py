@@ -86,7 +86,9 @@ class CashSessionClose(BaseModel):
     """
 
     counted_amount: Decimal = Field(..., ge=Decimal("0"), max_digits=12, decimal_places=2)
-    client_expected_amount: Decimal = Field(..., ge=Decimal("0"), max_digits=12, decimal_places=2)
+    # Pas de ge=0 : les remboursements en espèces ne sont jamais bloqués, le solde
+    # peut être négatif et la clôture doit rester possible.
+    client_expected_amount: Decimal = Field(..., max_digits=12, decimal_places=2)
     closing_note: str | None = Field(default=None, max_length=500)
     closed_at: datetime
 

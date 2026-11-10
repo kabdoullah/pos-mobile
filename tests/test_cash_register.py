@@ -1198,6 +1198,36 @@ async def test_server_ignores_client_expected_amount(
 
 
 @pytest.mark.asyncio
+async def test_close_with_negative_expected_amount(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Les remboursements espèces ne sont jamais bloqués : la clôture reste possible à -2000."""
+    user_id, store_id, headers = await _http_store(db_session, "cash-close-negative@test.com")
+    session_id = await _http_open(client, headers, amount="1000")
+    other_session = await _http_open(client, headers)
+    # Le contexte tenant (SET LOCAL) du dernier appel HTTP reste actif sur db_session.
+    sale, _ = await SaleService(db_session).create_sale(
+        store_id, _sale(UUID(other_session), "3000"), user_id
+    )
+    await ReturnService(db_session).create_return(
+        store_id, _return(sale, UUID(session_id), "3000"), user_id
+    )
+
+    response = await _post_close(
+        client,
+        headers,
+        session_id,
+        _close_payload("0", client_expected="-2000", note="Remboursement sans fond"),
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert Decimal(body["session"]["expected_amount"]) == Decimal("-2000")
+    assert Decimal(body["session"]["discrepancy_amount"]) == Decimal("2000")
+    assert body["summary"]["server_recalculated"] is False
+
+
+@pytest.mark.asyncio
 async def test_close_retry_with_same_payload_returns_200_same_result(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
@@ -1275,7 +1305,9 @@ async def test_close_concurrent_with_sale_insert_counts_it_or_reports_it_late(
 
     async def tenant(db: AsyncSession) -> None:
         await db.execute(text("SET LOCAL ROLE pos_app"))
-        await db.execute(text(f"SET LOCAL app.current_store_id = '{store_id}'"))
+        await db.execute(
+            text("SELECT set_config('app.current_store_id', :sid, true)"), {"sid": str(store_id)}
+        )
 
     for _ in range(3):
         async with session_maker() as setup:
