@@ -114,4 +114,6 @@ class SaleReturnResponse(BaseModel):
     created_at: datetime
     created_by: UUID | None
     synced_at: datetime
+    # Absent pour les opérations des anciennes versions de l'app.
+    cash_session_id: UUID | None = None
     items: list[SaleReturnItemResponse]

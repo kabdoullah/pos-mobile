@@ -257,6 +257,10 @@ class CashSessionService:
                 "Cash movement id already used with different content.", field="id"
             )
 
+    async def exists(self, session_id: UUID) -> bool:
+        """True si la session est visible (RLS : une session d'une autre boutique est absente)."""
+        return await self.repo.get_by_id(session_id) is not None
+
     async def get_active(self, device_id: UUID) -> CashSessionDetailResponse:
         """Session ouverte de l'appareil, avec résumé et mouvements ; 404 sinon."""
         session = await self.repo.get_open_for_device(device_id)

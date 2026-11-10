@@ -8,6 +8,7 @@ import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import decode_cursor, encode_cursor
+from app.modules.cash_register.service import CashSessionService
 from app.modules.catalog.models import Category, Product
 from app.modules.catalog.repository import CategoryRepository, ProductRepository
 from app.modules.catalog.schemas import CategoryResponse, ProductResponse
@@ -37,6 +38,10 @@ from app.modules.sync.schemas import (
 )
 
 _SYNC_TOLERANCE_MS = 1
+
+# Session de caisse inconnue (pas encore synchronisée, ou d'une autre boutique) :
+# échec réessayable, jamais un refus définitif (spec §5.7).
+_CASH_SESSION_NOT_FOUND = "cash session not found"
 
 # Ordre du pull : une catégorie arrive toujours avant ses produits, une vente
 # avant ses retours.
@@ -74,6 +79,13 @@ class SyncService:
         self.return_service = ReturnService(db)
         self.sync_repo = SyncRepository(db)
         self.inventory_service = InventoryService(db)
+        self.cash_session_service = CashSessionService(db)
+
+    async def _cash_session_missing(self, cash_session_id: UUID | None) -> bool:
+        """True si l'opération cite une session de caisse invisible pour la boutique."""
+        return cash_session_id is not None and not await self.cash_session_service.exists(
+            cash_session_id
+        )
 
     async def sync_sales_batch(
         self, store_id: UUID, payload: SalesBatchSyncRequest, user_id: UUID | None = None
@@ -85,6 +97,16 @@ class SyncService:
         """
         results: list[SaleSyncResult] = []
         for sale_payload in payload.sales:
+            if await self._cash_session_missing(sale_payload.cash_session_id):
+                logger.info("sale_sync_failed_unknown_cash_session", sale_id=str(sale_payload.id))
+                results.append(
+                    SaleSyncResult(
+                        id=sale_payload.id,
+                        status=SaleSyncResultStatus.failed,
+                        error=_CASH_SESSION_NOT_FOUND,
+                    )
+                )
+                continue
             try:
                 async with self.db.begin_nested():
                     sale, was_created = await self.sale_service.create_sale(
@@ -123,6 +145,18 @@ class SyncService:
         """
         results: list[ReturnSyncResult] = []
         for return_payload in payload.returns:
+            if await self._cash_session_missing(return_payload.cash_session_id):
+                logger.info(
+                    "return_sync_failed_unknown_cash_session", return_id=str(return_payload.id)
+                )
+                results.append(
+                    ReturnSyncResult(
+                        id=return_payload.id,
+                        status=ReturnSyncResultStatus.failed,
+                        error=_CASH_SESSION_NOT_FOUND,
+                    )
+                )
+                continue
             try:
                 async with self.db.begin_nested():
                     sale_return, was_created = await self.return_service.create_return(

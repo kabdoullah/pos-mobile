@@ -1398,3 +1398,204 @@ async def test_lock_refreshes_session_already_in_identity_map(db_session: AsyncS
 
     assert locked is stale
     assert locked.status == "closed"
+
+
+# ---------------------------------------------------------------------------
+# Synchronisation des ventes et retours (spec §5.7)
+# ---------------------------------------------------------------------------
+
+_SYNC_SALES_URL = "/api/v1/sync/sales"
+_SYNC_RETURNS_URL = "/api/v1/sync/returns"
+
+
+def _sale_json(session_id: str | None, total: str = "3000", **kwargs: Any) -> dict[str, Any]:
+    sale = _sale(UUID(session_id) if session_id else None, total, **kwargs)
+    return sale.model_dump(mode="json")
+
+
+async def _sync_sale(client: AsyncClient, headers: dict[str, str], sale: dict[str, Any]) -> Any:
+    response = await client.post(_SYNC_SALES_URL, json={"sales": [sale]}, headers=headers)
+    assert response.status_code == 200, response.text
+    return response.json()["results"][0]
+
+
+async def _sync_return(
+    client: AsyncClient, headers: dict[str, str], sale_return: dict[str, Any]
+) -> Any:
+    response = await client.post(
+        _SYNC_RETURNS_URL, json={"returns": [sale_return]}, headers=headers
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["results"][0]
+
+
+@pytest.mark.asyncio
+async def test_synced_sale_is_attached_and_counted(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-sync-sale@test.com")
+    session_id = await _http_open(client, headers)
+    sale = _sale_json(session_id, "4500")
+
+    result = await _sync_sale(client, headers, sale)
+
+    assert result["status"] == "created", result
+    stored = (
+        await db_session.execute(
+            text("SELECT cash_session_id FROM sales WHERE id = :id"), {"id": sale["id"]}
+        )
+    ).scalar()
+    assert str(stored) == session_id
+    summary = (await _expected_amount(client, headers, session_id))["summary"]
+    assert Decimal(summary["cash_sales"]) == Decimal("4500")
+    assert summary["cash_sales_count"] == 1
+    assert Decimal(summary["expected_amount"]) == Decimal("14500")
+
+
+@pytest.mark.asyncio
+async def test_sale_resent_three_times_counts_once(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-sync-retry@test.com")
+    session_id = await _http_open(client, headers)
+    sale = _sale_json(session_id, "2000")
+
+    statuses = [(await _sync_sale(client, headers, sale))["status"] for _ in range(3)]
+
+    assert statuses == ["created", "already_exists", "already_exists"]
+    summary = (await _expected_amount(client, headers, session_id))["summary"]
+    assert Decimal(summary["cash_sales"]) == Decimal("2000")
+    assert summary["cash_sales_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_sale_with_unknown_session_fails_then_succeeds_after_open(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-sync-unknown@test.com")
+    open_payload = _open_payload(amount="10000")
+    sale = _sale_json(open_payload["id"], "3000")
+
+    first = await _sync_sale(client, headers, sale)
+
+    assert first["status"] == "failed", first
+    assert first["error"] == "cash session not found"
+    count = (
+        await db_session.execute(
+            text("SELECT count(*) FROM sales WHERE id = :id"), {"id": sale["id"]}
+        )
+    ).scalar()
+    assert count == 0
+
+    opened = await client.post(_CASH_URL, json=open_payload, headers=headers)
+    assert opened.status_code == 201, opened.text
+    second = await _sync_sale(client, headers, sale)
+
+    assert second["status"] == "created", second
+    summary = (await _expected_amount(client, headers, open_payload["id"]))["summary"]
+    assert summary["cash_sales_count"] == 1
+    assert Decimal(summary["expected_amount"]) == Decimal("13000")
+
+
+@pytest.mark.asyncio
+async def test_sale_with_session_of_another_store_fails(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers_a = await _http_store(db_session, "cash-sync-rls-a@test.com")
+    _, _, headers_b = await _http_store(db_session, "cash-sync-rls-b@test.com")
+    session_a = await _http_open(client, headers_a)
+    sale = _sale_json(session_a, "3000")
+
+    result = await _sync_sale(client, headers_b, sale)
+
+    assert result["status"] == "failed", result
+    assert result["error"] == "cash session not found"
+    summary = (await _expected_amount(client, headers_a, session_a))["summary"]
+    assert summary["cash_sales_count"] == 0
+    assert Decimal(summary["expected_amount"]) == Decimal("10000")
+
+
+@pytest.mark.asyncio
+async def test_sale_without_session_still_accepted(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Ancienne version de l'app : pas de cash_session_id dans le payload."""
+    _, _, headers = await _http_store(db_session, "cash-sync-legacy@test.com")
+    sale = _sale_json(None, "3000")
+    del sale["cash_session_id"]
+
+    result = await _sync_sale(client, headers, sale)
+
+    assert result["status"] == "created", result
+    stored = (
+        await db_session.execute(
+            text("SELECT cash_session_id FROM sales WHERE id = :id"), {"id": sale["id"]}
+        )
+    ).scalar()
+    assert stored is None
+
+
+@pytest.mark.asyncio
+async def test_cash_return_synced_after_closure_shows_in_late_impact(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-sync-late-return@test.com")
+    session_id = await _http_open(client, headers)
+    sale_create = _sale(UUID(session_id), "3000")
+    assert (await _sync_sale(client, headers, sale_create.model_dump(mode="json")))[
+        "status"
+    ] == "created"
+    closed = await _post_close(client, headers, session_id, _close_payload("13000"))
+    assert closed.status_code == 200, closed.text
+
+    sale_return = _return(sale_create, UUID(session_id), "3000").model_dump(mode="json")
+    result = await _sync_return(client, headers, sale_return)
+
+    assert result["status"] == "created", result
+    detail = await _expected_amount(client, headers, session_id)
+    assert detail["session"]["status"] == "closed"
+    assert Decimal(detail["summary"]["expected_amount"]) == Decimal("13000")
+    assert Decimal(detail["summary"]["cash_refunds"]) == Decimal("3000")
+    assert Decimal(detail["summary"]["late_impact"]) == Decimal("-3000")
+
+
+@pytest.mark.asyncio
+async def test_return_with_unknown_session_fails_not_rejected(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-sync-return-unknown@test.com")
+    sale_create = _sale(None, "3000")
+    assert (await _sync_sale(client, headers, sale_create.model_dump(mode="json")))[
+        "status"
+    ] == "created"
+
+    sale_return = _return(sale_create, uuid4(), "3000").model_dump(mode="json")
+    result = await _sync_return(client, headers, sale_return)
+
+    assert result["status"] == "failed", result
+    assert result["error"] == "cash session not found"
+    assert result.get("error_code") is None
+
+
+@pytest.mark.asyncio
+async def test_pull_exposes_cash_session_id_on_sales_and_returns(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    _, _, headers = await _http_store(db_session, "cash-sync-pull@test.com")
+    session_id = await _http_open(client, headers)
+    sale_create = _sale(UUID(session_id), "3000")
+    legacy = _sale_json(None, "1000")
+    for sale in (sale_create.model_dump(mode="json"), legacy):
+        assert (await _sync_sale(client, headers, sale))["status"] == "created"
+    sale_return = _return(sale_create, UUID(session_id), "3000").model_dump(mode="json")
+    assert (await _sync_return(client, headers, sale_return))["status"] == "created"
+
+    response = await client.get("/api/v1/sync/changes", headers=headers)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    sales = {s["id"]: s for s in body["sales"]}
+    assert sales[str(sale_create.id)]["cash_session_id"] == session_id
+    assert sales[legacy["id"]]["cash_session_id"] is None
+    returns = {r["id"]: r for r in body["returns"]}
+    assert returns[sale_return["id"]]["cash_session_id"] == session_id

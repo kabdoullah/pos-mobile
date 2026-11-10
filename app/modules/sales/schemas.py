@@ -203,6 +203,8 @@ class SaleResponse(BaseModel):
     discount_type: str | None = None
     discount_value: Decimal | None = None
     discount_amount: Decimal = Decimal("0")
+    # Absent pour les opérations des anciennes versions de l'app.
+    cash_session_id: UUID | None = None
     items: list[SaleItemResponse]
 
 
