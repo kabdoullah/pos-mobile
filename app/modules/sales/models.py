@@ -111,6 +111,12 @@ class Sale(Base):
     synced_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # Session de caisse de l'appareil (ADR-0015), posée à l'INSERT ; NULL hors session.
+    cash_session_id: Mapped[UUID | None] = mapped_column(
+        SQLUUID(as_uuid=True),
+        ForeignKey("cash_sessions.id", ondelete="RESTRICT", name="fk_sales_cash_session"),
+        nullable=True,
+    )
 
     items: Mapped[list["SaleItem"]] = relationship(
         back_populates="sale", cascade="all, delete-orphan", lazy="raise"

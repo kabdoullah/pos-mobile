@@ -37,6 +37,8 @@ _ALL_TABLES = (
     "sale_returns",
     "sale_items",
     "sales",
+    "cash_movements",
+    "cash_sessions",
     "products",
     "categories",
     "email_verification_tokens",

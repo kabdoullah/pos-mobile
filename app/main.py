@@ -17,6 +17,10 @@ from app.core.seed import seed_platform_admin, seed_superadmin
 from app.modules.admin.router import router as admin_router
 from app.modules.auth.deeplink_router import router as deeplink_router
 from app.modules.auth.router import router as auth_router, users_router
+
+# Enregistre cash_sessions dans les métadonnées : sales et sale_returns y ont une FK.
+# À retirer quand le router cash_register sera importé ici.
+from app.modules.cash_register import models as _cash_register_models  # noqa: F401
 from app.modules.catalog.router import categories_router, router as catalog_router
 from app.modules.inventory.router import router as inventory_router
 from app.modules.sales.router import router as sales_router
