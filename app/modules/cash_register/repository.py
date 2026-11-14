@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.pagination import decode_cursor
-from app.modules.cash_register.models import CashMovement, CashSession
+from app.modules.cash_register.models import CashCountLine, CashMovement, CashSession
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import CursorResult
@@ -192,3 +192,26 @@ class CashSessionRepository:
         )
         inserted = (await self.db.execute(stmt)).scalar_one_or_none()
         return inserted is not None
+
+    async def insert_count_lines(self, lines: list[CashCountLine]) -> None:
+        """Insère les lignes d'un comptage dans la transaction courante.
+
+        Le trigger trg_cash_count_lines_session_open refuse une ligne visant une
+        session déjà clôturée : les lignes de clôture précèdent close_session.
+        """
+        self.db.add_all(lines)
+        await self.db.flush()
+
+    async def list_count_lines(self, session_id: UUID) -> list[CashCountLine]:
+        """Lignes de comptage de la session : billets puis pièces, coupure décroissante."""
+        stmt = (
+            select(CashCountLine)
+            .where(CashCountLine.session_id == session_id)
+            .order_by(
+                CashCountLine.operation,
+                CashCountLine.denomination_type,
+                CashCountLine.denomination.desc(),
+            )
+        )
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
