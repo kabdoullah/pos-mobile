@@ -31,6 +31,7 @@ Pourquoi écrire des ADRs :
 | [0014](0014-lien-reset-par-le-support.md) | Lien de réinitialisation du mot de passe généré par le support | Accepté | 2026-11-05 |
 | [0013](0013-email-obligatoire-verifie.md) | Email obligatoire et vérifié pour la récupération du compte | Proposé | 2026-11-05 |
 | [0015](0015-sessions-de-caisse.md) | Sessions de caisse par appareil | Accepté | 2026-11-10 |
+| [0016](0016-billetterie-de-caisse.md) | Billetterie de caisse (comptage par coupure) | Accepté | 2026-11-14 |
 
 ## Comment écrire un nouvel ADR
 

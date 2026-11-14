@@ -251,7 +251,21 @@ Codes d'erreur propres au module :
 }
 ```
 
-`opening_amount` ≥ 0 ; `opened_at` suit la règle des horodatages client ci-dessus. Une seule session ouverte par appareil, y compris face à deux requêtes concurrentes (index unique partiel).
+`opening_amount` ≥ 0 ; `opened_at` suit la règle des horodatages client ci-dessus.
+
+**Billetterie** (ADR-0016) : `opening_count` (ouverture) et `closing_count` (clôture) sont facultatifs. Absents : mode « Total seulement » ou ancienne version de l'app.
+
+```json
+"opening_count": [
+  {"denomination_type": "bill", "denomination": 10000, "quantity": 2},
+  {"denomination_type": "coin", "denomination": 250, "quantity": 4}
+]
+```
+
+- Coupures : `bill` 10000, 5000, 2000, 1000, 500 ; `coin` 500, 250, 200, 100, 50, 25, 10, 5. `denomination` et `quantity` sont des entiers JSON (pas de chaîne, pas de décimale), 0 ≤ `quantity` ≤ 100 000, une ligne par (type, coupure), au moins une ligne.
+- Le serveur recalcule les sous-totaux : la somme doit égaler `opening_amount` (ou `counted_amount`), sinon `VALIDATION_ERROR` avec `field: opening_count` (ou `closing_count`).
+- Le comptage fait partie du contenu comparé lors d'un retry.
+- `CashSessionDetailResponse` expose `opening_count` et `closing_count` : `{lines: [{denomination_type, denomination, quantity, subtotal}], bills_total, coins_total, total}` (billets puis pièces, coupure décroissante), `null` sans billetterie. Une seule session ouverte par appareil, y compris face à deux requêtes concurrentes (index unique partiel).
 
 **Mouvement** (`POST /cash-sessions/{id}/movements`) :
 

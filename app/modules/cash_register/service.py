@@ -14,9 +14,12 @@ from app.modules.cash_register.exceptions import (
     IdempotencyConflictError,
     InsufficientCashError,
 )
-from app.modules.cash_register.models import CashMovement, CashSession
+from app.modules.cash_register.models import CashCountLine, CashMovement, CashSession
 from app.modules.cash_register.repository import CashSessionRepository
 from app.modules.cash_register.schemas import (
+    CashCountLineIn,
+    CashCountLineResponse,
+    CashCountResponse,
     CashMovementCreate,
     CashMovementResponse,
     CashSessionClose,
@@ -25,12 +28,49 @@ from app.modules.cash_register.schemas import (
     CashSessionPage,
     CashSessionResponse,
     CashSummary,
+    count_key,
 )
 from app.modules.returns.service import ReturnService
 from app.modules.sales.service import SaleService
 
 # Index unique partiel (store_id, device_id) WHERE status = 'open'.
 _OPEN_PER_DEVICE_INDEX = "uq_cash_sessions_open_per_device"
+
+
+def _count_lines(
+    store_id: UUID, session_id: UUID, operation: str, lines: list[CashCountLineIn] | None
+) -> list[CashCountLine]:
+    """Lignes à insérer ; sous-totaux recalculés ici, jamais repris de l'app."""
+    return [
+        CashCountLine(
+            store_id=store_id,
+            session_id=session_id,
+            operation=operation,
+            denomination_type=line.denomination_type,
+            denomination=Decimal(line.denomination),
+            quantity=line.quantity,
+            subtotal=line.subtotal,
+        )
+        for line in lines or []
+    ]
+
+
+def _stored_key(lines: list[CashCountLine]) -> frozenset[tuple[str, Decimal, int]]:
+    return frozenset((ln.denomination_type, ln.denomination, ln.quantity) for ln in lines)
+
+
+def _count_response(lines: list[CashCountLine]) -> CashCountResponse | None:
+    if not lines:
+        return None
+    zero = Decimal("0")
+    bills = sum((ln.subtotal for ln in lines if ln.denomination_type == "bill"), zero)
+    coins = sum((ln.subtotal for ln in lines if ln.denomination_type == "coin"), zero)
+    return CashCountResponse(
+        lines=[CashCountLineResponse.model_validate(ln) for ln in lines],
+        bills_total=bills,
+        coins_total=coins,
+        total=bills + coins,
+    )
 
 
 def _violated_constraint(exc: IntegrityError) -> str | None:
@@ -90,8 +130,9 @@ class CashSessionService:
     ) -> tuple[CashSession, bool]:
         """Ouvre une session ; (session, créée ?). Idempotent sur l'id client.
 
-        Même id et même contenu : (existante, False). Même id, contenu
-        différent : IdempotencyConflictError. Autre session déjà ouverte sur
+        Le comptage d'ouverture (ADR-0016) est inséré dans le même savepoint que
+        la session : tout ou rien. Même id et même contenu, comptage compris :
+        (existante, False). Même id, contenu différent : IdempotencyConflictError. Autre session déjà ouverte sur
         l'appareil : CashSessionAlreadyOpenError (index partiel, sûr face à
         deux requêtes concurrentes).
         """
@@ -108,6 +149,10 @@ class CashSessionService:
         try:
             async with self.db.begin_nested():
                 inserted = await self.repo.insert_session(session)
+                if inserted:
+                    await self.repo.insert_count_lines(
+                        _count_lines(store_id, payload.id, "opening", payload.opening_count)
+                    )
         except IntegrityError as exc:
             if _violated_constraint(exc) == _OPEN_PER_DEVICE_INDEX:
                 raise CashSessionAlreadyOpenError(
@@ -125,6 +170,7 @@ class CashSessionService:
             stored.device_id != payload.device_id
             or stored.opening_amount != payload.opening_amount
             or stored.opened_at != payload.opened_at
+            or await self._stored_count(stored.id, "opening") != count_key(payload.opening_count)
         ):
             raise IdempotencyConflictError(
                 "Cash session id already used with different content.", field="id"
@@ -202,13 +248,14 @@ class CashSessionService:
         1. Session verrouillée (FOR UPDATE) : une vente concurrente (KEY SHARE
            via la FK) est soit commitée avant et comptée, soit après et visible
            dans late_impact.
-        2. Déjà clôturée avec les mêmes counted_amount et closed_at : retry,
-           détail existant. Valeurs différentes : CashSessionClosedError.
+        2. Déjà clôturée avec les mêmes counted_amount, closed_at et comptage :
+           retry, détail existant. Valeurs différentes : CashSessionClosedError.
         3. expected_amount = solde recalculé en base sous le verrou ;
            client_expected_amount n'est jamais utilisé pour le calcul.
         4. Écart non nul sans note (vide ou blanche) : ValidationError.
-        5. Un seul UPDATE : status, montants, note, closed_at, closed_by,
-           closure_recorded_at = now().
+        5. Lignes du comptage de clôture (ADR-0016), puis un seul UPDATE :
+           status, montants, note, closed_at, closed_by, closure_recorded_at.
+           Même transaction : une clôture refusée n'écrit aucune ligne.
         """
         session = await self.repo.get_for_update(session_id)
         if session is None or session.store_id != store_id:
@@ -218,6 +265,8 @@ class CashSessionService:
             if (
                 session.counted_amount == payload.counted_amount
                 and session.closed_at == payload.closed_at
+                and await self._stored_count(session.id, "closing")
+                == count_key(payload.closing_count)
             ):
                 return await self._detail(session)
             raise CashSessionClosedError(
@@ -237,6 +286,9 @@ class CashSessionService:
                 field="closing_note",
             )
 
+        await self.repo.insert_count_lines(
+            _count_lines(store_id, session.id, "closing", payload.closing_count)
+        )
         closed = await self.repo.close_session(
             session,
             expected_amount=expected,
@@ -250,6 +302,12 @@ class CashSessionService:
             # Exclu par le verrou FOR UPDATE : la session était ouverte.
             raise CashSessionClosedError("Cash session is already closed.")
         return await self._detail(session)
+
+    async def _stored_count(
+        self, session_id: UUID, operation: str
+    ) -> frozenset[tuple[str, Decimal, int]]:
+        lines = await self.repo.list_count_lines(session_id)
+        return _stored_key([ln for ln in lines if ln.operation == operation])
 
     @staticmethod
     def _check_movement_replay(
@@ -302,8 +360,11 @@ class CashSessionService:
     async def _detail(self, session: CashSession) -> CashSessionDetailResponse:
         summary = await self.compute_balance(session)
         movements = await self.repo.list_movements(session.id)
+        lines = await self.repo.list_count_lines(session.id)
         return CashSessionDetailResponse(
             session=CashSessionResponse.model_validate(session),
             summary=summary,
             movements=[CashMovementResponse.model_validate(m) for m in movements],
+            opening_count=_count_response([ln for ln in lines if ln.operation == "opening"]),
+            closing_count=_count_response([ln for ln in lines if ln.operation == "closing"]),
         )

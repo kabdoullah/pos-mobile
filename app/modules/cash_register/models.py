@@ -4,18 +4,21 @@ ATTENTION :
 - une session clôturée est FIGÉE et aucune session n'est supprimable : le
   trigger prevent_closed_cash_session_modification refuse l'UPDATE d'une ligne
   closed et tout DELETE ;
-- cash_movements est IMMUABLE, comme sales.
+- cash_movements est IMMUABLE, comme sales ;
+- cash_count_lines (billetterie, ADR-0016) est IMMUABLE et refuse toute ligne
+  ajoutée à une session déjà clôturée.
 """
 
 from datetime import datetime
 from decimal import Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Integer,
     Numeric,
     String,
     UniqueConstraint,
@@ -30,6 +33,8 @@ SESSION_STATUSES = ("open", "closed")
 MOVEMENT_TYPES = ("cash_in", "cash_out")
 CASH_IN_REASONS = ("top_up", "float", "other")
 CASH_OUT_REASONS = ("expense", "withdrawal", "supplies", "other")
+COUNT_OPERATIONS = ("opening", "closing")
+DENOMINATION_TYPES = ("bill", "coin")
 
 # Renseignés à la clôture (obligatoires une fois closed).
 _CLOSING_REQUIRED = (
@@ -195,4 +200,64 @@ class CashMovement(Base):
         return (
             f"<CashMovement id={self.id} session_id={self.session_id} "
             f"type={self.type} amount={self.amount}>"
+        )
+
+
+class CashCountLine(Base):
+    """Ligne de billetterie : quantité comptée d'une coupure (ADR-0016). IMMUABLE.
+
+    Une ligne par coupure et par opération (`opening` ou `closing`). Le total
+    du comptage est celui de la session (`opening_amount` ou
+    `counted_amount`), vérifié par le service ; `subtotal` est recalculé par
+    le serveur et contrôlé par CHECK.
+    """
+
+    __tablename__ = "cash_count_lines"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["store_id", "session_id"],
+            ["cash_sessions.store_id", "cash_sessions.id"],
+            name="fk_cash_count_lines_session",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "session_id",
+            "operation",
+            "denomination_type",
+            "denomination",
+            name="uq_cash_count_lines_denomination",
+        ),
+        CheckConstraint(
+            _in_list("operation", COUNT_OPERATIONS), name="chk_cash_count_lines_operation"
+        ),
+        CheckConstraint(
+            _in_list("denomination_type", DENOMINATION_TYPES),
+            name="chk_cash_count_lines_denomination_type",
+        ),
+        CheckConstraint("denomination > 0", name="chk_cash_count_lines_denomination_positive"),
+        CheckConstraint("quantity >= 0", name="chk_cash_count_lines_quantity_positive"),
+        CheckConstraint("subtotal = denomination * quantity", name="chk_cash_count_lines_subtotal"),
+    )
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    store_id: Mapped[UUID] = mapped_column(
+        SQLUUID(as_uuid=True),
+        ForeignKey("stores.id", ondelete="RESTRICT", name="fk_cash_count_lines_store"),
+        nullable=False,
+    )
+    # FK composite (store_id, session_id), voir __table_args__.
+    session_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)
+    operation: Mapped[str] = mapped_column(String(10), nullable=False)
+    denomination_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    denomination: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<CashCountLine session_id={self.session_id} {self.operation} "
+            f"{self.denomination_type} {self.denomination} x {self.quantity}>"
         )
